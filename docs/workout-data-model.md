@@ -1,6 +1,6 @@
 # Workout data model: design draft
 
-This document is a design contract, **not an applied schema**. The current preview uses account-scoped browser local storage and name-based references. It does not yet implement these tables, durable UUIDs, synchronization, rotation, or Supabase workout persistence. Do not use the prototype as the only copy of important workout data.
+This document describes the target normalized design. Two SQL migrations and local schema/sync tests now exist; see [the migration runbook](supabase-migrations.md). The owner reports applying both migrations to the main project. The preview has experimental manual synchronization using account-scoped IndexedDB and separate JSON sync records; it does not yet use the normalized tables or automatically sync in the background. Authenticated sync has not been verified against real Supabase. Do not use the prototype as the only copy of important workout data.
 
 ## Ownership and identity
 
@@ -36,7 +36,7 @@ Archive exercise variants and routines instead of destroying referenced historic
 
 `routine_slot_alternatives`: id, user_id, slot_id, variant_id, position. Alternatives are suggestions, not a restriction: a user may select any available exercise during a session. A group must belong to the slot's routine, enforced by a composite relationship or a checked server operation.
 
-Default rotation semantics: advance only when the relevant slot is completed with a variant belonging to its rotation group; use the variant actually performed. Skipping does not advance. If an unrelated variant is substituted, do not advance and show that the next suggestion is unchanged. Free workouts do not advance a routine rotation. A complement choice is derived from the same group's last actual selection; manual choices remain possible. Completing two linked slots concurrently requires conflict detection; never silently use last-write-wins.
+Default rotation semantics: advance only when the **primary** slot is completed with a variant belonging to its rotation group; use the variant actually performed. Skipping does not advance. If an unrelated variant is substituted, do not advance and show that the next suggestion is unchanged. Free workouts and complementary-day completions do not advance the primary rotation. A complement choice is derived from the most recent primary selection; manual choices remain possible. Completing two linked slots concurrently requires conflict detection; never silently use last-write-wins.
 
 ## Cycles
 
@@ -58,12 +58,12 @@ Default rotation semantics: advance only when the relevant slot is completed wit
 
 ## Offline and sync contract
 
-- Local writes first into IndexedDB, including in-progress sessions, an operation queue and last-known revisions. A service worker caches the shell independently of data.
-- Changes carry stable IDs, a client operation ID and expected server revisions. Retries are idempotent; the server assigns authoritative monotonically increasing revisions/change cursors and tombstones. Client timestamps cannot be the ordering authority.
+- Target: local writes first into IndexedDB, including in-progress sessions, an operation queue and last-known revisions. Currently the UI writes localStorage first and mirrors a sync projection asynchronously to IndexedDB. A service worker caches the shell independently of data.
+- Changes carry stable IDs, a client operation ID and expected server revisions. Retries are idempotent; the server assigns per-record revisions and tombstones. The experimental client reads all records with pagination on each manual sync; a durable incremental change cursor is not implemented. Client timestamps are not the ordering authority.
 - Complete-session plus cycle and rotation updates must execute atomically via a checked, idempotent server operation. A rejected conflict leaves the local session and queued operation intact. Do not allow a partially advanced cycle.
 - Fetch changes and tombstones by a durable cursor, scoped to the account. A conflict preserves both versions and pauses the conflicting operation; never silently overwrite. The precise transactional sync API, resolution UX and tests must be specified before enabling cloud writes.
 - Demo data uses a separate local namespace. Before sign-out or switching accounts, warn about unsynced work. A cached session permits offline work after first online sign-in; syncing requires valid authentication.
 
 ## Implementation gates
 
-Before applying migrations to a real project: implement and exercise the constraints and indexes above, RLS including cross-owner references, atomic/idempotent sync operations, and tests for two users, interrupted sync, stale revisions, tombstones and account switching. No live migrations are included or applied in this increment; this design is not a claim that the prototype has these safeguards.
+The normalized migration is read-only; the second migration implements the experimental JSON-record sync RPC. The owner reports applying both to the main project. Before trusting the backend with workout records: verify real Supabase RLS and two-user isolation, strengthen domain validation and backup recovery, and test real-device offline restarts, interrupted sync, stale revisions, tombstones and account switching. Local PGlite and fake IndexedDB tests are not a replacement for those checks.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, Plus } from 'lucide-react'
 
-export type Exercise = { name: string; equipment: string; sets: string; kind?: 'strength' | 'cardio'; note?: string; instructions?: string; video?: string; alternatives?: string[] }
+export type Exercise = { id?: string; name: string; equipment: string; sets: string; kind?: 'strength' | 'cardio'; note?: string; instructions?: string; video?: string; alternatives?: string[]; rotationGroupId?: string; rotationMode?: 'primary' | 'complement' }
 
 type Props = {
   exercises: Exercise[]
@@ -24,7 +24,7 @@ export function ExerciseLibrary({ exercises, onSave, onBack }: Props) {
     if (editing.video) {
       try { const url = new URL(editing.video); if (!['http:', 'https:'].includes(url.protocol)) throw new Error() } catch { setError('Enter a complete http or https video URL.'); return }
     }
-    onSave(originalName ? exercises.map(e => e.name === originalName ? { ...editing, name } : e) : [...exercises, { ...editing, name }])
+    onSave(originalName ? exercises.map(e => e.name === originalName ? { ...editing, name } : e) : [...exercises, { ...editing, name, id: crypto.randomUUID() }])
     setEditing(null); setError('')
   }
   return <>

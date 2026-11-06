@@ -26,7 +26,10 @@ jobs:
         run: node scripts/check-supabase-config.mjs
       - run: npm ci
       - run: npm run test:config
+      - run: npm run test:schema
+      - run: npm run test:history
       - run: npm run build
+      - run: npm run test:pwa
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

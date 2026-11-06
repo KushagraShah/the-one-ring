@@ -7,18 +7,25 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test:config": "node --test tests/config.test.mjs"
+    "test:config": "node --test tests/config.test.mjs",
+    "test:schema": "node --test tests/schema.test.mjs tests/sync-schema.test.mjs",
+    "test:history": "node --import tsx --test tests/history.test.ts tests/rotations.test.ts tests/backup.test.ts tests/sync-store.test.ts tests/workspace.test.ts tests/sync-integration.test.ts",
+    "test:pwa": "node --test tests/pwa.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
+    "idb": "^8.0.4",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "fake-indexeddb": "^6.2.7",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vite": "^6.0.5"
   }

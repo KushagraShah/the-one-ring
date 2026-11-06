@@ -15,7 +15,7 @@ function createConfiguredClient() {
   }
 }
 
-const supabase = createConfiguredClient()
+export const supabase = createConfiguredClient()
 
 export function AuthGate({ children }: { children: (identity: { id: string; email: string; demo: boolean }, signOut: () => void) => React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)

@@ -4,17 +4,17 @@ import type { Exercise } from './ExerciseLibrary'
 
 export type SetEntry = { weight: string; reps: string; done: boolean }
 export type CardioEntry = { duration: string; speed: string; incline: string; done: boolean }
-export type WorkoutExercise = { name: string; sets: SetEntry[]; skipped: boolean; note?: string; cardio?: CardioEntry }
-export type Workout = { day: string; date: string; exercises: WorkoutExercise[] }
+export type WorkoutExercise = { name: string; exerciseId?: string; sets: SetEntry[]; skipped: boolean; note?: string; cardio?: CardioEntry }
+export type Workout = { id?: string; day: string; date: string; exercises: WorkoutExercise[] }
 export type Session = { day: string; exercises: Exercise[]; entries: Record<string, SetEntry[]>; skipped: string[]; warmups: string[]; notes?: Record<string, string>; cardio?: Record<string, CardioEntry> }
 
 const blankCardio = (): CardioEntry => ({ duration: '', speed: '', incline: '', done: false })
 export const isCardio = (exercise: Exercise) => exercise.kind === 'cardio' || (!exercise.kind && /treadmill/i.test(exercise.name))
-export function previousFor(workouts: Workout[], name: string): WorkoutExercise | undefined {
-  return workouts.flatMap(workout => workout.exercises).find(exercise => exercise.name === name && (exercise.sets.length > 0 || exercise.cardio?.done))
+export function previousFor(workouts: Workout[], target: Exercise): WorkoutExercise | undefined {
+  return workouts.flatMap(workout => workout.exercises).find(exercise => (exercise.exerciseId && target.id ? exercise.exerciseId === target.id : exercise.name === target.name) && (exercise.sets.length > 0 || exercise.cardio?.done))
 }
 export function startingSets(exercise: Exercise, workouts: Workout[]): SetEntry[] {
-  const previous = previousFor(workouts, exercise.name)
+  const previous = previousFor(workouts, exercise)
   if (previous?.sets.length === 3) return previous.sets.map(set => ({ ...set, done: false }))
   return Array.from({ length: 3 }, () => ({ weight: '', reps: '', done: false }))
 }
@@ -46,7 +46,7 @@ export function WorkoutSession({ session, workouts, library, warmupItems, onChan
     const exercise = library.find(item => item.name === addName)
     if (!exercise) return
     if (session.exercises.some(item => item.name === exercise.name)) { setError('This exercise is already in the workout.'); return }
-    const previousCardio = previousFor(workouts, exercise.name)?.cardio
+    const previousCardio = previousFor(workouts, exercise)?.cardio
     onChange({ ...session, exercises: [...session.exercises, { ...exercise }], entries: { ...session.entries, [exercise.name]: startingSets(exercise, workouts) }, cardio: { ...session.cardio, [exercise.name]: previousCardio ? { ...previousCardio, done: false } : blankCardio() } })
     setExpanded(exercise.name); setAddName(''); setError('')
   }
@@ -59,9 +59,9 @@ export function WorkoutSession({ session, workouts, library, warmupItems, onChan
     const nextEntries = { ...session.entries }; delete nextEntries[exercise.name]; nextEntries[name] = startingSets(replacement, workouts)
     const notes = { ...session.notes }; delete notes[exercise.name]
     const cardio = { ...session.cardio }; delete cardio[exercise.name]
-    const previousCardio = previousFor(workouts, replacement.name)?.cardio
+    const previousCardio = previousFor(workouts, replacement)?.cardio
     cardio[name] = previousCardio ? { ...previousCardio, done: false } : blankCardio()
-    onChange({ ...session, exercises: session.exercises.map(item => item.name === exercise.name ? { ...replacement, alternatives: [exercise.name, ...(exercise.alternatives || []).filter(item => item !== name)] } : item), entries: nextEntries, notes, cardio, skipped: session.skipped.filter(item => item !== exercise.name) })
+    onChange({ ...session, exercises: session.exercises.map(item => item.name === exercise.name ? { ...replacement, rotationGroupId: exercise.rotationGroupId, rotationMode: exercise.rotationMode, alternatives: [exercise.name, ...(exercise.alternatives || []).filter(item => item !== name)] } : item), entries: nextEntries, notes, cardio, skipped: session.skipped.filter(item => item !== exercise.name) })
     setExpanded(name); setError('')
   }
   return <>
@@ -81,7 +81,7 @@ export function WorkoutSession({ session, workouts, library, warmupItems, onChan
         const cardioType = isCardio(exercise)
         const completed = cardioType ? cardio.done : entries.length === 3 && entries.every(set => set.done)
         const skipped = session.skipped.includes(exercise.name)
-        const previous = previousFor(workouts, exercise.name)
+        const previous = previousFor(workouts, exercise)
         const open = expanded === exercise.name
         return <div className={`exercise-card ${open ? 'open' : ''}`} key={`${exercise.name}-${index}`}>
           <button className="exercise-header" onClick={() => { setExpanded(open ? null : exercise.name); setError('') }} aria-expanded={open}><span className="exercise-index">{completed ? <Check size={16}/> : String(index + 1).padStart(2, '0')}</span><span className="exercise-name"><strong>{exercise.name}</strong><small>{skipped ? 'Skipped' : completed ? 'Completed' : exercise.equipment || 'Not started'}</small></span><ChevronDown size={17} className={open ? 'rotated' : ''}/></button>

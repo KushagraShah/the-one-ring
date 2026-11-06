@@ -22,7 +22,7 @@ Keep the interface clear and phone-first. Avoid presenting decorative or unfinis
 - Current prototype supports one routine, sample data, a basic exercise library, three-set and cardio logging, and local backup. It matches exercise history by name, so renaming breaks the link. Multiple routines, independent rotations, stable exercise IDs, robust backup, and real offline sync remain to be built.
 - [`docs/workout-data-model.md`](docs/workout-data-model.md) is a design draft, **not an applied migration**. Implement and test schema constraints, cross-owner foreign keys, RLS, atomic/idempotent sync, conflict handling, and two-user isolation before trusting real data. Keep demo data separate from real accounts.
 - [`docs/setup.md`](docs/setup.md) describes deployment and configuration. Update both docs as behavior or design changes; distinguish actual implementation from plans.
-- The Supabase URL and publishable key are public client configuration. Never add a service-role/secret key or credentials to the frontend or repository.
+- The Supabase URL and publishable key are public client configuration, supplied via ignored `.env.local` or GitHub Actions variables/secrets. Vite exposes all `VITE_` values in the public site. Never add a service-role/secret key or credentials to the frontend or repository. The Pages workflow must validate configuration before deployment; see `docs/setup.md`.
 
 ## Working conventions
 

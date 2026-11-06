@@ -9,6 +9,8 @@ The current version is an early preview. You can explore it in demo mode or sign
 Requires Node.js 20 or newer:
 
 ```sh
+cp .env.example .env.local
+# Add your Supabase project URL and publishable key to .env.local
 npm install
 npm run dev
 ```

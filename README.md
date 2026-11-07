@@ -2,7 +2,7 @@
 
 The One Ring is a personal, mobile-first home for small apps that make everyday life easier. The first mini-app is a workout tracker; a habit tracker and others may follow.
 
-The current version is an early preview. You can explore it in demo mode or sign in with Supabase, build routines, and log workouts. The owner reports that an initial manual cloud sync appeared to work; broader sync and offline testing remain. **Export backups and don't rely on the preview as your only copy of important records.**
+This is an early preview. The online-only version uses Supabase storage and still needs live-device and security verification. Demo data is temporary. Export backups and don't rely on the preview as your only copy of important records.
 
 ## Run locally
 

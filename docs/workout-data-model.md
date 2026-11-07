@@ -1,5 +1,7 @@
 # Workout data model: design draft
 
+**Online-only update:** This document is a normalized design draft, not a description of the new local online implementation. The latter uses owner-scoped JSON records and transactional revision-checked writes in migration 004; it does not populate the normalized tables. See `docs/setup.md` and `docs/supabase-migrations.md` for its status and limitations. Offline-sync targets below are historical, not current product direction.
+
 This document describes the target normalized design. Two SQL migrations and local schema/sync tests now exist; see [the migration runbook](supabase-migrations.md). The owner reports applying both migrations to the main project and that an initial sync appeared to work. The preview has experimental manual synchronization using account-scoped IndexedDB and separate JSON sync records; it does not yet use the normalized tables or automatically sync in the background. Broader live sync, isolation, and offline testing remains. Do not use the prototype as the only copy of important workout data.
 
 ## Ownership and identity

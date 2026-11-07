@@ -2,7 +2,7 @@
 
 ## Local development
 
-Use Node.js 20 or newer. Copy `.env.example` to `.env.local` and fill in the Supabase project URL and **publishable** key from the Supabase project's Connect/API Keys settings. `.env.local` is ignored by Git. Run `npm install` followed by `npm run dev`, then open the URL printed by Vite. Restart Vite after changing environment variables. `npm run build` checks TypeScript and creates the production bundle; `npm run preview` serves that bundle locally. `npm run test:config` checks deployment configuration validation.
+Use Node.js 24 or newer (`.nvmrc` selects 24). Copy `.env.example` to `.env.local` and fill in the Supabase project URL and **publishable** key from the Supabase project's Connect/API Keys settings. `.env.local` is ignored by Git. Run `npm install` followed by `npm run dev`, then open the URL printed by Vite. Restart Vite after changing environment variables. `npm run build` checks TypeScript and creates the production bundle; `npm run preview` serves that bundle locally. `npm run test:config` checks deployment configuration validation.
 
 `npm run test:browser` runs Playwright at phone width against a fake Supabase endpoint, not the real project. Install Chromium with `npx playwright install chromium`, or set `CHROMIUM_PATH` to an existing Chromium executable.
 
@@ -22,7 +22,7 @@ Account workspaces load from Supabase into memory; changes are saved through a r
 
 Settings can export a JSON copy of the current in-memory workout workspace, including exercises, routines, cycle progress, workout history, and confirmed in-progress session data. It does not include credentials, appearance preferences, routine drafts, or unconfirmed result edits. The file contains private workout data; keep it somewhere safe. Export while a save is pending or has failed captures the current in-memory state, which may not yet be on the server.
 
-Restore checks the file and its online record identifiers before asking to replace the current workspace. It then saves the replacement to the current account using the normal revision-checked transaction; wait for the saving indicator to disappear. On a failed save, keep the page open and retry, or export the unsaved state. Demo restore lasts only until refresh. The fake-server browser tests cover export, validation, failed restore/retry and reload, but real Supabase and phone backup recovery remain unverified. Backups and the server have 10 MB limits; near-limit files may be rejected by the server after encoding.
+Restore checks the file and its online record identifiers before asking to replace the current workspace. It then saves the replacement to the current account using the normal revision-checked transaction; wait for the saving indicator to disappear. On a failed save, keep the page open and retry, or export the unsaved state. Demo restore lasts only until refresh. The owner reported successfully exporting, deleting a routine day and restoring; this does not establish every failure or recovery scenario. Fake-server browser tests cover export, validation, failed restore/retry and reload. Backups and the server have 10 MB limits; near-limit files may be rejected by the server after encoding.
 
 ## GitHub Pages
 

@@ -6,7 +6,7 @@ This is an early preview. The online-only version uses Supabase storage and stil
 
 ## Run locally
 
-Requires Node.js 20 or newer:
+Requires Node.js 24 or newer:
 
 ```sh
 cp .env.example .env.local

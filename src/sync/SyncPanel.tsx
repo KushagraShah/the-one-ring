@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Backup } from '../backup'
+import type { Backup } from '../workout/backup'
 import { supabase } from '../auth'
 import { syncOnce } from './engine'
 import { SyncStore, type StoredDocument } from './store'

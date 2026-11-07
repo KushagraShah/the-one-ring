@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import type { Backup } from '../src/backup'
+import type { Backup } from '../src/workout/backup'
 import { workspaceDocuments, workspaceFromRecords } from '../src/sync/workspace'
 import type { StoredDocument } from '../src/sync/store'
 

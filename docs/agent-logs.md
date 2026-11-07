@@ -101,3 +101,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Replaced large per-set result tables with compact shared-weight or per-set-weight summaries. The workout's recent performances use one date/result row each. Unified Activity history into a single exercise-ID/date-filterable list with ten workouts initially, expandable pages and optional strength chart; cycle events are also initially limited. Preserved workout details and editing.
 - Added formatting tests and phone-width fake-server browser coverage for exact-variant filtering across same-named routine days, date ranges, pagination and existing history flows. Browser tests do not establish real-phone behavior. This limits rendered UI, not server data retrieval; no database migration is needed.
+
+## 2026-11-07 — Visible app version
+
+- The owner requires every pushed change to have a version number, normally incrementing the patch version. Updated the handoff, set package and lockfile metadata to 0.3.1, and displayed that same version in Settings. A Git tag or Release remains a separate authorized operation.
+- Added browser coverage tying the displayed version to package metadata. Build, tests and deployment must be checked before considering the version live; browser checks do not establish real-phone behavior.

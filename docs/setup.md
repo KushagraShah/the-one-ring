@@ -4,6 +4,8 @@
 
 Use Node.js 24 or newer (`.nvmrc` selects 24). Copy `.env.example` to `.env.local` and fill in the Supabase project URL and **publishable** key from the Supabase project's Connect/API Keys settings. `.env.local` is ignored by Git. Run `npm install` followed by `npm run dev`, then open the URL printed by Vite. Restart Vite after changing environment variables. `npm run build` checks TypeScript and creates the production bundle; `npm run preview` serves that bundle locally. `npm run test:config` checks deployment configuration validation.
 
+The app version appears at the bottom of Settings and is sourced from `package.json`; keep `package-lock.json` in sync. The owner requires every pushed change to have a version number, normally a patch increment. A tag or GitHub Release remains a separate action.
+
 `npm run test:browser` runs Playwright at phone width against a fake Supabase endpoint, not the real project. Install Chromium with `npx playwright install chromium`, or set `CHROMIUM_PATH` to an existing Chromium executable.
 
 ## Supabase authentication

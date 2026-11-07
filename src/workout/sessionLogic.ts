@@ -10,7 +10,7 @@ export function adjacentExercise(session: Session, name: string, offset: number)
 
 /** These operations affect only the session snapshot, never the saved routine. */
 export function addSessionExercise(session: Session, exercise: Exercise, sets: SetEntry[], cardio: CardioEntry): Session {
-  return { ...session, exercises: [...session.exercises, { ...exercise, rotationGroupId: undefined, rotationMode: undefined }], entries: { ...session.entries, [exercise.name]: sets }, cardio: { ...session.cardio, [exercise.name]: cardio } }
+  return { ...session, exercises: [...session.exercises, { ...exercise, rotationGroupId: undefined, rotationMode: undefined, sessionSlotId: undefined, sessionItemId: crypto.randomUUID(), sessionSource: 'extra' }], entries: { ...session.entries, [exercise.name]: sets }, cardio: { ...session.cardio, [exercise.name]: cardio } }
 }
 
 export function replaceSessionExercise(session: Session, exercise: Exercise, replacement: Exercise, sets: SetEntry[], previousCardio: CardioEntry, cycle?: Rotation): Session {
@@ -18,7 +18,7 @@ export function replaceSessionExercise(session: Session, exercise: Exercise, rep
   const entries = { ...session.entries }; delete entries[exercise.name]; entries[replacement.name] = sets
   const notes = { ...session.notes }; delete notes[exercise.name]
   const cardio = { ...session.cardio }; delete cardio[exercise.name]; cardio[replacement.name] = previousCardio
-  return { ...session, exercises: session.exercises.map(item => item.name === exercise.name ? { ...replacement, plannedName: exercise.plannedName || exercise.name, plannedId: exercise.plannedId || exercise.id, rotationGroupId: cycle?.id, rotationMode: cycle ? exercise.rotationMode : undefined, alternatives: [exercise.name, ...(exercise.alternatives || []).filter(item => item !== replacement.name)] } : item), entries, notes, cardio, skipped: session.skipped.filter(item => item !== exercise.name) }
+  return { ...session, exercises: session.exercises.map(item => item.name === exercise.name ? { ...replacement, plannedName: exercise.plannedName || exercise.name, plannedId: exercise.plannedId || exercise.id, sessionSlotId: exercise.sessionSlotId, sessionItemId: exercise.sessionItemId, sessionSource: exercise.sessionSource === 'extra' ? 'extra' : cycle ? 'cycle' : 'substitution', rotationGroupId: cycle?.id, rotationMode: cycle ? exercise.rotationMode : undefined, alternatives: [exercise.name, ...(exercise.alternatives || []).filter(item => item !== replacement.name)] } : item), entries, notes, cardio, skipped: session.skipped.filter(item => item !== exercise.name) }
 }
 
 export function toggleSessionSkip(session: Session, exercise: Exercise, sets: SetEntry[], cardio: CardioEntry): { session: Session; next: string | null } {

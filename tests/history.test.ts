@@ -76,3 +76,17 @@ test('skipping advances in the session and undo stays on the current exercise', 
   assert.equal(last.next, 'Press')
   assert.equal(sessionAccountedFor(toggleSessionSkip(skipped.session, second, [], cardio).session), true)
 })
+
+test('repeated replacements retain planned slot and original plan separately', () => {
+  const original = { id: 'one', name: 'Press', equipment: 'Machine A', sets: '', sessionSlotId: 'slot', sessionSource: 'planned' as const }
+  const first = { id: 'two', name: 'Press B', equipment: 'Machine B', sets: '' }
+  const second = { id: 'three', name: 'Press C', equipment: 'Machine C', sets: '' }
+  const session = { day: 'Push', exercises: [original], entries: {}, skipped: [], warmups: [], plan: [{ slotId: 'slot', name: 'Press', equipment: 'Machine A' }] }
+  const cardio = { duration: '', speed: '', incline: '', done: false }
+  const once = replaceSessionExercise(session, original, first, [], cardio)
+  const twice = replaceSessionExercise(once, once.exercises[0], second, [], cardio)
+  assert.equal(twice.exercises[0].plannedName, 'Press')
+  assert.equal(twice.exercises[0].sessionSlotId, 'slot')
+  assert.equal(twice.exercises[0].sessionSource, 'substitution')
+  assert.deepEqual(twice.plan, session.plan)
+})

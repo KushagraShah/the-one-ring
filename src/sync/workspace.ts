@@ -13,7 +13,7 @@ const doc = (kind: Document['kind'], id: string, body: object): Document => {
 /** Split a local workspace into independent records; each workout is a separate record. */
 export function workspaceDocuments(snapshot: Backup): Document[] {
   if (!snapshot.routines || !snapshot.library) throw new Error('Workspace is missing routines or the exercise library.')
-  const docs: Document[] = [doc('settings', settingsId, { active: snapshot.routines.active, warmupItems: snapshot.warmupItems })]
+  const docs: Document[] = [doc('settings', settingsId, { active: snapshot.routines.active, warmupItems: snapshot.warmupItems, historyFormat: 2 })]
   for (const exercise of snapshot.library) docs.push(doc('exercise', exercise.id || '', exercise))
   for (const routine of snapshot.routines.routines) docs.push(doc('routine', routine.id === 'initial' ? legacyRoutineId : routine.id, routine))
   for (const workout of snapshot.data.workouts) docs.push(doc('workout', workout.id || '', workout))

@@ -1,24 +1,24 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, Circle, Dumbbell, Flame, Home, ListChecks, MoreHorizontal, Plus, RotateCcw, Settings2, Sparkles, X } from 'lucide-react'
+import { Activity as ActivityIcon, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, Dumbbell, Flame, Home, ListChecks, MoreHorizontal, Plus, RotateCcw, Settings2, Sparkles, X } from 'lucide-react'
 import './style.css'
 import { AuthGate, supabase } from './auth'
 import { ExerciseLibrary, type Exercise } from './workout/ExerciseLibrary'
 import { WorkoutSession, startingSets, previousFor, type Session, type Workout } from './workout/WorkoutSession'
-import { WorkoutStats } from './workout/WorkoutStats'
-import { parseBackup, type Backup } from './workout/backup'
+import { Activity } from './workout/Activity'
+import { parseBackup, type Backup, type CycleEvent } from './workout/backup'
 import { prepareRestore } from './workout/restore'
 import { memoryStorage, OnlineWorkoutStore, seedStorage, type SaveStatus } from './online'
 import { advanceRotations, planExercises, type Rotation } from './workout/rotations'
 import { sessionAccountedFor } from './workout/sessionLogic'
-import { WorkoutReview } from './workout/WorkoutReview'
 import { RoutineBuilder, type RoutineDay } from './workout/RoutineBuilder'
 import { mapCycleDays } from './workout/routineDraft'
 import { ConfirmDialog } from './ConfirmDialog'
 
-type Day = { name: string; subtitle: string; exercises: Exercise[] }
+type Day = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
+const identifyDays = (days: Day[]): Day[] => days.map(day => ({ ...day, id: day.id || crypto.randomUUID(), exercises: day.exercises.map(exercise => ({ ...exercise, routineSlotId: exercise.routineSlotId || crypto.randomUUID() })) }))
 type Data = { completed: string[]; skippedDays?: string[]; workouts: Workout[]; session: Session | null }
-type RoutineBook = { active: string; routines: { id: string; name: string; days: Day[]; completed: string[]; skippedDays?: string[]; rotations?: Rotation[] }[] }
+type RoutineBook = { active: string; routines: { id: string; name: string; days: Day[]; completed: string[]; skippedDays?: string[]; rotations?: Rotation[]; cycleHistory?: CycleEvent[] }[] }
 
 const sampleDays: Day[] = [
   { name: 'Push', subtitle: 'Chest, shoulders & triceps', exercises: [
@@ -77,8 +77,8 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
   })
   const [theme, setTheme] = useState(() => window.localStorage.getItem('one-ring-theme') || 'lime')
   const routinesKey = `${storageKey}-routine`
-  const [days, setDays] = useState<Day[]>(() => { try { const saved = JSON.parse(localStorage.getItem(routinesKey) || 'null'); return Array.isArray(saved) && saved.length ? saved : sampleDays } catch { return sampleDays } })
-  const saveDays = (next: Day[]) => { setDays(next); localStorage.setItem(routinesKey, JSON.stringify(next)) }
+  const [days, setDays] = useState<Day[]>(() => { try { const saved = JSON.parse(localStorage.getItem(routinesKey) || 'null'); return identifyDays(Array.isArray(saved) && saved.length ? saved : sampleDays) } catch { return identifyDays(sampleDays) } })
+  const saveDays = (next: Day[]) => { const identified = identifyDays(next); setDays(identified); localStorage.setItem(routinesKey, JSON.stringify(identified)) }
   const bookKey = `${storageKey}-routine-book`
   const [book, setBook] = useState<RoutineBook>(() => {
     try { const saved = JSON.parse(localStorage.getItem(bookKey) || 'null'); if (saved && Array.isArray(saved.routines) && saved.routines.some((r: { id: string }) => r.id === saved.active)) return saved } catch { /* keep legacy routine */ }
@@ -86,7 +86,7 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
   })
   const currentBook = (): RoutineBook => ({ ...book, routines: book.routines.map(routine => routine.id === book.active ? { ...routine, days, completed: data.completed, skippedDays: data.skippedDays || [] } : routine) })
   const rotations = book.routines.find(routine => routine.id === book.active)?.rotations || []
-  const saveRotations = (next: Rotation[]) => { const updated = currentBook(); setBook({ ...updated, routines: updated.routines.map(routine => routine.id === updated.active ? { ...routine, rotations: next } : routine) }) }
+  const recordCycle = (events: Omit<CycleEvent, 'id' | 'at'>[], nextRotations?: Rotation[]) => { const updated = currentBook(); setBook({ ...updated, routines: updated.routines.map(routine => routine.id === updated.active ? { ...routine, rotations: nextRotations || routine.rotations, cycleHistory: [...(routine.cycleHistory || []), ...events.map(event => ({ ...event, routineName: routine.name, daysSnapshot: days.map(day => ({ id: day.id, name: day.name })), completedBefore: [...data.completed], skippedBefore: [...(data.skippedDays || [])], id: crypto.randomUUID(), at: new Date().toISOString() }))] } : routine) }) }
   useEffect(() => { localStorage.setItem(bookKey, JSON.stringify(currentBook())) }, [book, days, data.completed, data.skippedDays])
   const libraryKey = `${storageKey}-library`
   const [library, setLibrary] = useState<Exercise[]>(() => {
@@ -107,7 +107,7 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
     const updatedDays = days.map(day => ({ ...day, exercises: day.exercises.map(exercise => {
       const name = renames.get(exercise.name) || exercise.name
       const updated = next.find(item => item.name === name)
-      return updated ? { ...updated, alternatives: (exercise.alternatives || []).map(a => renames.get(a) || a) } : exercise
+      return updated ? { ...updated, routineSlotId: exercise.routineSlotId, alternatives: (exercise.alternatives || []).map(a => renames.get(a) || a) } : exercise
     }) }))
     // Bind legacy name-based records before a rename; snapshots keep their old names.
     if (renames.size) {
@@ -118,6 +118,7 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
     saveDays(updatedDays); setLibrary(next); localStorage.setItem(libraryKey, JSON.stringify(next))
   }
   const [page, setPageState] = useState<'home' | 'routine' | 'builder' | 'library' | 'session' | 'activity' | 'settings'>('home')
+  const [reviewLatest, setReviewLatest] = useState(false)
   const [builderDirty, setBuilderDirty] = useState(false)
   const [sessionDirty, setSessionDirty] = useState(false)
   const [confirmation, setConfirmation] = useState<{ title: string; message: string; label: string; action: () => void } | null>(null)
@@ -126,6 +127,7 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
       setConfirmation({ title: 'Discard routine draft?', message: 'Your unsaved routine changes will be lost.', label: 'Discard and leave', action: () => { setBuilderDirty(false); setPageState(next) } }); return
     }
     if (page === 'session' && next !== 'session' && sessionDirty) { setConfirmation({ title: 'Leave workout?', message: 'Unconfirmed log and setup edits will be discarded. Confirmed entries remain in the workout.', label: 'Leave workout', action: () => setPageState(next) }); return }
+    if (next === 'activity') setReviewLatest(false)
     setPageState(next)
   }
   const [selectedDay, setSelectedDay] = useState('')
@@ -143,6 +145,7 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
   const saveRoutineDraft = (nextDays: RoutineDay[], nextRotations: Rotation[], names: Record<string, string | null>, baseline: string) => {
     if (session) { setNotice('Finish or cancel the active workout before saving routine changes.'); return false }
     if (baseline !== JSON.stringify({ days, rotations })) { setNotice('The saved routine changed while editing. Your draft has not been applied; review it before retrying.'); return false }
+    nextDays = identifyDays(nextDays)
     const nextData = { ...data, completed: mapCycleDays(data.completed, names), skippedDays: mapCycleDays(data.skippedDays || [], names) }
     const updated = currentBook()
     const nextBook = { ...updated, routines: updated.routines.map(routine => routine.id === updated.active ? { ...routine, days: nextDays, completed: nextData.completed, skippedDays: nextData.skippedDays, rotations: nextRotations } : routine) }
@@ -165,23 +168,27 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
   }
   const start = (day: Day | null) => {
     if (session) { setPage('session'); setNotice('Resume your workout in progress.'); return }
-    const exercises = day ? planExercises(day.name, day.exercises, library, rotations) : []
+    const exercises = day ? planExercises(day.name, day.exercises, library, rotations).map((exercise, index) => ({ ...exercise, sessionSlotId: day.exercises[index].routineSlotId || crypto.randomUUID(), sessionItemId: crypto.randomUUID(), sessionSource: exercise.rotationGroupId ? 'cycle' as const : 'planned' as const })) : []
     if (new Set(exercises.map(exercise => exercise.name)).size !== exercises.length) { window.alert('This rotation produces the same exercise twice on this day. Adjust the routine or rotation before starting.'); return }
-    save({ ...data, session: { day: day?.name || 'Free workout', exercises, entries: Object.fromEntries(exercises.map(e => [e.name, startingSets(e, data.workouts)])), skipped: [], warmups: [], cardio: Object.fromEntries(exercises.map(e => { const prev = previousFor(data.workouts, e)?.cardio; return [e.name, prev ? { ...prev, done: false } : { duration: '', speed: '', incline: '', done: false }] })) } })
+    const plan = day ? exercises.map(exercise => ({ slotId: exercise.sessionSlotId, name: exercise.name, exerciseId: exercise.id, equipment: exercise.equipment, cycleId: exercise.rotationGroupId, cycleName: rotations.find(group => group.id === exercise.rotationGroupId)?.name })) : []
+    const routine = book.routines.find(item => item.id === book.active)
+    save({ ...data, session: { id: crypto.randomUUID(), day: day?.name || 'Free workout', dayId: day?.id, startedAt: new Date().toISOString(), routineId: day ? routine?.id : undefined, routineName: day ? routine?.name : undefined, plan, exercises, entries: Object.fromEntries(exercises.map(e => [e.name, startingSets(e, data.workouts)])), skipped: [], warmups: [], cardio: Object.fromEntries(exercises.map(e => { const prev = previousFor(data.workouts, e)?.cardio; return [e.name, prev ? { ...prev, done: false } : { duration: '', speed: '', incline: '', done: false }] })) } })
     setPage('session')
   }
   const finishSession = (finished: Session) => {
-    const workout: Workout = { id: crypto.randomUUID(), day: finished.day, date: new Date().toISOString(), exercises: finished.exercises.map(e => ({ name: e.name, exerciseId: e.id || library.find(item => item.name === e.name)?.id, plannedName: e.plannedName, plannedId: e.plannedId, sets: (finished.entries[e.name] || []).filter(s => s.done), skipped: finished.skipped.includes(e.name), note: finished.notes?.[e.name], cardio: finished.cardio?.[e.name]?.done ? finished.cardio[e.name] : undefined })) }
+    const workout: Workout = { id: finished.id || crypto.randomUUID(), day: finished.day, dayId: finished.dayId, date: new Date().toISOString(), startedAt: finished.startedAt, routineId: finished.routineId, routineName: finished.routineName, plan: finished.plan, exercises: finished.exercises.map(e => ({ id: e.sessionItemId, name: e.name, exerciseId: e.id || library.find(item => item.name === e.name)?.id, plannedName: e.plannedName, plannedId: e.plannedId, equipmentSnapshot: e.equipment, sessionSlotId: e.sessionSlotId, source: e.sessionSource, sets: (finished.entries[e.name] || []).filter(s => s.done), skipped: finished.skipped.includes(e.name), note: finished.notes?.[e.name], cardio: finished.cardio?.[e.name]?.done ? finished.cardio[e.name] : undefined })) }
     const completedNames = workout.exercises.filter(exercise => exercise.sets.length === 3 || exercise.cardio?.done).map(exercise => exercise.name)
-    saveRotations(advanceRotations(rotations, finished.exercises, completedNames))
     let completed = [...data.completed]
     const hasResults = completedNames.length > 0
     const allSkipped = finished.exercises.length > 0 && finished.exercises.every(exercise => finished.skipped.includes(exercise.name))
     if ((hasResults || allSkipped) && days.some(d => d.name === finished.day) && !completed.includes(finished.day)) completed.push(finished.day)
     let skippedDays = (data.skippedDays || []).filter(name => name !== finished.day)
     if (allSkipped) skippedDays = [...skippedDays, finished.day]
-    if (completed.length === days.length) { completed = []; skippedDays = []; setNotice('Cycle complete. A fresh cycle is ready for you.') } else setNotice('Workout saved. Nice work showing up!')
-    save({ completed, skippedDays, workouts: [workout, ...data.workouts], session: null }); setSessionDirty(false); setPageState('activity')
+    const cycleEvents: Omit<CycleEvent, 'id' | 'at'>[] = []
+    if ((hasResults || allSkipped) && days.some(day => day.name === finished.day)) cycleEvents.push({ type: allSkipped ? 'skipped' : 'completed', day: finished.day, workoutId: workout.id })
+    if (completed.length === days.length) { cycleEvents.push({ type: 'rollover' }); completed = []; skippedDays = []; setNotice('Cycle complete. A fresh cycle is ready for you.') } else setNotice('Workout saved. Nice work showing up!')
+    recordCycle(cycleEvents, advanceRotations(rotations, finished.exercises, completedNames))
+    save({ completed, skippedDays, workouts: [workout, ...data.workouts], session: null }); setSessionDirty(false); setReviewLatest(true); setPageState('activity')
   }
   const finish = () => {
     if (!session) return
@@ -202,12 +209,12 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
     setBook({ ...updatedBook, routines: updatedBook.routines.map(routine => ({ ...routine, days: routine.days.map(day => ({ ...day, exercises: day.exercises.map(update) })) })) })
     if (session) save({ ...data, session: { ...session, exercises: session.exercises.map(update) } })
   }
-  const skipDay = (day: string) => setConfirmation({ title: `Skip ${day}?`, message: 'This day will be skipped for the current routine cycle.', label: 'Skip day', action: () => { let completed = [...data.completed, day]; let skippedDays = [...(data.skippedDays || []), day]; if (completed.length >= days.length) { completed = []; skippedDays = [] } save({ ...data, completed, skippedDays }); setNotice(`${day} skipped for this cycle.`) } })
+  const skipDay = (day: string) => setConfirmation({ title: `Skip ${day}?`, message: 'This day will be skipped for the current routine cycle.', label: 'Skip day', action: () => { let completed = [...data.completed, day]; let skippedDays = [...(data.skippedDays || []), day]; const events: Omit<CycleEvent, 'id' | 'at'>[] = [{ type: 'skipped', day }]; if (completed.length >= days.length) { events.push({ type: 'rollover' }); completed = []; skippedDays = [] } recordCycle(events); save({ ...data, completed, skippedDays }); setNotice(`${day} skipped for this cycle.`) } })
   const snapshot = (): Backup => ({ version: 1, data, warmupItems, days, library, routines: currentBook() })
   const exportData = () => { const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'one-ring-backup.json'; a.click(); URL.revokeObjectURL(url) }
   const applyBackup = (parsed: Backup) => {
     const prepared = prepareRestore(parsed, days)
-    const restoredDays = prepared.days!
+    const restoredDays = identifyDays(prepared.days!)
     const restoredData = prepared.data
     const restoredBook = prepared.routines!
     const restoredLibrary = prepared.library!
@@ -260,13 +267,12 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
       {session && <button className="resume" onClick={() => setPage('session')}><span><strong>Workout in progress</strong><small>{session.day} · Pick up where you left off</small></span><span>Resume <ArrowRight size={16}/></span></button>}
       {!session && <section className="up-next-card"><div><span className="eyebrow muted">UP NEXT</span><h2>{nextDay.name} day</h2><p>First: {planExercises(nextDay.name, nextDay.exercises, library, rotations)[0]?.name || 'No exercises yet'}</p></div><button className="primary" onClick={() => start(nextDay)}>Start workout <ArrowRight size={16}/></button></section>}
       <div className="routine-picker"><label>Active routine<select value={book.active} onChange={event => switchRoutine(event.target.value)}>{book.routines.map(routine => <option key={routine.id} value={routine.id}>{routine.name}</option>)}</select></label></div>
-      <div className="routine-layout"><section><div className="section-head compact"><div><div className="eyebrow muted">YOUR CURRENT ROUTINE</div><h2>{book.routines.find(routine => routine.id === book.active)?.name || 'Your routine'} <span className="routine-badge">ACTIVE</span></h2><p>Choose any day, at your own pace.</p></div></div><div className="round-bar"><div><span className="round-icon"><RotateCcw size={16}/></span><span><strong>Your current cycle</strong><small>{data.completed.length} of {days.length} days accounted for</small></span></div><button onClick={() => { if (window.confirm('Start a fresh cycle? Current cycle progress will be cleared.')) save({ ...data, completed: [], skippedDays: [] }) }}>Reset cycle</button></div><div className="day-list">{days.map((day, i) => <button className={`day-row ${currentDay.name === day.name ? 'selected' : ''}`} key={day.name} onClick={() => setSelectedDay(day.name)}><span className={`day-number ${data.completed.includes(day.name) ? 'done' : ''}`}>{data.skippedDays?.includes(day.name) ? '–' : data.completed.includes(day.name) ? <Check size={16}/> : `0${i + 1}`}</span><span className="day-info"><strong>{day.name} day {day.name === nextDay.name && <span className="up-next">UP NEXT</span>}</strong><small>{data.skippedDays?.includes(day.name) ? 'Skipped this cycle' : data.completed.includes(day.name) ? 'Completed this cycle' : day.subtitle}</small></span><span className="day-count">{day.exercises.length} exercises</span><ChevronRight size={17}/></button>)}</div><div className="helper"><Sparkles size={16}/><span>Life doesn’t follow a schedule. Choose any day, any time.</span></div></section>
+      <div className="routine-layout"><section><div className="section-head compact"><div><div className="eyebrow muted">YOUR CURRENT ROUTINE</div><h2>{book.routines.find(routine => routine.id === book.active)?.name || 'Your routine'} <span className="routine-badge">ACTIVE</span></h2><p>Choose any day, at your own pace.</p></div></div><div className="round-bar"><div><span className="round-icon"><RotateCcw size={16}/></span><span><strong>Your current cycle</strong><small>{data.completed.length} of {days.length} days accounted for</small></span></div><button onClick={() => { if (window.confirm('Start a fresh cycle? Current cycle progress will be cleared.')) { recordCycle([{ type: 'reset' }]); save({ ...data, completed: [], skippedDays: [] }) } }}>Reset cycle</button></div><div className="day-list">{days.map((day, i) => <button className={`day-row ${currentDay.name === day.name ? 'selected' : ''}`} key={day.name} onClick={() => setSelectedDay(day.name)}><span className={`day-number ${data.completed.includes(day.name) ? 'done' : ''}`}>{data.skippedDays?.includes(day.name) ? '–' : data.completed.includes(day.name) ? <Check size={16}/> : `0${i + 1}`}</span><span className="day-info"><strong>{day.name} day {day.name === nextDay.name && <span className="up-next">UP NEXT</span>}</strong><small>{data.skippedDays?.includes(day.name) ? 'Skipped this cycle' : data.completed.includes(day.name) ? 'Completed this cycle' : day.subtitle}</small></span><span className="day-count">{day.exercises.length} exercises</span><ChevronRight size={17}/></button>)}</div><div className="helper"><Sparkles size={16}/><span>Life doesn’t follow a schedule. Choose any day, any time.</span></div></section>
       <aside className="detail-panel"><div className="detail-top"><span className="eyebrow muted">THE GAME PLAN</span><span className="detail-number">0{days.indexOf(currentDay) + 1}</span></div><h2>{currentDay.name} day<span className="accent">.</span></h2><p>{currentDay.subtitle}</p><div className="detail-divider"/><div className="detail-label">ON THE LIST <span>{currentDay.exercises.length} EXERCISES</span></div><div className="preview-exercises">{planExercises(currentDay.name, currentDay.exercises, library, rotations).map((e, i) => <div key={e.name}><span>{String(i + 1).padStart(2, '0')}</span><strong>{e.name}</strong></div>)}</div><button className="primary wide" onClick={() => start(currentDay)}>Start {currentDay.name.toLowerCase()} day <ArrowRight size={17}/></button>{!data.completed.includes(currentDay.name) && <button className="text-button" onClick={() => skipDay(currentDay.name)}>Skip this day in the cycle</button>}<p className="detail-hint">Switch things up anytime. This is your workout.</p></aside></div></>}
     {page === 'builder' && <RoutineBuilder key={book.active} days={days} library={library} rotations={rotations} routines={book.routines} activeRoutine={book.active} hasSession={Boolean(session)} onDirty={setBuilderDirty} onSave={saveRoutineDraft} onBack={() => setPage('routine')} onLibrary={() => setPage('library')} onNew={createRoutine} onSwitch={switchRoutine} onCancelWorkout={() => { save({ ...data, session: null }); setSessionDirty(false); setNotice('Workout cancelled. Your routine draft is unchanged.') }}/>}
     {page === 'library' && <ExerciseLibrary exercises={library} onSave={saveLibrary} onBack={() => setPage('builder')}/>}
     {page === 'session' && session && <WorkoutSession session={session} workouts={data.workouts} library={library} rotations={rotations} onChange={updateSession} onFinish={finish} onCancel={cancelSession} onDirty={setSessionDirty} onBack={() => setPage('routine')} onSetup={updateSetup}/>}
-    {page === 'activity' && data.workouts[0] && <section className="latest-review"><h2>Latest workout</h2><p>{data.workouts[0].day} · {new Date(data.workouts[0].date).toLocaleDateString()}</p>{data.workouts[0].exercises.map((exercise, index) => <WorkoutReview key={`${data.workouts[0].id}-${index}`} exercise={exercise} onSave={next => save({ ...data, workouts: data.workouts.map((workout, workoutIndex) => workoutIndex === 0 ? { ...workout, exercises: workout.exercises.map((item, itemIndex) => itemIndex === index ? next : item) } : workout) })}/>)}</section>}
-    {page === 'activity' && <><div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> YOUR JOURNEY</div><h1>Every bit counts<span className="accent">.</span></h1><p>A little look back at the work you’ve put in.</p></div></div><WorkoutStats workouts={data.workouts}/><div className="section-head compact"><div><div className="eyebrow muted">THE HISTORY BOOKS</div><h2>Recent workouts</h2></div></div>{data.workouts.length === 0 ? <div className="empty-state"><Circle size={25}/><h3>A fresh start.</h3><p>Your completed workouts will show up here.</p><button className="outline-button" onClick={() => setPage('routine')}>Explore workouts <ArrowRight size={16}/></button></div> : <div className="history-list">{data.workouts.map((w, i) => <div className="history-card" key={i}><span className="history-icon"><Dumbbell size={18}/></span><div><strong>{w.day === 'Free workout' ? w.day : `${w.day} day`}</strong><small>{new Date(w.date).toLocaleDateString(undefined, { dateStyle: 'medium' })} · {w.exercises.reduce((n, e) => n + e.sets.length, 0)} sets completed</small><div className="history-details">{w.exercises.filter(e => e.sets.length || e.cardio?.done).map(e => e.cardio?.done ? `${e.name}: ${e.cardio.duration} min, ${e.cardio.speed || '–'} km/h, ${e.cardio.incline || '–'}°${e.note ? ` (${e.note})` : ''}` : `${e.name}: ${e.sets.map(s => `${s.weight || '0'} kg × ${s.reps}`).join(', ')}${e.note ? ` (${e.note})` : ''}`).join(' · ') || 'No exercises completed'}</div></div></div>)}</div>}</>}
+    {page === 'activity' && <Activity openLatest={reviewLatest} workouts={data.workouts} cycleHistory={book.routines.flatMap(routine => (routine.cycleHistory || []).map(event => ({ routine: event.routineName || routine.name, event })))} onSave={(workoutIndex, exerciseIndex, next) => save({ ...data, workouts: data.workouts.map((workout, index) => index === workoutIndex ? { ...workout, exercises: workout.exercises.map((item, i) => i === exerciseIndex ? next : item) } : workout) })}/>}
     {page === 'settings' && <><div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> YOUR SETTINGS</div><h1>Make yourself at home<span className="accent">.</span></h1><p>A few things about your space.</p></div></div><div className="settings-card"><div className="settings-row"><span className="avatar">D</span><div><strong>{identity.demo ? 'Demo user' : identity.email}</strong><small>{identity.demo ? 'Temporary demo' : 'Online account'}</small></div></div><div className="detail-divider"/><h3>Appearance</h3><p>Choose an accent color for your space.</p><div className="theme-options">{[['lime', 'Lime'], ['blue', 'Blue'], ['violet', 'Violet'], ['coral', 'Coral']].map(([value, label]) => <button key={value} className={`theme-choice ${theme === value ? 'selected' : ''}`} onClick={() => { setTheme(value); window.localStorage.setItem('one-ring-theme', value) }}><span className={`theme-swatch ${value}`}/>{label}</button>)}</div><div className="detail-divider"/><h3>Your data, your way</h3><p>Export a backup or restore a previous backup. Restoring replaces the current workout data.</p><div className="settings-actions"><button className="outline-button" onClick={exportData}><ArrowDownToLine size={16}/> Export backup</button><label className="outline-button file-button"><RotateCcw size={16}/> Restore backup<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }}/></label></div><div className="demo-warning"><strong>Just a heads up</strong><p>{identity.demo ? 'Demo data is temporary and resets on refresh.' : 'Workout data is saved to Supabase. An internet connection is required.'}</p></div><button className="outline-button signout" onClick={signOut}>{identity.demo ? 'Exit demo' : 'Sign out'}</button></div></>}
     </div></main><nav className="mobile-nav"><button className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}><Home size={19}/>Home</button><button className={page === 'routine' || page === 'builder' || page === 'library' || page === 'session' ? 'active' : ''} onClick={() => setPage('routine')}><Dumbbell size={19}/>Workouts</button><button className={page === 'settings' ? 'active' : ''} onClick={() => setPage('settings')}><Settings2 size={19}/>Settings</button></nav>
   </div>

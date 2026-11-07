@@ -1,4 +1,4 @@
-import { parseBackup, type Backup } from '../backup'
+import { parseBackup, type Backup } from '../workout/backup'
 import type { Document, StoredDocument } from './store'
 
 const settingsId = '00000000-0000-4000-8000-000000000001'

@@ -17,4 +17,4 @@ npm run dev
 
 Open the URL printed in the terminal. Run `npm run build` to check the production build.
 
-See [setup and current limitations](docs/setup.md) for hosting and authentication, and the [workout data model draft](docs/workout-data-model.md) for the planned backend.
+See [setup and current limitations](docs/setup.md), [v0.2.0 notes](docs/releases/v0.2.0.md), and [next steps](docs/next-steps.md).

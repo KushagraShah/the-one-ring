@@ -80,3 +80,9 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - The owner reported the online preview worked on their phone. Created and pushed annotated tag `v0.3.0` on deployed commit `95b0406`. That baseline's package metadata still reads `0.2.0`; corrected metadata afterward without moving the tag.
 - Restore now prepares and checks the full online record projection before replacing the current workspace, rejecting invalid or duplicate IDs without changing current data. Clarified that an account restore must finish saving; documented backup contents and limitations. Added unit and phone-width fake-server browser tests for export, invalid restore, offline failure/retry and reload. Real Supabase and real-phone backup recovery remain unverified.
+
+## 2026-11-07 — Node 24 and Activity/history research
+
+- The owner reported an export, routine-day deletion and successful restore and considers the prior storage-safety step complete. Manual backups remain preferred; automatic Drive/email backups are deferred. Updated the handoff and removed obsolete offline-first priorities without asserting unreported isolation or failure tests.
+- Upgraded the build runtime to Node 24, updated GitHub Actions to current major versions and documented Node 24. Under Node 24.22.2, build, configuration, schema, history, PWA and phone-width fake-server browser tests passed. Live Actions/deployment must be checked after any authorized push.
+- Reviewed current Activity, workout/cycle models, backup projection and server transaction, and researched exercise metrics, accessible charts and historical snapshot approaches. Added `docs/activity-history-plan.md` as a proposal; no Activity or history feature changes have been implemented. Owner review is required before proceeding.

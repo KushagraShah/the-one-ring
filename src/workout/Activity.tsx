@@ -1,12 +1,63 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Workout, WorkoutExercise } from './WorkoutSession'
+import type { Exercise } from './ExerciseLibrary'
 import { WorkoutReview } from './WorkoutReview'
 import { WorkoutStats } from './WorkoutStats'
+import { ResultTable } from './ResultTable'
 import type { CycleEvent } from './backup'
 
-export function Activity({ workouts, cycleHistory, openLatest, onSave }: { workouts: Workout[]; cycleHistory: { routine: string; event: CycleEvent }[]; openLatest: boolean; onSave: (workoutIndex: number, exerciseIndex: number, exercise: WorkoutExercise) => void }) {
-  const [selected, setSelected] = useState<number | null>(openLatest && workouts.length ? 0 : null)
-  const workout = selected === null ? null : workouts[selected]
-  if (workout && selected !== null) return <section className="latest-review"><button className="back-link" onClick={() => setSelected(null)}>← All workouts</button><h1>{workout.day}</h1><p>{new Date(workout.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{workout.routineName ? ` · ${workout.routineName}` : ''}</p>{workout.plan && workout.plan.length > 0 && <details className="workout-plan"><summary>Original plan</summary><ol>{workout.plan.map(item => <li key={item.slotId}>{item.cycleName ? `${item.cycleName}: ` : ''}{item.name}{item.equipment ? ` · ${item.equipment}` : ''}</li>)}</ol></details>}{workout.exercises.length ? workout.exercises.map((exercise, index) => <WorkoutReview key={`${workout.id || workout.date}-${index}`} exercise={exercise} onSave={next => onSave(selected, index, next)}/>) : <p>No exercises recorded.</p>}</section>
-  return <><div className="page-heading"><div><div className="eyebrow">YOUR JOURNEY</div><h1>Activity<span className="accent">.</span></h1><p>Browse your workouts and exercise progress.</p></div></div><WorkoutStats workouts={workouts}/><div className="section-head compact"><h2>All workouts</h2></div>{!workouts.length ? <div className="empty-state"><h3>No workouts yet</h3><p>Completed workouts will appear here.</p></div> : <div className="history-list">{workouts.map((item, index) => <button className="history-card history-button" key={item.id || `${item.date}-${index}`} onClick={() => setSelected(index)}><span><strong>{item.day}</strong><small>{new Date(item.date).toLocaleDateString(undefined, { dateStyle: 'medium' })} · {item.exercises.filter(exercise => exercise.sets.length === 3 || exercise.cardio?.done).length} exercises completed</small></span><span aria-hidden="true">→</span></button>)}</div>}{cycleHistory.length > 0 && <details className="workout-plan"><summary>Routine cycle history</summary><div className="stats-history">{[...cycleHistory].sort((a, b) => b.event.at.localeCompare(a.event.at)).map(({ routine, event }) => <div key={event.id}><strong>{routine} · {event.type === 'rollover' ? 'Cycle completed' : event.type === 'reset' ? 'Cycle reset' : `${event.day} ${event.type}`}</strong><small>{new Date(event.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</small></div>)}</div></details>}</>
+const PAGE_SIZE = 10
+const keyFor = (exercise: WorkoutExercise) => exercise.exerciseId ? `id:${exercise.exerciseId}` : `legacy:${exercise.name}`
+const localDay = (date: string) => {
+  const value = new Date(date)
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+}
+
+export function Activity({ workouts, library, cycleHistory, openLatest, onSave }: { workouts: Workout[]; library: Exercise[]; cycleHistory: { routine: string; event: CycleEvent }[]; openLatest: boolean; onSave: (workoutIndex: number, exerciseIndex: number, exercise: WorkoutExercise) => void }) {
+  const [selectedWorkout, setSelectedWorkout] = useState<number | null>(openLatest && workouts.length ? 0 : null)
+  const [exerciseKey, setExerciseKey] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [visible, setVisible] = useState(PAGE_SIZE)
+  const [cycleVisible, setCycleVisible] = useState(PAGE_SIZE)
+  const workout = selectedWorkout === null ? null : workouts[selectedWorkout]
+  const options = useMemo(() => {
+    const found = new Map<string, string>()
+    for (const item of library) if (item.id) found.set(`id:${item.id}`, `${item.name}${item.equipment ? ` · ${item.equipment}` : ''}${item.archived ? ' (archived)' : ''}`)
+    for (const session of workouts) for (const exercise of session.exercises) {
+      const key = keyFor(exercise)
+      if (found.has(key)) continue
+      const item = exercise.exerciseId ? library.find(entry => entry.id === exercise.exerciseId) : undefined
+      found.set(key, item ? `${item.name}${item.equipment ? ` · ${item.equipment}` : ''}${item.archived ? ' (archived)' : ''}` : `${exercise.name}${exercise.exerciseId ? ' (not in library)' : ' (older name-only record)'}`)
+    }
+    return [...found.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [workouts, library])
+  const filtered = useMemo(() => workouts.map((item, index) => ({ item, index })).filter(({ item }) => {
+    const date = localDay(item.date)
+    return (!from || date >= from) && (!to || date <= to) && (!exerciseKey || item.exercises.some(exercise => keyFor(exercise) === exerciseKey))
+  }).sort((a, b) => b.item.date.localeCompare(a.item.date) || a.index - b.index), [workouts, exerciseKey, from, to])
+  const shown = filtered.slice(0, visible)
+  const chartRecords = exerciseKey ? shown.flatMap(({ item }) => item.exercises.filter(exercise => keyFor(exercise) === exerciseKey && (exercise.sets.length || exercise.cardio?.done)).map(exercise => ({ date: item.date, exercise }))) : []
+  const sortedCycle = useMemo(() => [...cycleHistory].sort((a, b) => b.event.at.localeCompare(a.event.at)), [cycleHistory])
+  const now = new Date()
+  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 27).getTime()
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
+  const recent = workouts.filter(item => { const time = new Date(item.date).getTime(); return time >= cutoff && time < end && item.exercises.some(exercise => exercise.sets.length === 3 || exercise.cardio?.done) }).length
+
+  if (workout && selectedWorkout !== null) return <section className="latest-review"><button className="back-link" onClick={() => setSelectedWorkout(null)}>← All workouts</button><h1>{workout.day}</h1><p>{new Date(workout.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{workout.routineName ? ` · ${workout.routineName}` : ''}</p>{workout.plan && workout.plan.length > 0 && <details className="workout-plan"><summary>Original plan</summary><ol>{workout.plan.map(item => <li key={item.slotId}>{item.cycleName ? `${item.cycleName}: ` : ''}{item.name}{item.equipment ? ` · ${item.equipment}` : ''}</li>)}</ol></details>}{workout.exercises.length ? workout.exercises.map((exercise, index) => <WorkoutReview key={`${workout.id || workout.date}-${index}`} exercise={exercise} onSave={next => onSave(selectedWorkout, index, next)}/>) : <p>No exercises recorded.</p>}</section>
+
+  return <><div className="page-heading"><div><div className="eyebrow">YOUR JOURNEY</div><h1>Activity<span className="accent">.</span></h1><p>Browse your workouts and exercise progress.</p></div></div>
+    <section className="history-section"><h2>Workout history</h2><p className="history-count">{recent} workouts with results in the last 28 days</p><div className="history-filters"><label>Exercise<select value={exerciseKey} onChange={event => { setExerciseKey(event.target.value); setVisible(PAGE_SIZE) }}><option value="">All exercises</option>{options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>From<input type="date" value={from} onChange={event => { setFrom(event.target.value); setVisible(PAGE_SIZE) }}/></label><label>To<input type="date" value={to} onChange={event => { setTo(event.target.value); setVisible(PAGE_SIZE) }}/></label></div>
+      {from && to && from > to ? <p role="alert">The start date must be on or before the end date.</p> : <>
+        <p className="history-count">{filtered.length} {filtered.length === 1 ? 'workout' : 'workouts'} · showing {shown.length}</p>
+        {exerciseKey && chartRecords.some(record => record.exercise.sets.length > 0) && <details className="history-chart"><summary>Show strength chart</summary><WorkoutStats records={chartRecords}/></details>}
+        {!shown.length ? <p className="stats-empty">No workouts match these filters.</p> : <div className="history-list">{shown.map(({ item, index }) => {
+          const entries = item.exercises.filter(exercise => !exerciseKey || keyFor(exercise) === exerciseKey)
+          return <button className="history-card history-button" key={item.id || `${item.date}-${index}`} onClick={() => setSelectedWorkout(index)}><span className="history-content"><strong>{new Date(item.date).toLocaleDateString(undefined, { dateStyle: 'medium' })} · {item.routineName ? `${item.routineName} · ` : ''}{item.day}</strong>{entries.slice(0, 3).map((exercise, i) => <span className="history-result" key={exercise.id || i}><span>{exercise.name}</span><span>{exercise.skipped ? 'Skipped' : exercise.sets.length || exercise.cardio?.done ? <ResultTable sets={exercise.sets} cardio={exercise.cardio}/> : 'Not completed'}</span></span>)}{entries.length > 3 && <small>+ {entries.length - 3} more exercises</small>}</span><span aria-hidden="true">→</span></button>
+        })}</div>}
+        {visible < filtered.length && <button className="outline-button history-more" onClick={() => setVisible(count => count + PAGE_SIZE)}>Show more workouts</button>}
+      </>}
+    </section>
+    {sortedCycle.length > 0 && <details className="workout-plan"><summary>Routine cycle history</summary><div className="stats-history">{sortedCycle.slice(0, cycleVisible).map(({ routine, event }) => <div key={event.id}><strong>{routine} · {event.type === 'rollover' ? 'Cycle completed' : event.type === 'reset' ? 'Cycle reset' : `${event.day} ${event.type}`}</strong><small>{new Date(event.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</small></div>)}</div>{cycleVisible < sortedCycle.length && <button className="outline-button history-more" onClick={() => setCycleVisible(count => count + PAGE_SIZE)}>Show more cycle events</button>}</details>}
+  </>
 }

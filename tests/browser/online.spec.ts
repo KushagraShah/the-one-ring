@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 
 const owner = '10000000-0000-4000-8000-000000000001'
 type Document = { kind: string; id: string; body: Record<string, unknown> }
@@ -66,6 +67,14 @@ test('demo resets after refresh', async ({ page }) => {
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
   await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
+})
+
+test('settings displays the version from package metadata', async ({ page }) => {
+  const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await expect(page.getByText(`The One Ring · v${version}`)).toBeVisible()
 })
 
 test('confirmed exercise survives reload and workout completion commits together', async ({ page }) => {

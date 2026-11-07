@@ -12,13 +12,15 @@ These values are public browser configuration: Vite embeds `VITE_` values in the
 
 In the Supabase dashboard, enable email/password authentication. Under Auth URL settings, set the Site URL to the deployed URL and allow redirect URLs for the deployed app and local preview (for example, `http://localhost:5173/`). Check email confirmation settings and delivery limits. The owner can disable signup after onboarding and temporarily enable it for a trusted user. First sign-in requires connectivity.
 
-**Authentication alone is not workout sync.** The current preview stores workout data in this browser, separately for each account and the demo. Experimental manual cloud sync is available in Settings; the owner reports applying both migrations to the main Supabase project, but authenticated sync and Android behavior have not yet been verified. Local browser data can be cleared or evicted; export a backup. Don't rely on it as the sole copy of important data.
+**Authentication alone is not workout sync.** The current preview stores workout data in this browser, separately for each account and the demo. Experimental manual cloud sync is available in Settings; the owner reports applying both migrations to the main Supabase project and that an initial sync appeared to work. Two-device behavior, conflicts, account isolation and offline/Android behavior have not yet been verified end to end. Local browser data can be cleared or evicted; export a backup. Don't rely on it as the sole copy of important data.
 
 ## GitHub Pages
 
 The workflow in `.github/workflows/deploy.yml` builds and deploys pushes to `main`. In repository settings, select **GitHub Actions** as the Pages source. Under **Settings → Secrets and variables → Actions**, add repository variables (or secrets if preferred) named `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, using the same public values as local development. The workflow reads a secret first if both exist under the same name, otherwise the variable. Add the configuration **before pushing or rerunning** the workflow; it fails early and leaves the previous deployment in place if configuration is missing or invalid. A change to a variable or secret requires a new workflow run to rebuild the static site.
 
 The expected URL is `https://kushagrashah.github.io/the-one-ring/`; add it to Supabase's redirect allow list and check the Pages deployment workflow. The relative Vite base supports the project path and local preview.
+
+The owner removed Supabase's separate GitHub integration after it attempted to apply already existing tables. This does **not** disable the GitHub Actions workflow that deploys the frontend to Pages. Database migrations must be tracked and handled separately; see the [migration runbook](supabase-migrations.md).
 
 ## Current preview
 

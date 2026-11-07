@@ -1,6 +1,6 @@
 # Workout data model: design draft
 
-This document describes the target normalized design. Two SQL migrations and local schema/sync tests now exist; see [the migration runbook](supabase-migrations.md). The owner reports applying both migrations to the main project. The preview has experimental manual synchronization using account-scoped IndexedDB and separate JSON sync records; it does not yet use the normalized tables or automatically sync in the background. Authenticated sync has not been verified against real Supabase. Do not use the prototype as the only copy of important workout data.
+This document describes the target normalized design. Two SQL migrations and local schema/sync tests now exist; see [the migration runbook](supabase-migrations.md). The owner reports applying both migrations to the main project and that an initial sync appeared to work. The preview has experimental manual synchronization using account-scoped IndexedDB and separate JSON sync records; it does not yet use the normalized tables or automatically sync in the background. Broader live sync, isolation, and offline testing remains. Do not use the prototype as the only copy of important workout data.
 
 ## Ownership and identity
 
@@ -61,7 +61,7 @@ Default rotation semantics: advance only when the **primary** slot is completed 
 - Target: local writes first into IndexedDB, including in-progress sessions, an operation queue and last-known revisions. Currently the UI writes localStorage first and mirrors a sync projection asynchronously to IndexedDB. A service worker caches the shell independently of data.
 - Changes carry stable IDs, a client operation ID and expected server revisions. Retries are idempotent; the server assigns per-record revisions and tombstones. The experimental client reads all records with pagination on each manual sync; a durable incremental change cursor is not implemented. Client timestamps are not the ordering authority.
 - Complete-session plus cycle and rotation updates must execute atomically via a checked, idempotent server operation. A rejected conflict leaves the local session and queued operation intact. Do not allow a partially advanced cycle.
-- Fetch changes and tombstones by a durable cursor, scoped to the account. A conflict preserves both versions and pauses the conflicting operation; never silently overwrite. The precise transactional sync API, resolution UX and tests must be specified before enabling cloud writes.
+- Target: fetch changes and tombstones by a durable cursor, scoped to the account. The experimental implementation instead fetches all records with pagination. Conflict detection and explicit local/cloud resolution exist, with local tests, but need real-device and multi-user verification. Never silently overwrite conflicts.
 - Demo data uses a separate local namespace. Before sign-out or switching accounts, warn about unsynced work. A cached session permits offline work after first online sign-in; syncing requires valid authentication.
 
 ## Implementation gates

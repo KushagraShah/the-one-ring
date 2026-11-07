@@ -15,6 +15,12 @@ test('library tags and archived state survive backup and validate their types', 
   assert.throws(() => parseBackup(JSON.stringify({ ...valid, library: [{ name: 'Press', equipment: '', sets: '', archived: 'yes' }] })))
 })
 test('malformed JSON is rejected', () => { assert.throws(() => parseBackup('{')) })
+test('history snapshots survive validation and malformed plans are rejected', () => {
+  const workout = { day: 'Push', date: '2026-01-01', startedAt: '2026-01-01T10:00:00Z', routineName: 'Main', plan: [{ slotId: 'slot', name: 'Press', equipment: 'Machine' }], exercises: [{ name: 'Other', source: 'substitution', sessionSlotId: 'slot', equipmentSnapshot: 'Cable', skipped: false, sets: [] }] }
+  const data = { ...valid, data: { ...valid.data, workouts: [workout] } }
+  assert.deepEqual(parseBackup(JSON.stringify(data)), data)
+  assert.throws(() => parseBackup(JSON.stringify({ ...data, data: { ...data.data, workouts: [{ ...workout, plan: [{ name: 'bad' }] }] } })))
+})
 test('restore prepares legacy records and rejects duplicate or invalid online IDs', () => {
   const legacy = { ...valid, library: [{ name: 'Press', equipment: '', sets: '' }] }
   const prepared = prepareRestore(parseBackup(JSON.stringify(legacy)), valid.days)

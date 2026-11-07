@@ -1,6 +1,6 @@
 # Activity and workout history: proposal for review
 
-This is a proposed direction, not implemented behavior. The owner requested research and a detailed plan before deciding on Activity and history changes. Account data remains online-only; manual backups remain the recovery option.
+The owner approved this direction, requested strength-first charts, glanceable tables and the ability to browse and correct older workouts. The owner reports applying migration 005; the new behavior is not yet verified on real Supabase or a phone. The sections below retain the original analysis and proposal; see `docs/setup.md` for current implementation and limitations. Account data remains online-only; manual backups remain the recovery option.
 
 ## Current behavior and gaps
 

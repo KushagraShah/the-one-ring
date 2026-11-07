@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { PGlite } from '@electric-sql/pglite'
 
 const migration = await readFile(new URL('../supabase/migrations/202611070004_online_workouts.sql', import.meta.url), 'utf8')
+const guard = await readFile(new URL('../supabase/migrations/202611070005_history_client_guard.sql', import.meta.url), 'utf8')
 const a = '00000000-0000-4000-8000-000000000001'
 const b = '00000000-0000-4000-8000-000000000002'
 const op = '10000000-0000-4000-8000-000000000001'
@@ -19,6 +20,7 @@ test('online writes are atomic, owner-scoped, revision-checked and retryable', a
       grant usage on schema auth to authenticated, anon;
       grant execute on function auth.uid() to authenticated, anon;`)
     await db.exec(migration)
+    await db.exec(guard)
     await db.query('insert into auth.users(id) values ($1), ($2)', [a, b])
     await db.exec('set role authenticated')
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [a])
@@ -32,6 +34,10 @@ test('online writes are atomic, owner-scoped, revision-checked and retryable', a
     assert.deepEqual(await write(a, 0, op2, []), { status: 'conflict' })
     await assert.rejects(write(a, 1, op2, [documents[0], documents[0]]))
     assert.equal((await read(a)).documents.length, 2)
+    const upgraded = [{ ...documents[0], body: { ...documents[0].body, historyFormat: 2 } }, documents[1]]
+    assert.deepEqual(await write(a, 1, op2, upgraded), { status: 'ok', revision: 2 })
+    await assert.rejects(write(a, 2, '10000000-0000-4000-8000-000000000003', documents))
+    assert.equal((await read(a)).revision, 2)
     await assert.rejects(read(b))
     await assert.rejects(db.query('select * from public.tor_online_workout_records'))
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [b])

@@ -18,3 +18,7 @@ npm run dev
 Open the URL printed in the terminal. Run `npm run build` to check the production build.
 
 See [setup and current limitations](docs/setup.md), [v0.2.0 notes](docs/releases/v0.2.0.md), and [next steps](docs/next-steps.md).
+
+## License
+
+[MIT](LICENSE) · Copyright © 2026 Kushagra Shah.

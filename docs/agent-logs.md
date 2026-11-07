@@ -86,3 +86,13 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 - The owner reported an export, routine-day deletion and successful restore and considers the prior storage-safety step complete. Manual backups remain preferred; automatic Drive/email backups are deferred. Updated the handoff and removed obsolete offline-first priorities without asserting unreported isolation or failure tests.
 - Upgraded the build runtime to Node 24, updated GitHub Actions to current major versions and documented Node 24. Under Node 24.22.2, build, configuration, schema, history, PWA and phone-width fake-server browser tests passed. Live Actions/deployment must be checked after any authorized push.
 - Reviewed current Activity, workout/cycle models, backup projection and server transaction, and researched exercise metrics, accessible charts and historical snapshot approaches. Added `docs/activity-history-plan.md` as a proposal; no Activity or history feature changes have been implemented. Owner review is required before proceeding.
+
+## 2026-11-07 — Activity and workout history development
+
+- After owner approval, implemented local structured results, all-workout browsing and result correction, strength charts, session-only ordering, forward-looking plan/performance snapshots, routine day/slot IDs and cycle-event history. Existing missing history is not invented. Added draft migration 005 to reject older clients after history format upgrade; it must be applied to the intended Supabase project before this client is deployed.
+- Node 24 build, config, schema, history, PWA and six phone-width fake-server browser tests passed; PGlite tests include the old-client guard and preserved records. Real Supabase guard behavior, actual Android interaction, performance for large histories and comprehensive backup recovery remain unverified. Migration 005 has not been run and these changes have not been deployed.
+- Continued by adding session/performed-item IDs, preserving planned and performed ordering and restoring the just-finished workout detail screen. Re-ran the build, history, schema, PWA and six fake-server browser tests on Node 24. The owner was asked to run migration 005; no application of it has been confirmed. Local changes remain uncommitted pending the external migration and deployment.
+
+## 2026-11-07 — Activity/history migration applied
+
+- The owner reported applying migration 005 and requested continuation. Preparing the reviewed local Activity/history implementation for Pages deployment; real guard behavior and phone interaction are not yet independently verified. See GitHub Actions for deployment outcome.

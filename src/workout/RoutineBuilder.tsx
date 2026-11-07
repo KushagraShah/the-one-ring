@@ -4,7 +4,7 @@ import type { Exercise } from './ExerciseLibrary'
 import { rotationDays, type Rotation } from './rotations'
 import { describeCycleDay, moveItem } from './routineDraft'
 
-export type RoutineDay = { name: string; subtitle: string; exercises: Exercise[] }
+export type RoutineDay = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
 type DraftDay = RoutineDay & { originalName: string | null }
 type Props = {
   days: RoutineDay[]; library: Exercise[]; rotations: Rotation[]
@@ -42,7 +42,7 @@ export function RoutineBuilder({ days, library, rotations, routines, activeRouti
   const save = () => {
     if (draft.some(day => !day.name.trim()) || new Set(draft.map(day => day.name.trim().toLowerCase())).size !== draft.length) { setError('Each day needs a unique name.'); return }
     const names: Record<string, string | null> = Object.fromEntries(days.map(day => [day.name, draft.find(item => item.originalName === day.name)?.name || null]))
-    const clean = draft.map(({ originalName: _original, ...day }) => day)
+    const clean = draft.map(({ originalName: _original, ...day }) => ({ ...day, id: day.id || crypto.randomUUID(), exercises: day.exercises.map(exercise => ({ ...exercise, routineSlotId: exercise.routineSlotId || crypto.randomUUID() })) }))
     if (onSave(clean, groups, names, baseline)) { setBaseline(JSON.stringify({ days: clean, rotations: groups })); setDraft(clean.map(day => ({ ...day, originalName: day.name }))); setDirty(false); onDirty(false); setError('') }
   }
   const switchTo = (id: string) => {
@@ -79,8 +79,8 @@ export function RoutineBuilder({ days, library, rotations, routines, activeRouti
                 const oldMatch = (candidate: Exercise) => oldOptions.includes(candidate.id || library.find(found => found.name === candidate.name)?.id || '')
                 const withoutOld = hadSlot ? item.exercises.filter(candidate => !oldMatch(candidate)) : item.exercises
                 if (!cycleDays.includes(item.name)) return { ...item, exercises: withoutOld }
-                if (hadSlot) return { ...item, exercises: item.exercises.map(candidate => oldMatch(candidate) ? firstExercise : candidate) }
-                return withoutOld.some(matches) ? item : { ...item, exercises: [...withoutOld, firstExercise] }
+                if (hadSlot) return { ...item, exercises: item.exercises.map(candidate => oldMatch(candidate) ? { ...firstExercise, routineSlotId: candidate.routineSlotId } : candidate) }
+                return withoutOld.some(matches) ? item : { ...item, exercises: [...withoutOld, { ...firstExercise, routineSlotId: crypto.randomUUID() }] }
               }))
               const remainingIds = group?.remainingIds ? [...group.remainingIds.filter(option => all.includes(option)), ...all.filter(option => !oldOptions.includes(option))] : undefined
               const nextGroup: Rotation = { ...group, id: group?.id || crypto.randomUUID(), name: cycleName.trim(), primaryDay: cycleDays[0], complementDay: cycleDays[1] || '', days: cycleDays, options: all, ...(remainingIds?.length ? { remainingIds } : { remainingIds: undefined }) }
@@ -89,8 +89,8 @@ export function RoutineBuilder({ days, library, rotations, routines, activeRouti
           </div>
         })}
         <details className="add-to-day"><summary>+ Add exercise or existing cycle</summary><label className="builder-select">Choose<select value={selected} onChange={event => setSelected(event.target.value)}><option value="">Choose exercise or cycle</option><optgroup label="Exercises">{library.filter(exercise => !day.exercises.some(item => item.name === exercise.name)).map(exercise => <option key={exercise.name} value={`exercise:${exercise.name}`}>{exercise.name}</option>)}</optgroup><optgroup label="Existing cycles">{groups.filter(group => !rotationDays(group).includes(day.name)).map(group => <option key={group.id} value={`cycle:${group.id}`}>{group.name}</option>)}</optgroup></select></label><button className="outline-button" disabled={!selected} onClick={() => {
-          if (selected.startsWith('exercise:')) { const exercise = library.find(item => item.name === selected.slice(9)); if (exercise) updateDay(index, { ...day, exercises: [...day.exercises, exercise] }) }
-          else { const group = groups.find(item => item.id === selected.slice(6)); const exercise = library.find(item => item.id === group?.options[0]); if (!group || !exercise || day.exercises.some(item => group.options.includes(item.id || library.find(candidate => candidate.name === item.name)?.id || ''))) { setError('This day already contains a variant of the cycle or a variant is missing.'); return } updateDay(index, { ...day, exercises: [...day.exercises, exercise] }); setGroups(groups.map(item => item.id === group.id ? { ...item, days: [...rotationDays(item), day.name] } : item)) }
+          if (selected.startsWith('exercise:')) { const exercise = library.find(item => item.name === selected.slice(9)); if (exercise) updateDay(index, { ...day, exercises: [...day.exercises, { ...exercise, routineSlotId: crypto.randomUUID() }] }) }
+          else { const group = groups.find(item => item.id === selected.slice(6)); const exercise = library.find(item => item.id === group?.options[0]); if (!group || !exercise || day.exercises.some(item => group.options.includes(item.id || library.find(candidate => candidate.name === item.name)?.id || ''))) { setError('This day already contains a variant of the cycle or a variant is missing.'); return } updateDay(index, { ...day, exercises: [...day.exercises, { ...exercise, routineSlotId: crypto.randomUUID() }] }); setGroups(groups.map(item => item.id === group.id ? { ...item, days: [...rotationDays(item), day.name] } : item)) }
           setSelected(''); setError('')
         }}>Add to draft</button></details>
       </div>}

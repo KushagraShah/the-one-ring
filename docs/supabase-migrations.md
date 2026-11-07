@@ -2,6 +2,8 @@
 
 ## Online-only development migration
 
+**Activity/history client guard:** `supabase/migrations/202611070005_history_client_guard.sql` replaces the existing online-write function to reject older clients after an account adopts history format 2. The owner reported applying it on 2026-11-07. It is tested with PGlite, but live guard behavior has not been independently tested. For other projects, verify the target and that migration 004 is present before applying 005. SQL Editor execution does not necessarily update migration history. Do not rerun migrations or reset the database.
+
 The online client requires `supabase/migrations/202611070004_online_workouts.sql`. It creates separate owner-scoped JSON workout records and a revision head, plus transactional authenticated read/write functions. Each write replaces the account's record set atomically and rejects stale revisions; a repeated operation can recover a lost response. This is independent of the old normalized and manual-sync tables and does not import or delete their data. The owner reported applying it on 2026-11-07; the target and live behavior have not been independently verified.
 
 For another project, first test with a disposable Supabase project and accounts. Verify the project and schema in the dashboard, then run the entire file once in SQL Editor. Do not rerun it or the older migrations; SQL Editor execution may not update migration history. No reset is required. Test two real accounts, failed/retried saves, stale writes, restore, and a phone before relying on it. SQL tests use PGlite and do not prove real Supabase behavior. Do not paste credentials in chat.

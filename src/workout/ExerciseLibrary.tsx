@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, Plus } from 'lucide-react'
 
-export type Exercise = { id?: string; name: string; equipment: string; sets: string; kind?: 'strength' | 'cardio'; note?: string; instructions?: string; video?: string; tags?: string[]; archived?: boolean; alternatives?: string[]; rotationGroupId?: string; rotationMode?: 'primary' | 'complement'; plannedName?: string; plannedId?: string }
+export type Exercise = { id?: string; name: string; equipment: string; sets: string; kind?: 'strength' | 'cardio'; note?: string; instructions?: string; video?: string; tags?: string[]; archived?: boolean; alternatives?: string[]; rotationGroupId?: string; rotationMode?: 'primary' | 'complement'; plannedName?: string; plannedId?: string; routineSlotId?: string; sessionSlotId?: string; sessionItemId?: string; sessionSource?: 'planned' | 'cycle' | 'substitution' | 'extra' }
 
 type Props = {
   exercises: Exercise[]

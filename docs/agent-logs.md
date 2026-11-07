@@ -75,3 +75,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-07 — Online preview deployment requested
 
 - The owner reported applying migration 004 and authorized pushing the online preview and preservation branch for phone testing. Updated the handoff and setup documentation; application behavior and the migration target still require live verification. See GitHub Actions for the deployment result.
+
+## 2026-11-07 — v0.3.0 and backup review
+
+- The owner reported the online preview worked on their phone. Created and pushed annotated tag `v0.3.0` on deployed commit `95b0406`. That baseline's package metadata still reads `0.2.0`; corrected metadata afterward without moving the tag.
+- Restore now prepares and checks the full online record projection before replacing the current workspace, rejecting invalid or duplicate IDs without changing current data. Clarified that an account restore must finish saving; documented backup contents and limitations. Added unit and phone-width fake-server browser tests for export, invalid restore, offline failure/retry and reload. Real Supabase and real-phone backup recovery remain unverified.

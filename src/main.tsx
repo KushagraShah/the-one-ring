@@ -7,6 +7,7 @@ import { ExerciseLibrary, type Exercise } from './workout/ExerciseLibrary'
 import { WorkoutSession, startingSets, previousFor, type Session, type Workout } from './workout/WorkoutSession'
 import { WorkoutStats } from './workout/WorkoutStats'
 import { parseBackup, type Backup } from './workout/backup'
+import { prepareRestore } from './workout/restore'
 import { memoryStorage, OnlineWorkoutStore, seedStorage, type SaveStatus } from './online'
 import { advanceRotations, planExercises, type Rotation } from './workout/rotations'
 import { sessionAccountedFor } from './workout/sessionLogic'
@@ -205,11 +206,11 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
   const snapshot = (): Backup => ({ version: 1, data, warmupItems, days, library, routines: currentBook() })
   const exportData = () => { const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'one-ring-backup.json'; a.click(); URL.revokeObjectURL(url) }
   const applyBackup = (parsed: Backup) => {
-    const restoredDays = parsed.days || days
-    const restoredData = { ...parsed.data, workouts: parsed.data.workouts.map(workout => ({ ...workout, id: workout.id || crypto.randomUUID() })) }
-    const restoredBook: RoutineBook = parsed.routines || { active: 'initial', routines: [{ id: 'initial', name: 'Restored routine', days: restoredDays, completed: restoredData.completed }] }
-    const exercises = parsed.library || restoredDays.flatMap(day => day.exercises).filter((exercise, index, list) => list.findIndex(item => item.name === exercise.name) === index)
-    const restoredLibrary = exercises.map(exercise => ({ ...exercise, id: exercise.id || crypto.randomUUID() }))
+    const prepared = prepareRestore(parsed, days)
+    const restoredDays = prepared.days!
+    const restoredData = prepared.data
+    const restoredBook = prepared.routines!
+    const restoredLibrary = prepared.library!
     const writes: [string, string][] = [[storageKey, JSON.stringify(restoredData)], [routinesKey, JSON.stringify(restoredDays)], [libraryKey, JSON.stringify(restoredLibrary)], [warmupKey, JSON.stringify(parsed.warmupItems)], [bookKey, JSON.stringify(restoredBook)]]
     const original = writes.map(([key]) => [key, localStorage.getItem(key)] as const)
     try { writes.forEach(([key, value]) => localStorage.setItem(key, value)) }
@@ -221,9 +222,10 @@ function App({ identity, signOut: signOutNow, storage: localStorage, online }: {
     try {
       if (file.size > 10_000_000) throw new Error('Backup is too large.')
       const parsed = parseBackup(await file.text())
+      const prepared = prepareRestore(parsed, days)
       if (!window.confirm('Replace current workout data with this backup? Export your current data first.')) return
-      applyBackup(parsed); setNotice('Backup restored.'); setPage('home')
-    } catch { window.alert('Unable to restore this backup. Check the file and available browser storage; your data may require a previous export if storage failed.') }
+      applyBackup(prepared); setNotice(identity.demo ? 'Backup restored for this demo.' : 'Backup loaded. Wait for saving to finish before leaving.'); setPage('home')
+    } catch { window.alert('Unable to restore this backup. The file may be invalid, incompatible, or too large. Your current workout data was not replaced.') }
   }
 
   useLayoutEffect(() => {

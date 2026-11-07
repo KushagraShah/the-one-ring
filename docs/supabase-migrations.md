@@ -2,7 +2,7 @@
 
 ## Status and safety
 
-Two SQL files in `supabase/migrations/` implement an initial schema and an experimental per-record sync protocol. They have been tested locally with PGlite, including two-user read isolation, cross-owner references, retry idempotency, optimistic concurrency and a simulated two-device conflict. The owner reports applying both to the `the-one-ring` Supabase project and that an initial authenticated sync appeared to work. Anonymous requests to the live sync table and RPC returned permission denied. Real two-device sync, two-user isolation and conflict behavior **have not yet been verified end to end**.
+Two SQL files in `supabase/migrations/` implement an initial schema and an experimental per-record sync protocol. They have been tested locally with PGlite, including two-user read isolation, cross-owner references, retry idempotency, optimistic concurrency and a simulated two-device conflict. The owner reports applying both to the `the-one-ring` Supabase project and manual syncing between laptop and phone. Anonymous requests to the live sync table and RPC returned permission denied. The new automatic sync, real two-user isolation and conflict behavior **have not yet been verified end to end**.
 
 The app's sync UI is experimental. Do not rely on it as the only copy of workout data. Export a backup first. For initial validation, use a disposable Supabase project and disposable test accounts. The owner's existing project may already contain authentication users; the migration does not intentionally modify or delete them, but always verify the target project before running SQL.
 

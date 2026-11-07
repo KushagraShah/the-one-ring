@@ -59,3 +59,31 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Pushed commit `3eaa7c3` and annotated tag `v0.2.0`; GitHub Actions run `42377464593` completed successfully, and the Pages site returned HTTP 200 with the expected production assets. The local release checks listed above passed. No Supabase migration was run.
 - A GitHub Release page was not present when checked. GitHub CLI was unauthenticated, so creating that separate page requires authentication. Follow-up documentation may trigger another Pages deployment; check its status separately. Real Android/offline testing, live sync isolation/conflict testing and backup recovery remain outstanding.
+
+## 2026-11-07 — Experimental automatic sync
+
+- Added automatic in-app sync after explicit setup, reconnect/foreground retries, visible status, and deferred cloud imports during workouts and editing. Incremental projections retain the revision the UI saw; conflict resolution checks local generations and transport pins each request to the verified account session. Added a local workout-completion journal and recovery gate for related workout/cycle writes.
+- Verified build, config/schema/history and service-worker tests; Chromium at phone width exercised demo navigation, IndexedDB, and setup, automatic upload, offline retry, conflict resolution, repeated in-session changes and workout completion against a fake Supabase server. This is not a live Supabase, two-device or Android test.
+- Sync is still experimental: localStorage and the IndexedDB queue are not a single transaction, most multi-key operations lack a journal, and concurrent tabs are not locked. Browser storage failures, upgrades, two-user isolation, phone/PWA offline restart and backup recovery need real-world verification. No deployment or database migration was performed.
+
+## 2026-11-07 — Sync library research
+
+- The owner confirmed no personal workout records are in use and the current state is reversible; updated `AGENTS.md` without implying permission to delete accounts or reset the database.
+- Investigated RxDB's free Dexie storage and Supabase replication, and PowerSync's Supabase integration. RxDB is directly connected and free but atomic at the document level, and its default replication conflict handler discards the local version. PowerSync uses local SQLite and an upload queue but requires an additional service and Supabase connection; its free service can deactivate after inactivity. Neither can be substituted without addressing workout-cycle atomicity, conflicts, and the existing backend protocol.
+- No database, deployment, dependency or sync implementation was changed in this research step. The previously uncommitted automatic-sync work remains local and unverified against real Supabase and devices.
+
+## 2026-11-07 — Repeatable sync browser test
+
+- Added a Playwright test using a fake Supabase endpoint and isolated authentication, covering the existing local preview's automatic upload, failed offline request, reconnection, conflict and explicit resolution at phone viewport width. Added setup instructions and ignored test output.
+- `CHROMIUM_PATH=/snap/bin/chromium npm run test:browser`, `npm run build`, and `git diff --check` passed. RxDB 17.6.0's current transitive GraphQL and z-schema packages advertise Node 22 despite the app and RxDB declaring Node 20 support; RxDB was not retained as a dependency. The requested RxDB migration, new Supabase security SQL, and live/Android validation are not implemented. No database or deployment changes were made.
+
+## 2026-11-07 — RxDB prototype, not integrated
+
+- Added RxDB 17.6 with a Dexie-backed atomic workout-workspace prototype, conflict-alternative preservation, a Supabase replication wrapper, and draft owner-scoped SQL migration 003. Moved the declared Node and Actions requirements to 22 because RxDB dependencies require it. Added local RxDB, simulated replication and PGlite RLS tests.
+- The actual app still uses the previous localStorage/IndexedDB sync; the prototype is not connected to its UI or status, and conflict resolution and real Supabase/device testing are incomplete. Migration 003 is a draft and **must not be applied yet**. No deployment or database changes were made.
+- Under Node 22, `npm run build`, `npm run test:history`, `npm run test:schema`, `npm run test:config`, `npm run test:pwa`, and `CHROMIUM_PATH=/snap/bin/chromium npm run test:browser` passed, as did `git diff --check`. The browser test still exercises only the old sync path.
+
+## 2026-11-07 — Architecture review for owner
+
+- Reviewed the local UI, workout model, sync protocol, SQL, RxDB prototype and test boundaries; wrote a temporary, Git-ignored walkthrough and findings under `architecture-review.local/`. No app implementation, database migration or deployment was changed. The owner is considering online-only until an offline design is convincingly demonstrated.
+- `npm run test:config` (4), `npm run test:schema` (3), `npm run test:history` (50), and `git diff --check` passed on Node 20.20.2, which is below the declared Node 22 minimum; these do not replace a supported-runtime build, browser tests or real-device/live-Supabase validation. Latest Pages workflow was successful; pre-existing local changes remain uncommitted. Migration 003 remains a disconnected draft and must not be applied yet.

@@ -26,17 +26,16 @@ Archive exercise variants and routines instead of destroying referenced historic
 
 `routine_warmups`: id, user_id, routine_day_id, title, description, position.
 
-`rotation_groups`: id, user_id, routine_id, name, last_performed_variant_id (nullable). Each group rotates independently; there is no global round 1/round 2. Members and their order are recorded in `rotation_options` (id, user_id, group_id, variant_id, position). The group and its variants must have the same owner, and the last-performed variant must be an option in that group. Require at least two options at the application/domain-operation level.
+`rotation_groups`: id, user_id, routine_id, name, and progress through an ordered set of variants. Each group rotates independently; there is no global round 1/round 2. Members and their order are recorded in `rotation_options` (id, user_id, group_id, variant_id, position). The normalized schema needs revision to retain the remaining variants rather than only the last-performed variant. The group and its variants must have the same owner. Require at least two options at the application/domain-operation level.
 
 `routine_slots`: id, user_id, routine_day_id, position, optional label, and selection mode:
 
 - `fixed`: references one default exercise variant.
-- `rotation`: references a rotation group and selects the next option after its last actually performed option.
-- `complement`: references a rotation group and selects the other option relative to the most recent performed choice. Initially this mode is **limited to groups with exactly two options**; a domain operation must enforce this, not silently guess for larger groups.
+- `rotation`: references a rotation group shared by one or more days and suggests the first remaining option. The user may override it.
 
 `routine_slot_alternatives`: id, user_id, slot_id, variant_id, position. Alternatives are suggestions, not a restriction: a user may select any available exercise during a session. A group must belong to the slot's routine, enforced by a composite relationship or a checked server operation.
 
-Default rotation semantics: advance only when the **primary** slot is completed with a variant belonging to its rotation group; use the variant actually performed. Skipping does not advance. If an unrelated variant is substituted, do not advance and show that the next suggestion is unchanged. Free workouts and complementary-day completions do not advance the primary rotation. A complement choice is derived from the most recent primary selection; manual choices remain possible. Completing two linked slots concurrently requires conflict detection; never silently use last-write-wins.
+Default rotation semantics: completing a member selected through the cycle slot from any linked day accounts for that variant. If A is done and C is chosen before B, B remains the next suggestion; once all members are accounted for, start a fresh pass. Repeating an already-accounted member, skipping, an ordinary replacement or an extra does not advance it, even if that exercise is a member. The current local implementation commits progress when the workout finishes; cancelling does not advance it. Completing linked slots concurrently requires conflict detection; never silently use last-write-wins.
 
 ## Cycles
 
@@ -48,7 +47,7 @@ Default rotation semantics: advance only when the **primary** slot is completed 
 
 `workout_sessions`: id, user_id, optional routine_id/day_id/cycle_id, routine/day name snapshots, status (`in_progress`, `completed`, `abandoned`), started_at, finished_at, optional workout_date and notes. A free workout has no routine or cycle. The actual workout date is distinct from creation time.
 
-`session_warmups`: id, user_id, session_id, title/description snapshots, position, checked.
+Warmup tracking is not required for the owner's normal workout and should not interrupt the workflow. The early relational draft includes `session_warmups`, but no checklist is needed in the current workout UI.
 
 `session_exercises`: id, user_id, session_id, optional planned slot and variant, performed variant, planned/performed names and equipment snapshots, source (`planned`, `substituted`, `added`), position, status (`pending`, `completed`, `skipped`), notes. An exercise is completed as a whole: for strength it records three sets or none. A free or extra exercise can reference the library without a slot. Capture enough plan context that later edits do not rewrite history.
 

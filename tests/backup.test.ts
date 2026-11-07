@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseBackup } from '../src/workout/backup'
+import { prepareRestore } from '../src/workout/restore'
 
 const valid = { version: 1, data: { completed: [], workouts: [], session: null }, warmupItems: [], days: [{ name: 'Push', subtitle: '', exercises: [] }], library: [] }
 
@@ -14,6 +15,16 @@ test('library tags and archived state survive backup and validate their types', 
   assert.throws(() => parseBackup(JSON.stringify({ ...valid, library: [{ name: 'Press', equipment: '', sets: '', archived: 'yes' }] })))
 })
 test('malformed JSON is rejected', () => { assert.throws(() => parseBackup('{')) })
+test('restore prepares legacy records and rejects duplicate or invalid online IDs', () => {
+  const legacy = { ...valid, library: [{ name: 'Press', equipment: '', sets: '' }] }
+  const prepared = prepareRestore(parseBackup(JSON.stringify(legacy)), valid.days)
+  assert.match(prepared.library![0].id!, /^[0-9a-f-]{36}$/)
+  assert.equal(prepared.routines!.active, 'initial')
+  const invalid = { ...legacy, library: [{ ...legacy.library[0], id: 'invalid' }] }
+  assert.throws(() => prepareRestore(parseBackup(JSON.stringify(invalid)), valid.days))
+  const duplicate = { ...legacy, library: [prepared.library![0], prepared.library![0]] }
+  assert.throws(() => prepareRestore(parseBackup(JSON.stringify(duplicate)), valid.days))
+})
 test('backups accept a multi-option rotation while rejecting duplicate variants', () => {
   const group = { id: 'r', name: 'Curls', primaryDay: 'Pull', complementDay: 'Accessories', options: ['a', 'b', 'c'] }
   const backup = { ...valid, routines: { active: 'routine', routines: [{ id: 'routine', name: 'Routine', days: valid.days, completed: [], rotations: [group] }] } }

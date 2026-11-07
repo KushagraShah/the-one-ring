@@ -92,3 +92,47 @@ test('confirmed exercise survives reload and workout completion commits together
   const workout = backend.records().find(item => item.kind === 'workout')?.body as { exercises: { note?: string }[] }
   expect(workout.exercises[0].note).toBe('Test note')
 })
+
+test('export and restore validate before replacement and retry a failed restore', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  page.on('dialog', dialog => dialog.accept())
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export backup' }).click()
+  const download = await downloading
+  const stream = await download.createReadStream()
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+  const contents = Buffer.concat(chunks)
+  const backup = JSON.parse(contents.toString())
+  expect(backup.data.completed).toEqual(['Push'])
+
+  const invalid = structuredClone(backup)
+  invalid.library[0].id = 'not-a-uuid'
+  const rejected = page.waitForEvent('dialog')
+  await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) })
+  expect((await rejected).message()).toContain('Unable to restore')
+  expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
+
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push', 'Pull'])
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  backend.offline(true)
+  await page.locator('input[type=file]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: contents })
+  await expect(page.getByText('Could not save workout data')).toBeVisible()
+  expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push', 'Pull'])
+  backend.offline(false)
+  await page.getByRole('button', { name: 'Retry save' }).click()
+  await expect.poll(() => backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
+  await page.reload()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
+})

@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, Circle, Dumbbell, Flame, Home, ListChecks, MoreHorizontal, Plus, RotateCcw, Settings2, Sparkles, X } from 'lucide-react'
 import './style.css'
-import { AuthGate } from './auth'
+import { AuthGate, supabase } from './auth'
 import { ExerciseLibrary, type Exercise } from './workout/ExerciseLibrary'
 import { WorkoutSession, startingSets, previousFor, type Session, type Workout } from './workout/WorkoutSession'
 import { WorkoutStats } from './workout/WorkoutStats'
 import { parseBackup, type Backup } from './workout/backup'
-import { SyncPanel } from './sync/SyncPanel'
+import { memoryStorage, OnlineWorkoutStore, seedStorage, type SaveStatus } from './online'
 import { advanceRotations, planExercises, type Rotation } from './workout/rotations'
 import { sessionAccountedFor } from './workout/sessionLogic'
 import { WorkoutReview } from './workout/WorkoutReview'
@@ -39,18 +39,42 @@ const sampleDays: Day[] = [
 ]
 const initial: Data = { completed: ['Push'], workouts: [], session: null }
 const key = 'one-ring-demo-v1'
-function load(storageKey: string): Data { try { const data = JSON.parse(localStorage.getItem(storageKey) || 'null'); return data && Array.isArray(data.completed) && Array.isArray(data.workouts) ? data : initial } catch { return initial } }
-function App({ identity, signOut }: { identity: { id: string; email: string; demo: boolean }; signOut: () => void }) {
+function load(storage: Storage, storageKey: string): Data { try { const data = JSON.parse(storage.getItem(storageKey) || 'null'); return data && Array.isArray(data.completed) && Array.isArray(data.workouts) ? data : initial } catch { return initial } }
+type Identity = { id: string; email: string; demo: boolean }
+function WorkspaceGate({ identity, signOut }: { identity: Identity; signOut: () => void }) {
+  const [state, setState] = useState<{ storage: Storage; online: OnlineWorkoutStore | null } | null>(null)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let active = true
+    const storage = memoryStorage()
+    if (identity.demo) { setState({ storage, online: null }); return () => { active = false } }
+    if (!supabase) { setError(true); return () => { active = false } }
+    const online = new OnlineWorkoutStore(supabase, identity.id)
+    setError(false)
+    online.load().then(backup => {
+      if (!active) return
+      if (backup) seedStorage(storage, identity.id, backup)
+      setState({ storage, online })
+    }).catch(() => { if (active) setError(true) })
+    return () => { active = false }
+  }, [identity.id, identity.demo, attempt])
+  if (error) return <main className="auth-page"><div className="auth-card"><h1>Could not load workouts</h1><p>Check your connection and that the online workout database migration has been applied. No local workout data was loaded.</p><button className="primary" onClick={() => setAttempt(value => value + 1)}>Retry</button> <button className="outline-button" onClick={signOut}>Sign out</button></div></main>
+  if (!state) return <main className="auth-page"><p>Loading workouts…</p></main>
+  return <App identity={identity} signOut={signOut} storage={state.storage} online={state.online}/>
+}
+function App({ identity, signOut: signOutNow, storage: localStorage, online }: { identity: Identity; signOut: () => void; storage: Storage; online: OnlineWorkoutStore | null }) {
   const storageKey = identity.demo ? key : `one-ring-user-${identity.id}`
   const warmupKey = `${storageKey}-warmups`
-  const [hasLocalData] = useState(() => localStorage.getItem(storageKey) !== null || localStorage.getItem(`${storageKey}-routine`) !== null || localStorage.getItem(`${storageKey}-library`) !== null)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
+  const signOut = () => { if (saveStatus !== 'saved') { window.alert('Wait for the current save to finish before signing out.'); return } signOutNow() }
   const [data, setData] = useState<Data>(() => {
-    const loaded = identity.demo ? load(storageKey) : (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null') || { completed: [], workouts: [], session: null } } catch { return { completed: [], workouts: [], session: null } } })()
+    const loaded = identity.demo ? load(localStorage, storageKey) : (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null') || { completed: [], workouts: [], session: null } } catch { return { completed: [], workouts: [], session: null } } })()
     const normalized = { ...loaded, workouts: loaded.workouts.map((workout: Workout) => ({ ...workout, id: workout.id || crypto.randomUUID() })) }
     if (normalized.workouts.some((workout: Workout, index: number) => workout.id !== loaded.workouts[index].id)) localStorage.setItem(storageKey, JSON.stringify(normalized))
     return normalized
   })
-  const [theme, setTheme] = useState(() => localStorage.getItem('one-ring-theme') || 'lime')
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('one-ring-theme') || 'lime')
   const routinesKey = `${storageKey}-routine`
   const [days, setDays] = useState<Day[]>(() => { try { const saved = JSON.parse(localStorage.getItem(routinesKey) || 'null'); return Array.isArray(saved) && saved.length ? saved : sampleDays } catch { return sampleDays } })
   const saveDays = (next: Day[]) => { setDays(next); localStorage.setItem(routinesKey, JSON.stringify(next)) }
@@ -197,15 +221,32 @@ function App({ identity, signOut }: { identity: { id: string; email: string; dem
     try {
       if (file.size > 10_000_000) throw new Error('Backup is too large.')
       const parsed = parseBackup(await file.text())
-      if (!window.confirm('Replace local workout data for this account on this device with this backup? Export your current data first.')) return
+      if (!window.confirm('Replace current workout data with this backup? Export your current data first.')) return
       applyBackup(parsed); setNotice('Backup restored.'); setPage('home')
     } catch { window.alert('Unable to restore this backup. Check the file and available browser storage; your data may require a previous export if storage failed.') }
   }
 
+  useLayoutEffect(() => {
+    if (!online) return
+    online.onStatus = setSaveStatus
+    return () => { online.onStatus = () => {} }
+  }, [online])
+  useLayoutEffect(() => {
+    if (!online) return
+    try { online.update(snapshot()) } catch { setSaveStatus('error') }
+  }, [online, data, days, book, library, warmupItems])
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (saveStatus !== 'saved') event.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [saveStatus])
+
   return <div className="app-shell" data-theme={theme}>
+    {online && (saveStatus === 'error' || saveStatus === 'conflict') && <div role="alert" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.85)', display: 'grid', placeItems: 'center', padding: 24 }}><div className="auth-card"><h2>{saveStatus === 'conflict' ? 'Workout data changed elsewhere' : 'Could not save workout data'}</h2><p>{saveStatus === 'conflict' ? 'This device has unsaved changes. Export them before reloading the latest server data.' : 'Your changes have not been confirmed. Check your connection and retry. Keep this page open.'}</p>{saveStatus === 'error' && <button className="primary" onClick={() => online.retry()}>Retry save</button>}<button className="outline-button" onClick={exportData}>Export unsaved data</button> <button className="outline-button" onClick={() => { if (window.confirm('Discard unsaved changes and reload server data?')) window.location.reload() }}>Discard and reload</button></div></div>}
+    {online && saveStatus === 'saving' && <div role="status" style={{ position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#171717', color: '#fff', padding: '8px 16px', borderRadius: 8 }}>Saving to Supabase…</div>}
     {confirmation && <ConfirmDialog title={confirmation.title} message={confirmation.message} confirmLabel={confirmation.label} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation.action; setConfirmation(null); action() }}/> }
-    <aside className="sidebar"><div className="brand"><span className="brand-mark"><span /></span><span>the one ring<small>YOUR SPACE TO GROW</small></span></div><div className="sidebar-label">YOUR SPACE</div><button className={`side-link ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}><Home size={18}/> Home</button><button className={`side-link ${page === 'routine' || page === 'builder' || page === 'library' || page === 'session' ? 'active' : ''}`} onClick={() => setPage('routine')}><Dumbbell size={18}/> Workouts <span className="side-arrow">↗</span></button><div className="sidebar-bottom"><div className="demo-card"><Sparkles size={16}/><strong>A little better,<br/>every day.</strong><p>Small steps add up to something great.</p></div><button className="profile" onClick={() => setPage('settings')}><span className="avatar">D</span><span><strong>{identity.demo ? "Demo user" : identity.email}</strong><small>{identity.demo ? "Demo mode" : "Local data only"}</small></span><MoreHorizontal size={19}/></button></div></aside>
-    <main className="main"><header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span/></span> the one ring</div><div className="breadcrumb">YOUR SPACE <ChevronRight size={13}/> <span>{page === 'home' ? 'Overview' : page === 'settings' ? 'Settings' : 'Workout Tracker'}</span></div><button className="top-profile" onClick={() => setPage('settings')}><span className="status-dot"/> {identity.demo ? "Demo mode" : "Local only"} <span className="avatar small">{identity.demo ? "D" : identity.email[0].toUpperCase()}</span></button></header>
+    <aside className="sidebar"><div className="brand"><span className="brand-mark"><span /></span><span>the one ring<small>YOUR SPACE TO GROW</small></span></div><div className="sidebar-label">YOUR SPACE</div><button className={`side-link ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}><Home size={18}/> Home</button><button className={`side-link ${page === 'routine' || page === 'builder' || page === 'library' || page === 'session' ? 'active' : ''}`} onClick={() => setPage('routine')}><Dumbbell size={18}/> Workouts <span className="side-arrow">↗</span></button><div className="sidebar-bottom"><div className="demo-card"><Sparkles size={16}/><strong>A little better,<br/>every day.</strong><p>Small steps add up to something great.</p></div><button className="profile" onClick={() => setPage('settings')}><span className="avatar">D</span><span><strong>{identity.demo ? "Demo user" : identity.email}</strong><small>{identity.demo ? "Demo mode" : "Online"}</small></span><MoreHorizontal size={19}/></button></div></aside>
+    <main className="main"><header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span/></span> the one ring</div><div className="breadcrumb">YOUR SPACE <ChevronRight size={13}/> <span>{page === 'home' ? 'Overview' : page === 'settings' ? 'Settings' : 'Workout Tracker'}</span></div><button className="top-profile" onClick={() => setPage('settings')}><span className="status-dot"/> {identity.demo ? "Demo mode" : "Online"} <span className="avatar small">{identity.demo ? "D" : identity.email[0].toUpperCase()}</span></button></header>
     <div className="content">{notice && <div className="notice">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={16}/></button></div>}
     {page !== 'home' && page !== 'settings' && <nav className="workout-subnav" aria-label="Workout Tracker"><strong>Workout Tracker</strong><button className={page === 'routine' || page === 'session' ? 'active' : ''} onClick={() => setPage('routine')}>Workout</button><button className={page === 'builder' || page === 'library' ? 'active' : ''} onClick={() => setPage('builder')}>Build routine</button><button className={page === 'activity' ? 'active' : ''} onClick={() => setPage('activity')}>Activity</button></nav>}
     {page === 'home' && <><div className="greeting"><div><div className="eyebrow"><span className="live-dot"/> YOUR PERSONAL SPACE</div><h1>Your apps<span className="accent">.</span></h1><p>Everything you need, together in one place.</p></div><div className="date-pill"><span>✳</span> YOUR SPACE, YOUR PACE</div></div>
@@ -224,13 +265,12 @@ function App({ identity, signOut }: { identity: { id: string; email: string; dem
     {page === 'session' && session && <WorkoutSession session={session} workouts={data.workouts} library={library} rotations={rotations} onChange={updateSession} onFinish={finish} onCancel={cancelSession} onDirty={setSessionDirty} onBack={() => setPage('routine')} onSetup={updateSetup}/>}
     {page === 'activity' && data.workouts[0] && <section className="latest-review"><h2>Latest workout</h2><p>{data.workouts[0].day} · {new Date(data.workouts[0].date).toLocaleDateString()}</p>{data.workouts[0].exercises.map((exercise, index) => <WorkoutReview key={`${data.workouts[0].id}-${index}`} exercise={exercise} onSave={next => save({ ...data, workouts: data.workouts.map((workout, workoutIndex) => workoutIndex === 0 ? { ...workout, exercises: workout.exercises.map((item, itemIndex) => itemIndex === index ? next : item) } : workout) })}/>)}</section>}
     {page === 'activity' && <><div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> YOUR JOURNEY</div><h1>Every bit counts<span className="accent">.</span></h1><p>A little look back at the work you’ve put in.</p></div></div><WorkoutStats workouts={data.workouts}/><div className="section-head compact"><div><div className="eyebrow muted">THE HISTORY BOOKS</div><h2>Recent workouts</h2></div></div>{data.workouts.length === 0 ? <div className="empty-state"><Circle size={25}/><h3>A fresh start.</h3><p>Your completed workouts will show up here.</p><button className="outline-button" onClick={() => setPage('routine')}>Explore workouts <ArrowRight size={16}/></button></div> : <div className="history-list">{data.workouts.map((w, i) => <div className="history-card" key={i}><span className="history-icon"><Dumbbell size={18}/></span><div><strong>{w.day === 'Free workout' ? w.day : `${w.day} day`}</strong><small>{new Date(w.date).toLocaleDateString(undefined, { dateStyle: 'medium' })} · {w.exercises.reduce((n, e) => n + e.sets.length, 0)} sets completed</small><div className="history-details">{w.exercises.filter(e => e.sets.length || e.cardio?.done).map(e => e.cardio?.done ? `${e.name}: ${e.cardio.duration} min, ${e.cardio.speed || '–'} km/h, ${e.cardio.incline || '–'}°${e.note ? ` (${e.note})` : ''}` : `${e.name}: ${e.sets.map(s => `${s.weight || '0'} kg × ${s.reps}`).join(', ')}${e.note ? ` (${e.note})` : ''}`).join(' · ') || 'No exercises completed'}</div></div></div>)}</div>}</>}
-    {page === 'settings' && <><div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> YOUR SETTINGS</div><h1>Make yourself at home<span className="accent">.</span></h1><p>A few things about your space.</p></div></div><div className="settings-card"><div className="settings-row"><span className="avatar">D</span><div><strong>{identity.demo ? "Demo user" : identity.email}</strong><small>Workout data is stored only in this browser.</small></div></div><div className="detail-divider"/><h3>Appearance</h3><p>Choose an accent color for your space.</p><div className="theme-options">{[['lime', 'Lime'], ['blue', 'Blue'], ['violet', 'Violet'], ['coral', 'Coral']].map(([value, label]) => <button key={value} className={`theme-choice ${theme === value ? 'selected' : ''}`} onClick={() => { setTheme(value); localStorage.setItem('one-ring-theme', value) }}><span className={`theme-swatch ${value}`}/>{label}</button>)}</div><div className="detail-divider"/><h3>Your data, your way</h3><p>Export a backup to keep it safe, or restore a previous backup on this device. Restoring replaces the current local data.</p><div className="settings-actions"><button className="outline-button" onClick={exportData}><ArrowDownToLine size={16}/> Export backup</button><label className="outline-button file-button"><RotateCcw size={16}/> Restore backup<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }}/></label></div><div className="demo-warning"><strong>Just a heads up</strong><p>{identity.demo ? "This is a local demo." : "You are signed in, but your workout data is local only."} {identity.demo ? "Demo workouts stay on this device." : "Cloud sync is experimental and must be configured below."} Clearing browser data can delete your workouts, so export a backup.</p></div><button className="outline-button signout" onClick={() => { if (identity.demo || window.confirm("Before signing out, sync and export a backup. Unsynced work stays on this device. Sign out?")) signOut() }}>{identity.demo ? "Exit demo" : "Sign out"}</button></div></>}
-    {!identity.demo && <div hidden={page !== 'settings'}><SyncPanel owner={identity.id} snapshot={snapshot()} hasLocalData={hasLocalData} onImport={applyBackup}/></div>}
+    {page === 'settings' && <><div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> YOUR SETTINGS</div><h1>Make yourself at home<span className="accent">.</span></h1><p>A few things about your space.</p></div></div><div className="settings-card"><div className="settings-row"><span className="avatar">D</span><div><strong>{identity.demo ? 'Demo user' : identity.email}</strong><small>{identity.demo ? 'Temporary demo' : 'Online account'}</small></div></div><div className="detail-divider"/><h3>Appearance</h3><p>Choose an accent color for your space.</p><div className="theme-options">{[['lime', 'Lime'], ['blue', 'Blue'], ['violet', 'Violet'], ['coral', 'Coral']].map(([value, label]) => <button key={value} className={`theme-choice ${theme === value ? 'selected' : ''}`} onClick={() => { setTheme(value); window.localStorage.setItem('one-ring-theme', value) }}><span className={`theme-swatch ${value}`}/>{label}</button>)}</div><div className="detail-divider"/><h3>Your data, your way</h3><p>Export a backup or restore a previous backup. Restoring replaces the current workout data.</p><div className="settings-actions"><button className="outline-button" onClick={exportData}><ArrowDownToLine size={16}/> Export backup</button><label className="outline-button file-button"><RotateCcw size={16}/> Restore backup<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }}/></label></div><div className="demo-warning"><strong>Just a heads up</strong><p>{identity.demo ? 'Demo data is temporary and resets on refresh.' : 'Workout data is saved to Supabase. An internet connection is required.'}</p></div><button className="outline-button signout" onClick={signOut}>{identity.demo ? 'Exit demo' : 'Sign out'}</button></div></>}
     </div></main><nav className="mobile-nav"><button className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}><Home size={19}/>Home</button><button className={page === 'routine' || page === 'builder' || page === 'library' || page === 'session' ? 'active' : ''} onClick={() => setPage('routine')}><Dumbbell size={19}/>Workouts</button><button className={page === 'settings' ? 'active' : ''} onClick={() => setPage('settings')}><Settings2 size={19}/>Settings</button></nav>
   </div>
 }
 
-createRoot(document.getElementById('root')!).render(<React.StrictMode><AuthGate>{(identity, signOut) => <App key={identity.id} identity={identity} signOut={signOut}/>}</AuthGate></React.StrictMode>)
+createRoot(document.getElementById('root')!).render(<React.StrictMode><AuthGate>{(identity, signOut) => <WorkspaceGate key={identity.id} identity={identity} signOut={signOut}/>}</AuthGate></React.StrictMode>)
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

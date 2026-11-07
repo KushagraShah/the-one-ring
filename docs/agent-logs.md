@@ -2,6 +2,12 @@
 
 Brief, append-only task summaries for future sessions. Record changes, verification and meaningful limitations; never include secrets or personal workout data.
 
+## 2026-11-07 — Preserve RxDB work and record online-only direction
+
+- Committed the pre-existing development work on local branch `preserve/rxdb-offline-work` as `e3163ca`, then returned to `main`. Main has no RxDB prototype or dependency. The branch has not been pushed. No published history was rewritten and no Supabase SQL was run.
+- The requested online-only implementation is **not complete**: main still stores workout data locally and uses experimental manual sync. Existing synchronous UI callbacks and multi-key writes need an asynchronous, server-confirmed redesign; the old normalized schema is read-only and is not a drop-in replacement. No new migration or database reset was prepared. The owner permits discarding existing records/accounts, subject to verifying the target and scope before destructive actions. Demo is still persistent on main, not the requested in-memory version.
+- Reviewed the main UI, auth, backup and existing schemas; checked Git status and the successful latest Pages workflow. No build or tests were run for this documentation and branch-preservation task. `test-results/` became visible as untracked after switching branches because the preserved branch ignored it; it was left untouched.
+
 ## Project history through 2026-11-07
 
 - Established the product direction: a free, mobile-first home for independent mini-apps, beginning with Workout Tracker and potentially integrating an existing habit tracker later. Preserved the useful parts of the owner's Notion workflow without copying its dense, rigid interface.
@@ -59,3 +65,13 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Pushed commit `3eaa7c3` and annotated tag `v0.2.0`; GitHub Actions run `42377464593` completed successfully, and the Pages site returned HTTP 200 with the expected production assets. The local release checks listed above passed. No Supabase migration was run.
 - A GitHub Release page was not present when checked. GitHub CLI was unauthenticated, so creating that separate page requires authentication. Follow-up documentation may trigger another Pages deployment; check its status separately. Real Android/offline testing, live sync isolation/conflict testing and backup recovery remain outstanding.
+
+## 2026-11-07 — Online-only development implementation
+
+- Preserved the previous development tree at `preserve/rxdb-offline-work` / `e3163ca`. On main, added an online account store and migration 004; demo is memory-only. Account reads come from Supabase, and writes use an atomic revision-checked transaction with retry and explicit failure/conflict handling. The prior local/manual-sync data is not automatically imported or deleted. The UI keeps in-memory state and browser storage is used only for auth/preferences in the active path.
+- Local build, configuration, schema, history and service-worker tests passed; phone-width Playwright with a fake Supabase endpoint covered demo reset, online save/reload, offline failure/retry, stale revision, an exercise log and workout completion. PGlite tested migration isolation, atomicity and idempotent retry. These are not live Supabase or Android tests.
+- Migration `supabase/migrations/202611070004_online_workouts.sql` has not been applied. Verify the target before running it once; no reset is needed. The online path uses whole-workspace replacement of separate JSON records with a 10 MB request limit; performance, live security, failures and recovery still need verification. Published Pages remains the old release. No push or deployment was made.
+
+## 2026-11-07 — Online preview deployment requested
+
+- The owner reported applying migration 004 and authorized pushing the online preview and preservation branch for phone testing. Updated the handoff and setup documentation; application behavior and the migration target still require live verification. See GitHub Actions for the deployment result.

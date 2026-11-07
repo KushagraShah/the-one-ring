@@ -1,5 +1,7 @@
 # Next steps after v0.2.0
 
+**Updated direction, 2026-11-07:** The owner chose online-only Supabase-authoritative account data, not offline sync. The owner reports applying migration 004; live behavior has not been verified. Demo is in memory and resets on refresh. Preserve branch `preserve/rxdb-offline-work` (`e3163ca`). Before applying any SQL or resetting a project, verify its target and scope. The priorities below are historical context where they mention offline sync.
+
 The owner wants to work next on these areas. This is a direction, not a claim that the work has been designed, implemented or verified.
 
 1. **Offline and cloud sync:** Design a shared local-first foundation around workout data semantics. Make syncing automatic and visible without interrupting training; preserve conflicts, pending edits and account isolation. Verify with real Supabase users and devices, including interrupted sync and account switching. The current sync is experimental and manual.

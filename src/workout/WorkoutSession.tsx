@@ -89,7 +89,7 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
   }
   return <>
     <button className="back-link" onClick={onBack}><ArrowLeft size={15}/> Leave and resume later</button>
-    <div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> WORKOUT IN PROGRESS</div><h1>{session.day === 'Free workout' ? session.day : `${session.day} day`}<span className="accent">.</span></h1><p>Save each log on this device. Choose exercises in any order.</p></div><div><button className="outline-button" onClick={onCancel}>Cancel workout</button> <button className="outline-button" onClick={onFinish}>Finish early <Check size={17}/></button></div></div>
+    <div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> WORKOUT IN PROGRESS</div><h1>{session.day === 'Free workout' ? session.day : `${session.day} day`}<span className="accent">.</span></h1><p>Choose exercises in any order.</p></div><div><button className="outline-button" onClick={onCancel}>Cancel workout</button> <button className="outline-button" onClick={onFinish}>Finish early <Check size={17}/></button></div></div>
     <div className="session-layout"><section>
       {session.exercises.length === 0 && <p>Add an exercise to start this workout.</p>}
       {error && <p role="alert" className="form-error">{error}</p>}

@@ -106,3 +106,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - The owner requires every pushed change to have a version number, normally incrementing the patch version. Updated the handoff, set package and lockfile metadata to 0.3.1, and displayed that same version in Settings. A Git tag or Release remains a separate authorized operation.
 - Added browser coverage tying the displayed version to package metadata. Build, tests and deployment must be checked before considering the version live; browser checks do not establish real-phone behavior.
+
+## 2026-11-07 — MIT license and CI browser tests
+
+- The owner chose MIT under the name Kushagra Shah, requested browser tests in the deployment pipeline to avoid repeating the full suite locally, and requested removal of workout move-earlier/later controls. Added the license, configured CI Chromium/Playwright, removed those controls without changing stored session or historical order, and set version 0.3.2.
+- Under Node 24, the production build, focused UI tests, eight fake-server browser tests and `git diff --check` passed locally. GitHub Actions must verify the newly added CI browser step and deployment. Browser tests do not establish real Android or live Supabase behavior.

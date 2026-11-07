@@ -83,7 +83,8 @@ test('confirmed exercise survives reload and workout completion commits together
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
   await page.getByRole('button', { name: 'Start workout', exact: true }).click()
-  await page.getByRole('button', { name: 'Move later' }).click()
+  await expect(page.getByRole('button', { name: 'Move later' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Move earlier' })).toHaveCount(0)
   await page.getByLabel('Weight in kilograms', { exact: true }).fill('20')
   await page.getByRole('button', { name: '12 / 10 / 8' }).click()
   await page.getByPlaceholder('How did it feel?').fill('Test note')
@@ -92,7 +93,7 @@ test('confirmed exercise survives reload and workout completion commits together
   await page.reload()
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
   await page.getByRole('button', { name: /Workout in progress/ }).click()
-  await page.getByRole('button', { name: /Next/ }).click()
+  await page.getByRole('button', { name: /Previous/ }).click()
   await expect(page.getByText('Log saved', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Finish early' }).click()
   await page.getByRole('button', { name: 'Finish workout', exact: true }).click()
@@ -100,11 +101,11 @@ test('confirmed exercise survives reload and workout completion commits together
   expect(backend.records().some(item => item.kind === 'session')).toBe(false)
   expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
   const workout = backend.records().find(item => item.kind === 'workout')?.body as { exercises: { note?: string }[] }
-  expect(workout.exercises[1].note).toBe('Test note')
+  expect(workout.exercises[0].note).toBe('Test note')
   const saved = backend.records().find(item => item.kind === 'workout')!.body
   expect(saved.routineName).toBe('My routine')
   expect((saved.plan as { name: string; slotId: string }[])[0].name).toBe('Chest press')
-  expect((saved.exercises as { sessionSlotId: string }[])[1].sessionSlotId).toBe((saved.plan as { slotId: string }[])[0].slotId)
+  expect((saved.exercises as { sessionSlotId: string }[])[0].sessionSlotId).toBe((saved.plan as { slotId: string }[])[0].slotId)
   expect((backend.records().find(item => item.kind === 'routine')!.body.cycleHistory as { type: string }[]).some(event => event.type === 'completed')).toBe(true)
   const event = (backend.records().find(item => item.kind === 'routine')!.body.cycleHistory as { type: string; daysSnapshot: { id: string; name: string }[] }[]).find(item => item.type === 'completed')!
   expect(event.daysSnapshot[0].name).toBe('Push')

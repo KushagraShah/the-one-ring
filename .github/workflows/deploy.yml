@@ -28,6 +28,9 @@ jobs:
       - run: npm run test:config
       - run: npm run test:schema
       - run: npm run test:history
+      - name: Install browser for interaction tests
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
       - run: npm run build
       - run: npm run test:pwa
       - uses: actions/upload-pages-artifact@v5

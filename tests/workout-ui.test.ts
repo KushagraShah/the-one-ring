@@ -18,6 +18,7 @@ test('focused session exposes navigation and explains today-only extras', () => 
   assert.match(html, /Previous/)
   assert.match(html, /Skip/)
   assert.match(html, /Next/)
+  assert.doesNotMatch(html, /Move earlier|Move later/)
   assert.match(html, /Your saved routine will not change/)
   assert.match(html, /Cancel workout/)
   assert.match(html, /Save log/)

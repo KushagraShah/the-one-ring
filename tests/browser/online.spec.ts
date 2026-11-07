@@ -1,0 +1,94 @@
+import { expect, test, type Page } from '@playwright/test'
+
+const owner = '10000000-0000-4000-8000-000000000001'
+type Document = { kind: string; id: string; body: Record<string, unknown> }
+
+async function fakeBackend(page: Page) {
+  let documents: Document[] = []
+  let revision = 0
+  let offline = false
+  let lastOperation = ''
+  await page.route('https://mock.invalid/**', async route => {
+    if (offline) { await route.abort('internetdisconnected'); return }
+    const request = route.request(); const path = new URL(request.url()).pathname
+    if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }); return }
+    let body: unknown
+    if (path === '/rest/v1/rpc/tor_online_workout_read') body = { revision, documents }
+    else if (path === '/rest/v1/rpc/tor_online_workout_write') {
+      const input = request.postDataJSON()
+      if (input.p_operation === lastOperation) body = { status: 'ok', revision }
+      else if (input.p_revision !== revision) body = { status: 'conflict' }
+      else { documents = input.p_documents; revision++; lastOperation = input.p_operation; body = { status: 'ok', revision } }
+    } else if (path === '/auth/v1/user') body = { id: owner, email: 'test@example.invalid', aud: 'authenticated', role: 'authenticated' }
+    else { await route.abort(); throw new Error(`Unexpected mock API path: ${path}`) }
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) })
+  })
+  await page.addInitScript(id => {
+    const user = { id, email: 'test@example.invalid', aud: 'authenticated', role: 'authenticated' }
+    const session = { access_token: 'fake-test-token', refresh_token: 'fake-test-refresh', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user }
+    if (!localStorage.getItem('sb-mock-auth-token')) localStorage.setItem('sb-mock-auth-token', JSON.stringify(session))
+  }, owner)
+  return { records: () => documents, offline: (value: boolean) => { offline = value }, conflict: () => { revision++ } }
+}
+
+test('account writes are server-confirmed, retry after failure, and reload from the server', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  backend.offline(true)
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect(page.getByText('Could not save workout data')).toBeVisible()
+  expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual([])
+  backend.offline(false)
+  await page.getByRole('button', { name: 'Retry save' }).click()
+  await expect(page.getByText('Could not save workout data')).toBeHidden()
+  await expect.poll(() => backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('one-ring-user-')))).toEqual([])
+  await page.reload()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
+  backend.conflict()
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect(page.getByText('Workout data changed elsewhere')).toBeVisible()
+})
+
+test('demo resets after refresh', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect(page.getByText('2 of 4 days accounted for')).toBeVisible()
+  await page.reload()
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
+})
+
+test('confirmed exercise survives reload and workout completion commits together', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Start workout', exact: true }).click()
+  await page.getByLabel('Weight in kilograms', { exact: true }).fill('20')
+  await page.getByRole('button', { name: '12 / 10 / 8' }).click()
+  await page.getByPlaceholder('How did it feel?').fill('Test note')
+  await page.getByRole('button', { name: 'Save exercise log' }).click()
+  await expect(page.getByText('Log saved', { exact: true })).toBeVisible()
+  await page.reload()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
+  await page.getByRole('button', { name: /Workout in progress/ }).click()
+  await page.getByRole('button', { name: /Previous/ }).click()
+  await expect(page.getByText('Log saved', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Finish early' }).click()
+  await page.getByRole('button', { name: 'Finish workout', exact: true }).click()
+  await expect.poll(() => backend.records().some(item => item.kind === 'workout')).toBe(true)
+  expect(backend.records().some(item => item.kind === 'session')).toBe(false)
+  expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
+  const workout = backend.records().find(item => item.kind === 'workout')?.body as { exercises: { note?: string }[] }
+  expect(workout.exercises[0].note).toBe('Test note')
+})

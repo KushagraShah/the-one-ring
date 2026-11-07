@@ -1,5 +1,13 @@
 # Supabase migrations and sync testing
 
+## Online-only development migration
+
+The online client requires `supabase/migrations/202611070004_online_workouts.sql`. It creates separate owner-scoped JSON workout records and a revision head, plus transactional authenticated read/write functions. Each write replaces the account's record set atomically and rejects stale revisions; a repeated operation can recover a lost response. This is independent of the old normalized and manual-sync tables and does not import or delete their data. The owner reported applying it on 2026-11-07; the target and live behavior have not been independently verified.
+
+For another project, first test with a disposable Supabase project and accounts. Verify the project and schema in the dashboard, then run the entire file once in SQL Editor. Do not rerun it or the older migrations; SQL Editor execution may not update migration history. No reset is required. Test two real accounts, failed/retried saves, stale writes, restore, and a phone before relying on it. SQL tests use PGlite and do not prove real Supabase behavior. Do not paste credentials in chat.
+
+The rest of this document describes the **previous release's** manual-sync migrations and tests, not the new online client.
+
 ## Status and safety
 
 Two SQL files in `supabase/migrations/` implement an initial schema and an experimental per-record sync protocol. They have been tested locally with PGlite, including two-user read isolation, cross-owner references, retry idempotency, optimistic concurrency and a simulated two-device conflict. The owner reports applying both to the `the-one-ring` Supabase project and that an initial authenticated sync appeared to work. Anonymous requests to the live sync table and RPC returned permission denied. Real two-device sync, two-user isolation and conflict behavior **have not yet been verified end to end**.

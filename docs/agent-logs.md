@@ -54,3 +54,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 - Prepared the owner-approved workout workflow preview as `v0.2.0`, updated the package versions and release notes, and recorded the owner's next priorities and additional recovery, data-fidelity, testing and migration-safety follow-ups in `docs/next-steps.md`.
 - `npm run build`, `npm run test:config`, `npm run test:schema`, `npm run test:history`, `npm run test:pwa`, and `git diff --check` passed locally. The prior `main` deployment was successful; the new deployment and release still require confirmation. GitHub CLI was not authenticated at preparation time.
 - This remains an early preview: cloud sync is experimental and manual, phone/offline behavior and real Supabase isolation are not fully verified, and older clients do not understand the new exercise-cycle semantics. Export backups and update devices. No database migrations were run.
+
+## 2026-11-07 — v0.2.0 deployment
+
+- Pushed commit `3eaa7c3` and annotated tag `v0.2.0`; GitHub Actions run `42377464593` completed successfully, and the Pages site returned HTTP 200 with the expected production assets. The local release checks listed above passed. No Supabase migration was run.
+- A GitHub Release page was not present when checked. GitHub CLI was unauthenticated, so creating that separate page requires authentication. Follow-up documentation may trigger another Pages deployment; check its status separately. Real Android/offline testing, live sync isolation/conflict testing and backup recovery remain outstanding.

@@ -2,8 +2,17 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { previousFor, startingSets, type Workout } from '../src/workout/WorkoutSession'
 import { addSessionExercise, adjacentExercise, recentPerformances, replaceSessionExercise, sessionAccountedFor, toggleSessionSkip } from '../src/workout/sessionLogic'
+import { formatResult } from '../src/workout/ResultTable'
 
 const workouts: Workout[] = [{ day: 'Push', date: '2026-01-01', exercises: [{ name: 'Old name', exerciseId: 'machine-one', skipped: false, sets: [12, 10, 8].map(reps => ({ weight: '20', reps: String(reps), done: true })) }] }]
+
+test('compact results preserve repeated, different, zero and missing weights', () => {
+  const sets = [12, 10, 8].map(reps => ({ weight: '20', reps: String(reps), done: true }))
+  assert.equal(formatResult(sets), '12 / 10 / 8 × 20 kg')
+  assert.equal(formatResult(sets.map((set, index) => ({ ...set, weight: ['20', '', '0'][index] }))), '12 × 20 kg · 10 × — · 8 × 0 kg')
+  assert.equal(formatResult(sets.map(set => ({ ...set, weight: '' }))), '12 / 10 / 8 × weight not recorded')
+  assert.equal(formatResult([], { duration: '20', speed: '', incline: '8', done: true }), '20 min · — km/h · 8°')
+})
 
 test('history follows an exercise ID across a rename', () => {
   const renamed = { id: 'machine-one', name: 'New name', equipment: '', sets: '' }

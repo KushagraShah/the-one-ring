@@ -1,8 +1,17 @@
 import type { CardioEntry, SetEntry } from './WorkoutSession'
 
-/** The same compact, readable result format is used during and after training. */
+/** Keep each result on one compact line without losing per-set differences. */
+export function formatResult(sets: SetEntry[], cardio?: CardioEntry): string {
+  if (cardio?.done) return `${cardio.duration || '—'} min · ${cardio.speed || '—'} km/h · ${cardio.incline || '—'}°`
+  if (!sets.length) return ''
+  const reps = sets.map(set => set.reps || '—')
+  if (sets.every(set => set.weight === sets[0].weight)) {
+    return `${reps.join(' / ')} × ${sets[0].weight === '' ? 'weight not recorded' : `${sets[0].weight} kg`}`
+  }
+  return sets.map(set => `${set.reps || '—'} × ${set.weight === '' ? '—' : `${set.weight} kg`}`).join(' · ')
+}
+
 export function ResultTable({ sets, cardio }: { sets: SetEntry[]; cardio?: CardioEntry }) {
-  if (cardio?.done) return <dl className="result-metrics"><div><dt>Duration</dt><dd>{cardio.duration || '—'} min</dd></div><div><dt>Speed</dt><dd>{cardio.speed || '—'} km/h</dd></div><div><dt>Incline</dt><dd>{cardio.incline || '—'}°</dd></div></dl>
-  if (!sets.length) return null
-  return <table className="result-table"><thead><tr><th scope="col">Set</th><th scope="col">Weight</th><th scope="col">Reps</th></tr></thead><tbody>{sets.map((set, index) => <tr key={index}><th scope="row">{index + 1}</th><td>{set.weight === '' ? '—' : `${set.weight} kg`}</td><td>{set.reps === '' ? '—' : set.reps}</td></tr>)}</tbody></table>
+  const result = formatResult(sets, cardio)
+  return result ? <span className="compact-result">{result}</span> : null
 }

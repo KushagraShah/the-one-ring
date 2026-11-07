@@ -96,3 +96,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-07 — Activity/history migration applied
 
 - The owner reported applying migration 005 and requested continuation. Preparing the reviewed local Activity/history implementation for Pages deployment; real guard behavior and phone interaction are not yet independently verified. See GitHub Actions for deployment outcome.
+
+## 2026-11-07 — Compact workout history
+
+- Replaced large per-set result tables with compact shared-weight or per-set-weight summaries. The workout's recent performances use one date/result row each. Unified Activity history into a single exercise-ID/date-filterable list with ten workouts initially, expandable pages and optional strength chart; cycle events are also initially limited. Preserved workout details and editing.
+- Added formatting tests and phone-width fake-server browser coverage for exact-variant filtering across same-named routine days, date ranges, pagination and existing history flows. Browser tests do not establish real-phone behavior. This limits rendered UI, not server data retrieval; no database migration is needed.

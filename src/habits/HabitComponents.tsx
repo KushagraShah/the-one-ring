@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { localDate, paused, shiftDate, versionAt, type Criteria, type Habit, type Schedule } from './model'
+import { useEffect, useId, useRef, useState } from 'react'
+import { localDate, paused, shiftDate, versionAt, type Criteria, type Habit, type Outcome, type Schedule } from './model'
+import { InfoTip } from '../InfoTip'
 
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const cap = (text: string) => text[0].toUpperCase() + text.slice(1)
@@ -7,6 +8,24 @@ const cap = (text: string) => text[0].toUpperCase() + text.slice(1)
 export function CriteriaList({ criteria }: { criteria?: Criteria }) {
   if (!criteria || !(criteria.done || criteria.partial || criteria.missed)) return null
   return <dl className="habit-criteria-list" aria-label="Outcome criteria">{(['done', 'partial', 'missed'] as const).map(key => criteria[key] && <div key={key}><dt>{cap(key)}</dt><dd>{criteria[key]}</dd></div>)}</dl>
+}
+
+export type HabitDraft = { habitId: string; date: string; outcome: Outcome | null; note: string; originalOutcome: Outcome | null; originalNote: string }
+export function EntryEditor({ habit, draft, dirty, onChange, onSave, onCancel }: { habit: Habit; draft: HabitDraft; dirty: boolean; onChange: (draft: HabitDraft) => void; onSave: () => void; onCancel: () => void }) {
+  const id = useId()
+  const criteria = versionAt(habit.criteria, draft.date)
+  const options: Outcome[] = ['done', 'partial', 'missed', 'skipped']
+  return <div className="habit-details habit-entry-editor">
+    {habit.description && <p>{habit.description}</p>}
+    <p className="habit-detail-label">{draft.originalOutcome ? 'Change outcome' : 'How did it go?'} <InfoTip label="About habit outcomes">Done and Partial contribute to progress. Missed is a recorded outcome; an unlogged day is not automatically missed. Skipped is neutral for fixed performance, and a skipped flexible week is not judged against its target.</InfoTip></p>
+    <div className="habit-outcomes habit-outcome-choices">{options.map(outcome => {
+      const description = outcome === 'skipped' ? '' : criteria?.[outcome] || ''
+      return <button key={outcome} aria-label={cap(outcome)} aria-describedby={description ? `${id}-${outcome}` : undefined} aria-pressed={draft.outcome === outcome} className={draft.outcome === outcome ? `selected outcome-${outcome}` : ''} onClick={() => onChange({ ...draft, outcome })}><span className="habit-choice-title">{cap(outcome)}</span>{description && <span id={`${id}-${outcome}`} className="habit-choice-description">{description}</span>}</button>
+    })}</div>
+    {draft.outcome && <label>Note<textarea value={draft.note} onChange={event => onChange({ ...draft, note: event.target.value })}/></label>}
+    <div className="habit-entry-actions"><button className="primary" disabled={!dirty} onClick={onSave}>Save changes</button><button className="outline-button" onClick={onCancel}>Cancel</button>{draft.originalOutcome && <button className="text-button" onClick={() => onChange({ ...draft, outcome: null, note: '' })}>Clear outcome and note</button>}</div>
+    {draft.originalOutcome && !draft.outcome && <p className="habit-detail-hint">Save changes to clear this outcome and its note.</p>}
+  </div>
 }
 
 export function PauseControls({ habit, onChange }: { habit: Habit; onChange: (habit: Habit) => void }) {

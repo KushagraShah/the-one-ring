@@ -5,7 +5,7 @@ import type { Rotation } from './rotations'
 import { addSessionExercise, adjacentExercise, exerciseComplete, recentPerformances, replaceSessionExercise, sessionAccountedFor, toggleSessionSkip } from './sessionLogic'
 import { ResultTable } from './ResultTable'
 import { ExerciseDetails } from './ExerciseDetails'
-import { InfoTip } from './InfoTip'
+import { InfoTip } from '../InfoTip'
 
 export type SetEntry = { weight: string; reps: string; done: boolean }
 export type CardioEntry = { duration: string; speed: string; incline: string; done: boolean }

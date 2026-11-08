@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Workout } from './WorkoutSession'
+import { InfoTip } from './InfoTip'
 
 const dayKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 export function workoutInsights(workouts: Workout[], days: number, now = new Date()) {
@@ -20,8 +21,8 @@ export function workoutInsights(workouts: Workout[], days: number, now = new Dat
 export function Insights({ workouts }: { workouts: Workout[] }) {
   const [days, setDays] = useState(28)
   const result = workoutInsights(workouts, days)
-  return <section className="history-section"><h2>Activity insights</h2><details><summary>What do these numbers mean? ⓘ</summary><p>Uses local calendar days, including today. A workout counts only if it has a completed result. Training days count distinct dates; active weeks are Monday–Sunday weeks with a result, including partial weeks at the edges. Results count completed exercises, not sets. Skips are excluded.</p></details>
-    <label>Period <select value={days} onChange={event => setDays(Number(event.target.value))}><option value={28}>Last 28 days</option><option value={90}>Last 90 days</option><option value={365}>Last 365 days</option></select></label>
-    {result.sessions ? <div className="insight-grid"><p><strong>{result.sessions}</strong><br/>workouts</p><p><strong>{result.days}</strong><br/>training days</p><p><strong>{result.weeks}</strong><br/>active weeks</p><p><strong>{result.results}</strong><br/>exercise results</p><p><strong>{result.exercises}</strong><br/>distinct exercises</p></div> : <p>No completed results in this period.</p>}
+  return <section className="workout-insights"><div className="workout-insights-header"><div><div className="context-label">YOUR ACTIVITY</div><h2>Activity insights <InfoTip label="About activity insights">Counts use local calendar days, including today. Workouts need at least one completed result. Training days are distinct dates; active weeks run Monday–Sunday. Results count completed exercises, not sets. Skips are excluded.</InfoTip></h2></div>
+    <label className="insights-period"><span>Period</span><select value={days} onChange={event => setDays(Number(event.target.value))}><option value={28}>Last 28 days</option><option value={90}>Last 90 days</option><option value={365}>Last 365 days</option></select></label></div>
+    {result.sessions ? <div className="insight-grid">{[[result.sessions, 'Workouts'], [result.days, 'Training days'], [result.weeks, 'Active weeks'], [result.results, 'Exercise results'], [result.exercises, 'Distinct exercises']].map(([value, label]) => <div className="insight-tile" key={label}><strong>{value}</strong><span>{label}</span></div>)}</div> : <p className="context-empty">No completed results in this period.</p>}
   </section>
 }

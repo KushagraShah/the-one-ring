@@ -3,6 +3,7 @@ import { ConfirmDialog } from '../ConfirmDialog'
 import type { Exercise } from './ExerciseLibrary'
 import { rotationDays, type Rotation } from './rotations'
 import { describeCycleDay, moveItem } from './routineDraft'
+import { InfoTip } from './InfoTip'
 
 export type RoutineDay = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
 type DraftDay = RoutineDay & { originalName: string | null }
@@ -52,8 +53,7 @@ export function RoutineBuilder({ days, library, rotations, routines, activeRouti
     onSwitch(id)
   }
   return <>
-    <div className="builder-title"><div><h1>Build routine<span className="accent">.</span></h1><p>Edit a routine without changing today’s workout.</p></div><button className="outline-button" onClick={onLibrary}>Exercise library</button></div>
-    <details className="exercise-details"><summary>About routines and exercise cycles ⓘ</summary><p>Routine edits are drafts until saved. An exercise cycle suggests the first remaining variant and can share progress across days. Completing a variant chosen with the cycle selector counts when the workout finishes. Skips, ordinary replacements and extras do not count.</p></details>
+    <div className="builder-title"><div><h1>Build routine<span className="accent">.</span></h1><p>Edit a routine without changing today’s workout. <InfoTip label="About routines and exercise cycles">Routine edits are drafts until saved. Exercise cycles suggest the first remaining variant and can share progress across days. A cycle selection counts when the workout finishes; skips, ordinary replacements and extras do not.</InfoTip></p></div><button className="outline-button" onClick={onLibrary}>Exercise library</button></div>
     <div className="builder-toolbar"><label>Routine<select value={activeRoutine} onChange={event => switchTo(event.target.value)}>{routines.map(routine => <option key={routine.id} value={routine.id}>{routine.name}</option>)}</select></label><details className="new-routine"><summary>+ New routine</summary><div><input aria-label="New routine name" placeholder="Routine name" value={newName} onChange={event => setNewName(event.target.value)}/><button className="outline-button" disabled={!newName.trim() || hasSession} onClick={() => { const name = newName.trim(); if (!name) return; if (dirty || cycleSlot) { ask('Discard draft?', 'Your unsaved changes will be lost before creating the new routine.', 'Discard and create', () => { onDirty(false); onNew(name) }); return } onNew(name) }}>Create routine</button></div></details><button className="primary" disabled={!dirty || hasSession || Boolean(cycleSlot)} onClick={save}>Save changes</button><small>{cycleSlot ? 'Apply or close the cycle editor first' : dirty ? 'Unsaved changes' : 'Saved'}</small></div>
     {hasSession && <div className="builder-warning"><span>A workout is in progress. Cancel it to save or switch routines; your draft will remain here.</span><button className="outline-button" onClick={() => ask('Cancel workout?', 'This discards the in-progress workout and its entries. Your routine draft and previous history are kept.', 'Cancel workout', onCancelWorkout)}>Cancel workout</button></div>}
     {error && <p role="alert" className="form-error">{error}</p>}

@@ -219,3 +219,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — Correct version convention
 
 - The owner clarified the project's versioning convention: increment the final component for smaller updates, the middle component for major updates, and the first component for a new mini-app or major framework overhaul. The owner explicitly authorized rewriting the v1.0.0 commit and force-pushing v0.6.0. No tag or GitHub Release is included; verify the resulting Pages workflow and deployed version. The prior v1.0.0 deployment succeeded before this correction.
+
+## 2026-11-08 — Workout UI refinement v0.6.1
+
+- Reworked the v0.6.0 workout overview, exercise context/history, Activity insights, contextual help and correction controls in response to the owner's feedback. Used compact neutral surfaces, clear status and responsive layouts; help supports touch, keyboard and hover. Preserved workout state, cycle semantics, storage and existing quick entry.
+- Inspected rendered demo screenshots at phone width and tested overview navigation, retained drafts, touch/click help, hover, Escape and history corrections. Build, 62 history tests, 27 fake-server browser tests and PWA test passed under Node 20.20.2 (project requires Node 24); bundle exceeds Vite's 500 kB warning threshold. No SQL or migration. Owner authorized v0.6.1 deployment; verify Pages and version after push.

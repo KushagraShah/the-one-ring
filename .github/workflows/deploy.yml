@@ -28,8 +28,8 @@ jobs:
       - run: npm run test:config
       - run: npm run test:schema
       - run: npm run test:history
-      - name: Install browser for interaction tests
-        run: npx playwright install --with-deps chromium
+      - name: Install headless browser for interaction tests
+        run: npx playwright install --with-deps --only-shell chromium
       - run: npm run test:browser
       - run: npm run build
       - run: npm run test:pwa

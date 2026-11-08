@@ -28,3 +28,27 @@ test('habit save retries the same operation and blocks stale overwrites', async 
   store.update({ ...data, habits: [{ ...habit, title: 'Changed again' }] }); await new Promise(resolve => setTimeout(resolve, 0))
   assert.equal(requests.length, 3)
 })
+
+test('habit edits during a pending request are saved after its revision', async () => {
+  const requests: Record<string, unknown>[] = []
+  let resolveFirst!: (value: unknown) => void
+  const client = { rpc: async (name: string, args: Record<string, unknown>) => {
+    if (name === 'tor_online_habit_read') return { data: { revision: 0, data: null }, error: null }
+    requests.push(args)
+    if (requests.length === 1) return new Promise(resolve => { resolveFirst = resolve })
+    return { data: { status: 'ok', revision: Number(args.p_revision) + 1 }, error: null }
+  } } as unknown as SupabaseClient
+  const store = new OnlineHabitStore(client, 'owner')
+  const initial = await store.load()
+  const first = { ...initial, entries: [{ habitId: 'a', date: '2026-11-01', outcome: 'done' as const, note: '' }] }
+  const latest = { ...first, entries: [{ ...first.entries[0], note: 'newer' }] }
+  store.update(first)
+  store.update(latest)
+  assert.equal(requests.length, 1)
+  resolveFirst({ data: { status: 'ok', revision: 1 }, error: null })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.equal(requests.length, 2)
+  assert.equal(requests[1].p_revision, 1)
+  assert.deepEqual(requests[1].p_data, latest)
+  assert.notEqual(requests[0].p_operation, requests[1].p_operation)
+})

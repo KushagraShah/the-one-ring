@@ -9,6 +9,7 @@ async function fakeBackend(page: Page) {
   let revision = 0
   let habitData: unknown = null
   let habitRevision = 0
+  let lastHabitOperation = ''
   let offline = false
   let lastOperation = ''
   await page.route('https://mock.invalid/**', async route => {
@@ -17,7 +18,7 @@ async function fakeBackend(page: Page) {
     if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }); return }
     let body: unknown
     if (path === '/rest/v1/rpc/tor_online_habit_read') body = { revision: habitRevision, data: habitData }
-    else if (path === '/rest/v1/rpc/tor_online_habit_write') { const input = request.postDataJSON(); if (input.p_revision !== habitRevision) body = { status: 'conflict' }; else { habitData = input.p_data; habitRevision++; body = { status: 'ok', revision: habitRevision } } }
+    else if (path === '/rest/v1/rpc/tor_online_habit_write') { const input = request.postDataJSON(); if (input.p_operation === lastHabitOperation) body = { status: 'ok', revision: habitRevision }; else if (input.p_revision !== habitRevision) body = { status: 'conflict' }; else { habitData = input.p_data; habitRevision++; lastHabitOperation = input.p_operation; body = { status: 'ok', revision: habitRevision } } }
     else if (path === '/rest/v1/rpc/tor_online_workout_read') body = { revision, documents }
     else if (path === '/rest/v1/rpc/tor_online_workout_write') {
       const input = request.postDataJSON()

@@ -41,3 +41,26 @@ test('network failure retains the exact operation for retry and conflict stops s
   store.update({ ...backup, warmupItems: ['Changed again'] }); await wait()
   assert.equal(requests.length, 3)
 })
+
+test('workout edits during a pending request are saved after its revision', async () => {
+  const requests: Record<string, unknown>[] = []
+  let resolveFirst!: (value: unknown) => void
+  const client = { rpc: async (name: string, args: Record<string, unknown>) => {
+    if (name === 'tor_online_workout_read') return { data: { revision: 0, documents: [] }, error: null }
+    requests.push(args)
+    if (requests.length === 1) return new Promise(resolve => { resolveFirst = resolve })
+    return { data: { status: 'ok', revision: Number(args.p_revision) + 1 }, error: null }
+  } } as unknown as SupabaseClient
+  const store = new OnlineWorkoutStore(client, 'owner')
+  await store.load()
+  store.update(backup)
+  store.update({ ...backup, warmupItems: ['newer'] })
+  assert.equal(requests.length, 1)
+  resolveFirst({ data: { status: 'ok', revision: 1 }, error: null })
+  await wait()
+  assert.equal(requests.length, 2)
+  assert.equal(requests[1].p_revision, 1)
+  const docs = requests[1].p_documents as { kind: string; body: { warmupItems?: string[] } }[]
+  assert.deepEqual(docs.find(doc => doc.kind === 'settings')?.body.warmupItems, ['newer'])
+  assert.notEqual(requests[0].p_operation, requests[1].p_operation)
+})

@@ -27,7 +27,9 @@ test('reused entry indexes produce the same fixed scores for different ranges an
 })
 test('fixed streak treats partial and skip as engagement but breaks success', () => {
   assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'partial'), e('2026-11-04', 'skipped'), e('2026-11-05', 'done')], '2026-11-05'), { success: 1, engagement: 4, unit: 'days' })
-  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done')], '2026-11-03'), { success: 0, engagement: 0, unit: 'days' })
+  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done')], '2026-11-03'), { success: 1, engagement: 1, unit: 'days' })
+  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done')], '2026-11-04'), { success: 0, engagement: 0, unit: 'days' })
+  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'missed')], '2026-11-03'), { success: 0, engagement: 0, unit: 'days' })
 })
 test('flexible weeks exclude pauses, skips, schedule changes, partial and future weeks', () => {
   const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', target: 2 }] }

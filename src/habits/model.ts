@@ -50,10 +50,16 @@ export function weekProgress(habit: Habit, entries: Entry[], date: string) {
   const days = Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
   const schedule = versionAt(habit.schedules, date)
   const records = entries.filter(entry => entry.habitId === habit.id && days.includes(entry.date))
-  const points = records.reduce((sum, entry) => sum + (entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0), 0)
+  const points = records.filter(entry => entry.date <= date && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible').reduce((sum, entry) => sum + (entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0), 0)
   const affected = days.some(day => day >= habit.start && (!habit.end || day <= habit.end) && paused(habit, day)) || records.some(entry => entry.outcome === 'skipped')
   const availableSoFar = days.filter(day => day <= date && eligible(habit, day)).length
   return { points, target: schedule?.target || 0, targetSoFar: Math.min(schedule?.target || 0, availableSoFar), affected }
+}
+
+/** Recent unlogged fixed opportunities only; flexible eligible days are not obligations. */
+export function catchUpDays(data: HabitData, today: string, days = 7) {
+  const index = indexEntries(data.entries)
+  return Array.from({ length: days }, (_, i) => shiftDate(today, -i - 1)).map(date => ({ date, count: data.habits.filter(habit => !habit.archived && eligible(habit, date) && versionAt(habit.schedules, date)?.kind === 'fixed' && !index.byHabitDate.get(habit.id)?.has(date)).length })).filter(day => day.count > 0)
 }
 
 const dateValid = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && shiftDate(value, 0) === value

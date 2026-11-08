@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
 
-/** Hover for pointer users; tap/click or focus for touch and keyboard users. */
+/** Hover for pointer users; tap/click for touch and keyboard users. */
 export function InfoTip({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)

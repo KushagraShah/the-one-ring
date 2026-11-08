@@ -3,7 +3,7 @@ import { ConfirmDialog } from '../ConfirmDialog'
 import type { Exercise } from './ExerciseLibrary'
 import { rotationDays, type Rotation } from './rotations'
 import { describeCycleDay, moveItem } from './routineDraft'
-import { InfoTip } from './InfoTip'
+import { InfoTip } from '../InfoTip'
 
 export type RoutineDay = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
 type DraftDay = RoutineDay & { originalName: string | null }

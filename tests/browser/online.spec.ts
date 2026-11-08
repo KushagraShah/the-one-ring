@@ -33,7 +33,7 @@ async function fakeBackend(page: Page) {
     const session = { access_token: 'fake-test-token', refresh_token: 'fake-test-refresh', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user }
     if (!localStorage.getItem('sb-mock-auth-token')) localStorage.setItem('sb-mock-auth-token', JSON.stringify(session))
   }, owner)
-  return { records: () => documents, offline: (value: boolean) => { offline = value }, conflict: () => { revision++ } }
+  return { records: () => documents, habits: () => habitData, offline: (value: boolean) => { offline = value }, conflict: () => { revision++ } }
 }
 
 test('account writes are server-confirmed, retry after failure, and reload from the server', async ({ page }) => {
@@ -71,6 +71,39 @@ test('demo resets after refresh', async ({ page }) => {
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
   await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
+})
+
+test('demo contains fictional workout and habit history and resets edits', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await expect(page.getByText(/Fictional sample workouts/)).toBeVisible()
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  await expect(page.getByRole('button', { name: /Chest press.*Shoulder press/ }).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByText(/Fictional sample habits/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /Read a little.*Done/ })).toBeVisible()
+  await page.getByRole('button', { name: /Read a little.*Done/ }).click()
+  await page.getByRole('button', { name: 'Missed', exact: true }).click()
+  await expect(page.getByRole('button', { name: /Read a little.*Missed/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'History & insights' })).toBeVisible()
+  await expect(page.getByText('Read a little', { exact: true })).toBeVisible()
+  await page.reload()
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByRole('button', { name: /Read a little.*Done/ })).toBeVisible()
+})
+
+test('signed-in accounts never receive demo workout or habit history', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  expect(backend.records().filter(item => item.kind === 'workout')).toHaveLength(0)
+  expect(backend.habits()).toBeNull()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByRole('button', { name: 'Create your first habit' })).toBeVisible()
+  await expect(page.getByText('Read a little', { exact: true })).toHaveCount(0)
 })
 
 test('habit and workout load failures remain independent of navigation', async ({ page }) => {
@@ -181,9 +214,9 @@ test('full backup restores workout and habit scopes in demo', async ({ page }) =
   const contents = readFileSync(path)
   const parsed = JSON.parse(contents.toString())
   expect(parsed.scope).toBe('full')
-  expect(parsed.habits.habits).toHaveLength(1)
+  expect(parsed.habits.habits).toHaveLength(4)
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.locator('article.habit-card').filter({ has: page.getByText('Read', { exact: true }) }).getByRole('button', { name: 'Delete', exact: true }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await page.getByLabel('Restore full backup').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: contents })
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
@@ -202,7 +235,7 @@ test('historical schedule and outcome criteria survive effective-dated edits', a
   await page.getByText('Outcome criteria (optional)').click()
   await page.getByLabel('Done', { exact: true }).fill('Previous standard')
   await page.getByRole('button', { name: 'Save habit' }).click()
-  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await page.locator('article.habit-card').filter({ has: page.getByText('Reading', { exact: true }) }).getByRole('button', { name: 'Edit', exact: true }).click()
   await page.locator('.habit-form details').evaluate((details: HTMLDetailsElement) => { details.open = true })
   await page.locator('.habit-form details textarea').first().fill('New standard')
   await page.getByLabel('Sun', { exact: true }).uncheck()
@@ -212,7 +245,28 @@ test('historical schedule and outcome criteria survive effective-dated edits', a
   await page.getByRole('button', { name: /Reading.*Not logged/ }).click()
   await expect(page.getByText('Previous standard')).toBeVisible()
   await page.getByLabel('Date', { exact: true }).fill('2026-11-08')
-  await expect(page.getByText('No habits scheduled for this date.')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Reading.*Not logged/ })).toHaveCount(0)
+})
+
+test('insights separates performance and coverage and opens recorded history', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-08T12:00:00'))
+  await fakeBackend(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Reading')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  await page.getByRole('button', { name: /Reading.*Not logged/ }).click()
+  await page.getByRole('button', { name: 'Skipped', exact: true }).click()
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'History & insights' })).toBeVisible()
+  const today = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: 'Today · fixed habits' }) })
+  await expect(today.getByText('100%', { exact: true })).toBeVisible()
+  await expect(today.getByText('0 scored')).toBeVisible()
+  await page.getByRole('button', { name: /Reading.*Not enough fixed data/ }).click()
+  await page.getByRole('button', { name: /2026-11-08.*Skipped/ }).click()
+  await expect(page.getByRole('button', { name: /Reading.*Skipped/ })).toBeVisible()
 })
 
 test('settings displays the version from package metadata', async ({ page }) => {

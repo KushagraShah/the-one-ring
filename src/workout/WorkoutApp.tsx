@@ -12,6 +12,7 @@ import { sessionAccountedFor } from './sessionLogic'
 import { RoutineBuilder, type RoutineDay } from './RoutineBuilder'
 import { mapCycleDays } from './routineDraft'
 import { ConfirmDialog } from '../ConfirmDialog'
+import { seedDemoWorkouts } from './demo'
 
 type Day = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
 const identifyDays = (days: Day[]): Day[] => days.map(day => ({ ...day, id: day.id || crypto.randomUUID(), exercises: day.exercises.map(exercise => ({ ...exercise, routineSlotId: exercise.routineSlotId || crypto.randomUUID() })) }))
@@ -49,7 +50,7 @@ export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; vie
   useEffect(() => {
     let active = true
     const storage = memoryStorage()
-    if (identity.demo) { setState({ storage, online: null }); return () => { active = false } }
+    if (identity.demo) { seedDemoWorkouts(storage, sampleDays); setState({ storage, online: null }); return () => { active = false } }
     if (!supabase) { setError(true); return () => { active = false } }
     const online = new OnlineWorkoutStore(supabase, identity.id)
     setError(false)
@@ -255,6 +256,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
     {online && saveStatus === 'saving' && <div role="status" style={{ position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#171717', color: '#fff', padding: '8px 16px', borderRadius: 8 }}>Saving to Supabase…</div>}
     {confirmation && <ConfirmDialog title={confirmation.title} message={confirmation.message} confirmLabel={confirmation.label} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation.action; setConfirmation(null); action() }}/> }
     <div hidden={view !== 'workout'}>
+    {identity.demo && <p className="demo-example-note">Demo mode · Fictional sample workouts. Changes reset when you refresh.</p>}
     {notice && <div className="notice">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={16}/></button></div>}
     <nav className="workout-subnav" aria-label="Workout Tracker"><strong>Workout Tracker</strong><button className={page === 'routine' || page === 'session' ? 'active' : ''} onClick={() => setPage('routine')}>Workout</button><button className={page === 'builder' || page === 'library' ? 'active' : ''} onClick={() => setPage('builder')}>Build routine</button><button className={page === 'activity' ? 'active' : ''} onClick={() => setPage('activity')}>Activity</button></nav>
     {page === 'routine' && <><div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> YOUR WORKOUT SPACE</div><h1>Start a workout<span className="accent">.</span></h1><p>Choose a routine day or start a free workout.</p></div><button className="outline-button" onClick={() => start(null)}><Plus size={16}/> Free workout</button></div>

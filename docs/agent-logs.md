@@ -134,3 +134,13 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — Phase 2–4 review and branch push
 
 - The owner reported the preview was not broken but needs significant UI and interaction improvement, requested pushing phases 2–4 and continuing with phase 5. Bumped the package and lockfile to 0.3.4 for the feature branch push. No merge, public deployment, migration or release is implied; live Supabase verification remains outstanding.
+
+## 2026-11-08 — Habit insights local preview
+
+- Pushed phase 2–4 commit `c3dc30f` as v0.3.4 on `feature/habit-tracker-overhaul`. Added local fixed performance/coverage, monthly and eight-week summaries, separate flexible activity, streaks, per-habit history, a cautious workload signal and links back to correction. Improved daily empty states, status labels, touch targets, and disabled non-editable week cells. Archived habits are excluded from statistical denominators because their archive dates are unavailable; flexible partial, changed-schedule, paused and skipped weeks are not judged.
+- Build, 51 history tests, 16 fake-server phone-width browser tests, PWA test and `git diff --check` passed under Node 20.20.2 (the project requires Node 24). Local preview is available for owner review; real phone usability, real Supabase, migration 006 and backup recovery remain unverified. Phase 5 changes are uncommitted and unpushed; no merge or deployment was performed. Significant further UI/interaction improvements are still expected.
+
+## 2026-11-08 — Fictional demo histories
+
+- Added temporary demo-only workout and habit data spanning recent weeks, including linked exercise results, cardio, fixed and flexible habits, varied outcomes and notes. Labeled examples in both mini-apps; demo edits reset on refresh and are never automatically added to accounts. Included the previously local phase 5 insights in this branch change and bumped package versions to 0.3.5 for the requested push.
+- Build, 53 history tests, 18 phone-width fake-server browser tests, PWA and `git diff --check` passed under Node 20.20.2 (project requires Node 24). Tests cover demo/account separation, exact exercise identities, reset and backup. The local preview returned HTTP 200; real-device and live Supabase verification remain outstanding. No database migration, merge or public deployment was performed.

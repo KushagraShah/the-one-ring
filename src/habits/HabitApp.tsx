@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useState } from 'react'
+import { ArrowDownToLine, RotateCcw } from 'lucide-react'
 import { supabase } from '../auth'
 import { catchUpDays, eligible, indexEntries, localDate, parseHabits, paused, shiftDate, versionAt, weekProgress, weekStart, type Habit, type HabitData } from './model'
 import { demoHabitData } from './demo'
@@ -128,6 +129,6 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
         </>}
       </>}
     </div>
-    <div hidden={view !== 'settings'}>{data && <div className="settings-card"><h3>Habit backup</h3><p>Export or restore habits only. Workout data is not replaced.</p><div className="settings-actions"><button className="outline-button" onClick={exportData}>Export habits</button><label className="outline-button file-button">Restore habits<input type="file" accept="application/json,.json" onChange={event => { void restore(event.target.files?.[0]); event.target.value = '' }}/></label></div></div>}</div>
+    <div hidden={view !== 'settings'}>{data && <div className="settings-card backup-card"><h3>Habit backup</h3><p>Export or restore habits only. Workout data is not replaced.</p><div className="settings-actions"><button className="outline-button" onClick={exportData}><ArrowDownToLine size={16} aria-hidden="true"/> Export habits</button><label className="outline-button file-button"><RotateCcw size={16} aria-hidden="true"/> Restore habits<input type="file" accept="application/json,.json" onChange={event => { void restore(event.target.files?.[0]); event.target.value = '' }}/></label></div></div>}</div>
   </>
 })

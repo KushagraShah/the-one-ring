@@ -229,3 +229,12 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Reviewed the owner's local old-tracker reference read-only, including its scoring and criteria; documented the comparison without copying or staging the reference. Added date-effective outcome choices, a recent-day strip, fixed-habit catch-up, in-place week correction, contextual help, management schedule summaries and more accurate selected-day flexible progress and pending-today streaks. Existing explicit saves, fixed performance/coverage definitions, skip/pause judgments and storage remain intact.
 - Build, config, schema, 64 history tests and 30 fake-server browser tests passed under Node 20.20.2 (project requires Node 24). Inspected phone-width demo screenshots. Vite's bundle-size warning remains; real Supabase isolation and recovery remain unverified. No migration or import; owner authorized v0.7.0 deployment. Verify Pages and version after push; never stage the supplied reference directory.
+
+## 2026-11-08 — Document release tagging
+
+- Documented the proposed post-deployment annotated-tag practice, optional major-update GitHub Release notes, verification and authorization safeguards in the handoff. This documentation task did not create a tag, commit, push or deployment; v0.7.0 remains untagged. The supplied old-tracker reference remains untracked and untouched.
+
+## 2026-11-08 — Consistent backup controls v0.7.1
+
+- Matched export/restore icons and spacing across the workout, habit and full-app backup cards without changing backup behavior; included the previously requested release-tagging documentation. The old-tracker reference remains excluded.
+- Production build, targeted backup/restore and version browser tests, icon/spacing check and `git diff --check` passed under Node 20.20.2 (project requires Node 24). Vite's bundle-size warning remains; no migration. Owner authorized v0.7.1 deployment; verify Pages after push.

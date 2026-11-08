@@ -1,6 +1,6 @@
 {
   "name": "the-one-ring",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "license": "MIT",
   "engines": { "node": ">=24" },

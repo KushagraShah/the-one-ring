@@ -387,6 +387,21 @@ test('catch-up lists recent unlogged fixed days and ignores archived habits', as
   await expect(page.getByRole('button', { name: /Catch up/ })).toHaveCount(0)
 })
 
+test('backup cards use consistent export and restore icons and spacing', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  const cards = page.locator('.backup-card:visible')
+  await expect(cards).toHaveCount(3)
+  for (const card of await cards.all()) {
+    await expect(card.locator('.settings-actions button svg')).toHaveCount(1)
+    await expect(card.locator('.settings-actions label svg')).toHaveCount(1)
+  }
+  const boxes = await Promise.all((await cards.all()).map(card => card.boundingBox()))
+  expect(boxes.every(Boolean)).toBe(true)
+  for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y - (boxes[i - 1]!.y + boxes[i - 1]!.height)).toBeGreaterThanOrEqual(10)
+})
+
 test('settings displays the version from package metadata', async ({ page }) => {
   const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
   await page.goto('/')

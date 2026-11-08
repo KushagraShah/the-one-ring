@@ -1,6 +1,6 @@
 # Habit Tracker and mini-app separation: handoff plan
 
-This records the owner's 2026-11-07 discussion and implementation approach. On 2026-11-08 phases 0–1 were implemented on `feature/habit-tracker-overhaul`: the shell and workout code were separated and a habit skeleton added. The owner reviewed the local preview and said it looks good; real-service verification remains outstanding. Phases 2–5 remain planned. Read `AGENTS.md`, `README.md`, `docs/setup.md` and `docs/supabase-migrations.md` before future work.
+This records the owner's 2026-11-07 discussion and implementation approach. The owner reviewed phases 0–1 and said the local preview looks good. A phases 2–4 local preview is implemented on `feature/habit-tracker-overhaul`; phase 5 remains planned. The new habit migration is not applied to the owner's project; real-service and owner interaction verification remain outstanding. Read `AGENTS.md`, `README.md`, `docs/setup.md` and `docs/supabase-migrations.md` before future work.
 
 ## Direction and sequence
 
@@ -74,8 +74,8 @@ Then conduct the owner's requested improvement rounds and, lastly, minor optimiz
 
 ## Open decisions — do not silently settle
 
-1. **Schedule changes and historical expectations:** The owner does not yet know whether changes should apply from a selected date. Compare changing an established schedule from now on with correcting an originally mistaken schedule; agree on behavior before showing historical expected opportunities. The old tracker guarantees versioned criteria, not versioned schedules.
-2. **Flexible targets, skips and pauses:** The owner does not yet know how a partially paused week should affect its target. Work through reachable eligible days, explicit skips, partial credit, habit start/end midweek and weeks crossing months before defining weekly/monthly percentages or streaks. Do not invent apparently authoritative numbers.
+1. **Schedule changes and historical expectations:** On 2026-11-08 the owner chose a user-selected effective date. Earlier dates retain their prior schedules; choosing an earlier date allows correcting a mistake.
+2. **Flexible targets, skips and pauses:** On 2026-11-08 the owner chose to exclude weeks affected by a pause or explicit skip from target-completion judgments rather than reduce the target. The target remains displayed, with the exclusion made visible. Monthly allocation and cross-month summaries remain phase 5 design work.
 3. **UI details and scope:** Today-first, compact rows with expandable outcome/criteria/note controls, a separate management screen and secondary history are proposals for owner review. Avoid guilt-inducing or information-dense screens; preserve the excerpt's capabilities even if their presentation changes.
 
 ## Verification expectations

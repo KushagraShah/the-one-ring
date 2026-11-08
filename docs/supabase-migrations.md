@@ -5,9 +5,11 @@
 - **Shared:** Supabase Auth owns accounts. Appearance is currently a browser preference; there is no separate shared app-data table.
 - **Active Workout Tracker:** `tor_online_workout_heads` and `tor_online_workout_records`, accessed through `tor_online_workout_read` and `tor_online_workout_write`. Migration 005 replaces the write function with the history-format client guard. These are workout-only, even though records include workout settings.
 - **Older Workout Tracker experiments:** migration 001's 16 normalized workout tables and migration 002's `tor_sync_records`, `tor_sync_batches` and `tor_apply_sync_batch` are not the active online workspace. The old client code is under `src/workout/legacy-sync/`; retained does not mean these tables are safe to delete or rerun.
-- **Habit Tracker:** the skeleton has no database tables or persistence. Future habit tables/RPCs should have a distinct habit-specific namespace and concurrency boundary; their schema is not yet designed. No SQL or database objects were modified for the skeleton.
+- **Habit Tracker:** draft migration `202611080006_online_habits.sql` adds the separate `tor_online_habit_workspaces` table and `tor_online_habit_read`/`tor_online_habit_write` RPCs. It is not reported applied to the owner's project. It stores an independently revision-checked whole habit workspace (10 MB limit), not incremental log records; each write replaces only that habit workspace. It does not touch workout tables. Client validation covers domain structure; JSON is not fully domain-validated by SQL. PGlite tests are not a substitute for real Supabase isolation or retry tests.
 
 This inventory is based on repository migrations and owner reports, not a live schema inspection. All objects currently use the existing Supabase project; conceptual ownership does not imply separate physical schemas. See the safety instructions below before any migration.
+
+For the habit preview, use demo mode until migration 006 is reviewed and applied to a verified target. First test with a disposable Supabase project and accounts; verify the target, existing schema and migration history, back up existing data, and run the new file once in SQL Editor only after approval. Do not rerun previous files or reset any database. The owner must not send credentials in chat. SQL Editor execution does not necessarily record migration history. Test two-account isolation, failed requests, stale writes, retries, backups and a phone before relying on it.
 
 ## Online-only development migration
 

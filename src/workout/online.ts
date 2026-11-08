@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { workspaceDocuments, workspaceFromRecords } from './sync/workspace'
-import type { StoredDocument } from './sync/store'
-import type { Backup } from './workout/backup'
+import { workspaceDocuments, workspaceFromRecords } from './workspace'
+import type { StoredDocument } from './legacy-sync/store'
+import type { Backup } from './backup'
 
 export function memoryStorage(): Storage {
   const values = new Map<string, string>()

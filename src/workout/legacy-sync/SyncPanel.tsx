@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Backup } from '../workout/backup'
-import { supabase } from '../auth'
+import type { Backup } from '../backup'
+import { supabase } from '../../auth'
 import { syncOnce } from './engine'
 import { SyncStore, type StoredDocument } from './store'
 import { supabaseTransport } from './supabase'
-import { workspaceDocuments, workspaceFromRecords } from './workspace'
+import { workspaceDocuments, workspaceFromRecords } from '../workspace'
 
 type Props = { owner: string; snapshot: Backup; hasLocalData: boolean; onImport: (backup: Backup) => void }
 

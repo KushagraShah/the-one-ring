@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { OnlineWorkoutStore, memoryStorage, seedStorage } from '../src/online'
+import { OnlineWorkoutStore, memoryStorage, seedStorage } from '../src/workout/online'
 import type { Backup } from '../src/workout/backup'
 
 const exercise = { id: '10000000-0000-4000-8000-000000000001', name: 'Press', equipment: 'Machine', sets: '' }

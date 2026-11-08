@@ -69,6 +69,48 @@ test('demo resets after refresh', async ({ page }) => {
   await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
 })
 
+test('habit preview is independent of a failed workout load', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  backend.offline(true)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByRole('heading', { name: 'Habit Tracker' })).toBeVisible()
+  await expect(page.getByText('Habit tracking is not implemented yet.', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await expect(page.getByRole('heading', { name: 'Could not load workouts' })).toBeVisible()
+  backend.offline(false)
+  await page.getByRole('button', { name: 'Retry' }).click()
+  await expect(page.getByRole('heading', { name: 'Start a workout' })).toBeVisible()
+})
+
+test('switching mini-apps protects a workout routine draft', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Build routine', exact: true }).click()
+  await page.getByLabel('Day name').fill('Draft name')
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByText('Discard routine draft?')).toBeVisible()
+  await page.getByRole('button', { name: 'Discard and leave' }).click()
+  await expect(page.getByRole('heading', { name: 'Habit Tracker' })).toBeVisible()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await expect(page.getByText('Push day', { exact: false }).first()).toBeVisible()
+})
+
+test('switching mini-apps warns before discarding unconfirmed workout entries', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Start workout', exact: true }).click()
+  await page.getByLabel('Weight in kilograms', { exact: true }).fill('20')
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByText('Leave workout?', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Leave workout', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Habit Tracker' })).toBeVisible()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await expect(page.getByRole('button', { name: /Workout in progress/ })).toBeVisible()
+})
+
 test('settings displays the version from package metadata', async ({ page }) => {
   const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
   await page.goto('/')

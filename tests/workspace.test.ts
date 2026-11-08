@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { Backup } from '../src/workout/backup'
-import { workspaceDocuments, workspaceFromRecords } from '../src/sync/workspace'
-import type { StoredDocument } from '../src/sync/store'
+import { workspaceDocuments, workspaceFromRecords } from '../src/workout/workspace'
+import type { StoredDocument } from '../src/workout/legacy-sync/store'
 
 const exerciseId = '10000000-0000-4000-8000-000000000001'
 const workoutId = '20000000-0000-4000-8000-000000000001'

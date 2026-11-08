@@ -111,3 +111,17 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - The owner chose MIT under the name Kushagra Shah, requested browser tests in the deployment pipeline to avoid repeating the full suite locally, and requested removal of workout move-earlier/later controls. Added the license, configured CI Chromium/Playwright, removed those controls without changing stored session or historical order, and set version 0.3.2.
 - Under Node 24, the production build, focused UI tests, eight fake-server browser tests and `git diff --check` passed locally. GitHub Actions must verify the newly added CI browser step and deployment. Browser tests do not establish real Android or live Supabase behavior.
+
+## 2026-11-07 — Habit overhaul handoff
+
+- Documented the owner's habit-tracker baseline, proposed mini-app and Supabase separation, timestamped backup scopes, grouped phases, owner review checkpoints and unresolved historical/flexible-schedule decisions. Linked the plan from the handoff and next steps.
+- Documentation only as requested: no application code, SQL, branch, migration, deployment or release was changed. Git was clean on `main` before these edits; no build or tests were run. Historical schedule policy, flexible pause/target semantics and real-service verification remain open.
+
+## 2026-11-08 — Mini-app separation and habit skeleton
+
+- Created `feature/habit-tracker-overhaul` carrying the prior uncommitted handoff. Extracted the shared shell and workout workspace, moved workout-specific online and legacy sync code under `src/workout/`, added a clearly nonfunctional habit preview, and documented shared/active/legacy Supabase ownership. The existing workout RPCs, database, backup format and data were not modified. The launcher and habit preview work when workout loading fails; workout draft and unconfirmed-entry guards apply when changing apps.
+- Build, config, schema, history, PWA and 11 phone-width fake-Supabase browser tests passed under the available Node 20.20.2, despite the project's Node 24 requirement. Browser dependencies were installed inside ignored `node_modules/.cache`. The local Vite server was started for review. This does not establish real-device or live Supabase safety; owner review remains outstanding. No push, deployment, migration or release was performed.
+
+## 2026-11-08 — Phase 0–1 review and branch push
+
+- The owner said the local preview looks good and requested a push and a plan for phases 2–4. Updated package and lockfile versions to 0.3.3 for the branch push; no merge, deployment, tag, release or migration was authorized. Real Supabase verification remains outstanding.

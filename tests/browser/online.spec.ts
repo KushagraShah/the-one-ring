@@ -60,6 +60,19 @@ test('account writes are server-confirmed, retry after failure, and reload from 
   await expect(page.getByText('Workout data changed elsewhere')).toBeVisible()
 })
 
+test('shared account messages describe the whole app, not only workouts', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Demo data resets on refresh. Account data requires an internet connection.')).toBeVisible()
+  await fakeBackend(page)
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await expect(page.getByText('Your account data is saved to Supabase. An internet connection is required.')).toBeVisible()
+  await expect(page.getByText('Workout data is saved to Supabase. An internet connection is required.')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Account T/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workout backup' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Habit backup' })).toBeVisible()
+})
+
 test('launcher presents both apps equally on desktop and phone', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')

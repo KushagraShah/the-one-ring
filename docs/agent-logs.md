@@ -182,3 +182,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — Correct version numbering
 
 - The owner clarified the small habit UI update should have been v0.4.1, not the mistakenly deployed v0.5.0. Corrected both package versions as explicitly requested and recorded that agents must choose version increments logically, treating small updates as patches rather than mechanically interpreting “minor.” No published history or tags were rewritten; application behavior is unchanged.
+
+## 2026-11-08 — Shared app wording sweep
+
+- Reviewed the shared launcher, account screens, settings, backup/error boundaries, PWA metadata and README for workout-centric messaging. Generalized shared account/connectivity copy, removed the unverified Online status label, identified workout-specific saving separately, and kept explicitly scoped backup and recovery language. Corrected the account avatar initial. Bumped to v0.4.2 for the requested small update; no storage or SQL changes.
+- Production build, three targeted fake-server browser tests and `git diff --check` passed locally under Node 20.20.2 (Node 24 required). Browser tests do not establish real connectivity detection or real Supabase behavior. See Pages CI and the owner's phone review for deployment/interaction verification.

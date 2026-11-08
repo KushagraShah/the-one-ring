@@ -173,3 +173,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — v0.4.0 merge and deployment
 
 - The owner reported manually applying migration 006 and that checks were good, then authorized merging and Pages deployment as v0.4.0. Updated package versions and current documentation. This does not establish real two-account isolation, conflict, failure/retry or phone behavior. Do not rerun migration 006.
+
+## 2026-11-08 — Habit phone feedback
+
+- The owner tested v0.4.0 and requested Settings tile placement, theme, criteria visibility, management layout and explicit save improvements. Reordered the habit backup, replaced green-tinted habit surfaces with neutral colors, exposed current/date-effective criteria, aligned controls, and replaced global undo with save/cancel outcome and note drafts plus navigation warnings. Bulk and management actions still save directly. Set package versions to 0.5.0 as the requested minor update; no SQL change.
+- Production build and 21 phone-width fake-server browser tests passed locally under Node 20.20.2 rather than the required Node 24. Fake-server tests do not verify real Supabase or the owner's phone; draft changes are not crash-durable. Pages CI/deployment and phone verification must be checked after the authorized push.

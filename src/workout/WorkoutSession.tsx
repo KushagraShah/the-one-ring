@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, Plus } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, List, Plus } from 'lucide-react'
 import type { Exercise } from './ExerciseLibrary'
 import type { Rotation } from './rotations'
 import { addSessionExercise, adjacentExercise, exerciseComplete, recentPerformances, replaceSessionExercise, sessionAccountedFor, toggleSessionSkip } from './sessionLogic'
 import { ResultTable } from './ResultTable'
 import { ExerciseDetails } from './ExerciseDetails'
+import { InfoTip } from './InfoTip'
 
 export type SetEntry = { weight: string; reps: string; done: boolean }
 export type CardioEntry = { duration: string; speed: string; incline: string; done: boolean }
@@ -46,6 +47,7 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
   const [error, setError] = useState('')
   const [setupEdit, setSetupEdit] = useState<string | null>(null)
   const [setupDraft, setSetupDraft] = useState('')
+  const [overviewOpen, setOverviewOpen] = useState(false)
   useEffect(() => { onDirty(Boolean(Object.keys(drafts).length || Object.keys(cardioDrafts).length || setupEdit)); return () => onDirty(false) }, [drafts, cardioDrafts, setupEdit, onDirty])
   const navigate = (offset: number) => {
     if (setupEdit && !window.confirm('Discard unsaved setup changes?')) return
@@ -90,11 +92,10 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
   }
   return <>
     <button className="back-link" onClick={onBack}><ArrowLeft size={15}/> Leave and resume later</button>
-    <div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> WORKOUT IN PROGRESS</div><h1>{session.day === 'Free workout' ? session.day : `${session.day} day`}<span className="accent">.</span></h1><p>Choose exercises in any order.</p></div><div><button className="outline-button" onClick={onCancel}>Cancel workout</button> <button className="outline-button" onClick={onFinish}>{sessionAccountedFor(session) ? 'Finish workout' : 'Finish early'} <Check size={17}/></button></div></div>
+    <div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> WORKOUT IN PROGRESS</div><h1>{session.day === 'Free workout' ? session.day : `${session.day} day`}<span className="accent">.</span></h1><p>Choose exercises in any order. <InfoTip label="About changes during a workout">Setup edits update your exercise library. Results and notes belong to this workout; replacements and extras do not change your routine. Cycle progress is recorded when you finish.</InfoTip></p></div><div><button className="outline-button" onClick={onCancel}>Cancel workout</button> <button className="outline-button" onClick={onFinish}>{sessionAccountedFor(session) ? 'Finish workout' : 'Finish early'} <Check size={17}/></button></div></div>
     {sessionAccountedFor(session) && <div className="notice" role="status">All exercises are accounted for. Add notes or extras, then finish the workout.</div>}
-    <details className="exercise-details"><summary>About changes during a workout ⓘ</summary><p>Setup edits update this exercise in your library. Results and today’s notes are saved to this workout. Replacements and extras do not change your saved routine. Finish the workout to record cycle progress.</p></details>
-    {session.exercises.length > 0 && <details className="exercise-details"><summary>Workout overview · {session.exercises.length} exercises</summary><div className="session-overview">{session.exercises.map(item => <button className="outline-button" key={item.sessionItemId || item.name} onClick={() => { if (setupEdit && !window.confirm('Discard unsaved setup changes?')) return; setSetupEdit(null); setExpanded(item.name); setError('') }}>{item.name} · {session.skipped.includes(item.name) ? 'Skipped' : exerciseComplete(session, item) ? 'Completed' : 'Not completed'}{expanded === item.name ? ' · Current' : ''}</button>)}</div></details>}
     <div className="session-layout"><section>
+      {session.exercises.length > 0 && <div className="session-overview-card"><button className="session-overview-toggle" aria-expanded={overviewOpen} onClick={() => setOverviewOpen(value => !value)}><span className="session-overview-icon"><List size={17}/></span><span className="session-overview-title"><strong>Workout overview</strong><small>{session.exercises.filter(item => session.skipped.includes(item.name) || exerciseComplete(session, item)).length} of {session.exercises.length} exercises accounted for</small></span><ChevronDown size={18} className={overviewOpen ? 'is-expanded' : ''}/></button>{overviewOpen && <div className="session-overview">{session.exercises.map((item, index) => { const skipped = session.skipped.includes(item.name); const completed = exerciseComplete(session, item); const current = expanded === item.name; return <button className={`session-overview-row ${current ? 'is-current' : ''}`} key={item.sessionItemId || item.name} aria-current={current ? 'step' : undefined} onClick={() => { if (setupEdit && !window.confirm('Discard unsaved setup changes?')) return; setSetupEdit(null); setExpanded(item.name); setError(''); setOverviewOpen(false) }}><span className={`session-overview-number ${completed ? 'is-done' : ''}`}>{completed ? <Check size={15}/> : String(index + 1).padStart(2, '0')}</span><span className="session-overview-name"><strong>{item.name}</strong><small>{skipped ? 'Skipped' : completed ? 'Completed' : 'Not completed'}{current ? ' · Current' : ''}</small></span><span className="session-overview-arrow" aria-hidden="true">→</span></button> })}</div>}</div>}
       {session.exercises.length === 0 && <p>Add an exercise to start this workout.</p>}
       {error && <p role="alert" className="form-error">{error}</p>}
       <div className="exercise-list">{session.exercises.map((exercise, index) => {

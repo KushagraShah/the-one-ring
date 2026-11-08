@@ -5,11 +5,54 @@
 - **Shared:** Supabase Auth owns accounts. Appearance is currently a browser preference; there is no separate shared app-data table.
 - **Active Workout Tracker:** `tor_online_workout_heads` and `tor_online_workout_records`, accessed through `tor_online_workout_read` and `tor_online_workout_write`. Migration 005 replaces the write function with the history-format client guard. These are workout-only, even though records include workout settings.
 - **Older Workout Tracker experiments:** migration 001's 16 normalized workout tables and migration 002's `tor_sync_records`, `tor_sync_batches` and `tor_apply_sync_batch` are not the active online workspace. The old client code is under `src/workout/legacy-sync/`; retained does not mean these tables are safe to delete or rerun.
-- **Habit Tracker:** draft migration `202611080006_online_habits.sql` adds the separate `tor_online_habit_workspaces` table and `tor_online_habit_read`/`tor_online_habit_write` RPCs. It is not reported applied to the owner's project. It stores an independently revision-checked whole habit workspace (10 MB limit), not incremental log records; each write replaces only that habit workspace. It does not touch workout tables. Client validation covers domain structure; JSON is not fully domain-validated by SQL. PGlite tests are not a substitute for real Supabase isolation or retry tests.
+- **Habit Tracker:** migration `202611080006_online_habits.sql` adds the separate `tor_online_habit_workspaces` table and `tor_online_habit_read`/`tor_online_habit_write` RPCs. On 2026-11-08 the owner reported applying migration 006 successfully and that checks were good. Do not rerun it on that project. It stores an independently revision-checked whole habit workspace (10 MB limit), not incremental log records; each write replaces only that habit workspace. It does not touch workout tables. Client validation covers domain structure; JSON is not fully domain-validated by SQL. PGlite tests are not a substitute for real Supabase isolation or retry tests.
 
 This inventory is based on repository migrations and owner reports, not a live schema inspection. All objects currently use the existing Supabase project; conceptual ownership does not imply separate physical schemas. See the safety instructions below before any migration.
 
-For the habit preview, use demo mode until migration 006 is reviewed and applied to a verified target. First test with a disposable Supabase project and accounts; verify the target, existing schema and migration history, back up existing data, and run the new file once in SQL Editor only after approval. Do not rerun previous files or reset any database. The owner must not send credentials in chat. SQL Editor execution does not necessarily record migration history. Test two-account isolation, failed requests, stale writes, retries, backups and a phone before relying on it.
+The owner reports migration 006 was applied manually to the existing project; real-account isolation, conflict, failure/retry and phone checks remain outstanding. Testing in a disposable Supabase project and accounts first was not reported. Do not rerun migrations or reset any database. Never send credentials in chat. SQL Editor execution does not necessarily record migration history.
+
+## Migration 006: manual preflight and application
+
+**The owner reports this was already applied to the existing project. Do not run it there again.** The following procedure is retained for another verified project or investigation.
+
+The migration creates one habit table and two habit functions in a transaction. It does not import old habits or demo data, change workout tables, delete accounts, or require a reset. The new app needs it before signed-in habits will load; the currently deployed workout app does not need it. Do not paste credentials, access tokens, personal records or backup contents into chat.
+
+1. In the Supabase dashboard, choose the intended existing project. Compare its project URL in **Connect / API settings** with the URL configured locally. Check that it is the project intended for Pages; GitHub does not reveal an existing secret's value, and its name alone does not prove its value. Do not post the values. The owner has confirmed there is no real workout data to back up. If the target is uncertain, stop.
+2. In **SQL Editor → New query**, run the following **read-only preflight**. It reads object metadata, not workout or habit records:
+
+   ```sql
+   select
+     to_regclass('public.tor_online_workout_heads') is not null as workout_heads_exist,
+     to_regclass('public.tor_online_workout_records') is not null as workout_records_exist,
+     to_regprocedure('public.tor_online_workout_read(uuid)') is not null as workout_read_exists,
+     to_regprocedure('public.tor_online_workout_write(uuid,bigint,uuid,jsonb)') is not null as workout_write_exists,
+     case when to_regprocedure('public.tor_online_workout_write(uuid,bigint,uuid,jsonb)') is null then false
+       else position('App update required before saving workout history' in pg_get_functiondef(to_regprocedure('public.tor_online_workout_write(uuid,bigint,uuid,jsonb)'))) > 0 end as history_guard_marker_present,
+     to_regclass('public.tor_online_habit_workspaces') is not null as habit_table_exists,
+     (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname in ('tor_online_habit_read', 'tor_online_habit_write')) as habit_function_count;
+   ```
+
+   Expected: the first five values are `true`, `habit_table_exists` is `false`, and `habit_function_count` is `0`. The guard marker is a useful check, not a full proof that migration 005 or live guard behavior is correct. **Stop** if any result differs; do not rerun 004/005 or drop existing habit objects. Migration history alone is not authoritative for manually run SQL.
+3. Open `supabase/migrations/202611080006_online_habits.sql` from this checkout. In a **new** SQL Editor query, copy and run the **entire file**, including `begin;` and `commit;`, exactly once. If it fails or its result is uncertain, stop and report the error; do not rerun fragments or the whole migration until the actual schema state has been checked.
+4. Run this **read-only verification** in a new query:
+
+   ```sql
+   select
+     coalesce((select c.relrowsecurity from pg_class c where c.oid = to_regclass('public.tor_online_habit_workspaces')), false) as habit_rls_enabled,
+     coalesce(not has_table_privilege('anon', to_regclass('public.tor_online_habit_workspaces'), 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'), false) as anon_table_access_denied,
+     coalesce(not has_table_privilege('authenticated', to_regclass('public.tor_online_habit_workspaces'), 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'), false) as authenticated_table_access_denied,
+     (select count(*) = 2 and bool_and(p.prosecdef)
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.oid in (to_regprocedure('public.tor_online_habit_read(uuid)'), to_regprocedure('public.tor_online_habit_write(uuid,bigint,uuid,jsonb)'))) as habit_functions_security_definer,
+     (select count(*) = 2 and bool_and(not has_function_privilege('anon', p.oid, 'EXECUTE') and has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+       from pg_proc p where p.oid in (to_regprocedure('public.tor_online_habit_read(uuid)'), to_regprocedure('public.tor_online_habit_write(uuid,bigint,uuid,jsonb)'))) as habit_function_grants_expected;
+   ```
+
+   All five values should be `true`. The anonymous privilege check includes inherited `PUBLIC` privileges. These checks do not prove owner isolation or validate function bodies; SQL Editor runs with elevated privileges. Report success or any unexpected result before deploying.
+5. After the migration, use the local feature-branch app with the existing account: create a clearly disposable habit, wait until saving completes, reload and check it persists. Confirm workout data is unchanged. Review backup/restore, stale edits, failed saves and real two-account isolation separately before relying on the new app. A full restore is not atomic across the two apps. Demo remains temporary and is not imported automatically. Then merge and verify Pages and the owner's phone as separately authorized.
+
+Record the date, project (without credentials), observed results and any outstanding tests in the project handoff. SQL Editor execution does not necessarily update migration history; do not repair it based on an assumption.
 
 ## Online-only development migration
 

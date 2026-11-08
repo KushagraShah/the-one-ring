@@ -125,3 +125,12 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — Phase 0–1 review and branch push
 
 - The owner said the local preview looks good and requested a push and a plan for phases 2–4. Updated package and lockfile versions to 0.3.3 for the branch push; no merge, deployment, tag, release or migration was authorized. Real Supabase verification remains outstanding.
+
+## 2026-11-08 — Habit phases 2–4 local preview
+
+- Implemented the local habit workflow, effective-dated schedules/criteria, pause handling, daily and weekly correction, notes, undo and maintenance; added separate revision-checked habit storage and scoped timestamped backups. The owner chose effective-dated changes and excluding weeks affected by pauses/skips from flexible-target judgments. Full restore is explicitly non-atomic across apps. Draft migration 006 was not applied to any live project; use temporary demo mode for local review until a verified project is migrated.
+- Build, history (46 tests), schema (4 PGlite tests), config, PWA and 13 phone-width fake-server browser tests passed; two additional targeted browser tests for historical criteria/schedule changes and failed habit-save retry also passed. Checks used available Node 20.20.2, not the project's required Node 24. Real Supabase isolation, failure/recovery and owner phone review remain unverified; whole-workspace habit writes have a 10 MB limit. No push, release, merge or public deployment was performed.
+
+## 2026-11-08 — Phase 2–4 review and branch push
+
+- The owner reported the preview was not broken but needs significant UI and interaction improvement, requested pushing phases 2–4 and continuing with phase 5. Bumped the package and lockfile to 0.3.4 for the feature branch push. No merge, public deployment, migration or release is implied; live Supabase verification remains outstanding.

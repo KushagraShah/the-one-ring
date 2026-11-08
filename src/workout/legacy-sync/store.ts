@@ -1,8 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import type { Document, Kind, StoredDocument } from '../documents'
 
-export type Kind = 'exercise' | 'routine' | 'workout' | 'session' | 'settings'
-export type Document = { kind: Kind; id: string; body: Record<string, unknown> | null; deleted: boolean }
-export type StoredDocument = Document & { revision: number; generation: number; dirty: boolean }
+export type { Document, Kind, StoredDocument } from '../documents'
 export type RemoteDocument = Document & { revision: number }
 export type SyncChange = Document & { base_revision: number }
 export type SyncBatch = { operationId: string; changes: SyncChange[]; generations: Record<string, number>; conflicts?: { kind: Kind; id: string; expected: number; actual: number }[] }

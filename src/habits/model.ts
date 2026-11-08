@@ -20,7 +20,25 @@ export function weekday(date: string): number {
 }
 export function weekStart(date: string): string { return shiftDate(date, -weekday(date)) }
 export function versionAt<T extends { effective: string }>(items: T[], date: string): T | undefined {
-  return items.filter(item => item.effective <= date).sort((a, b) => b.effective.localeCompare(a.effective))[0]
+  let latest: T | undefined
+  for (const item of items) if (item.effective <= date && (!latest || item.effective > latest.effective)) latest = item
+  return latest
+}
+
+/** Derived in-memory indexes; persisted data and its ordering stay unchanged. */
+export function indexEntries(entries: Entry[]) {
+  const byHabit = new Map<string, Entry[]>()
+  const byDate = new Map<string, Entry[]>()
+  const byHabitDate = new Map<string, Map<string, Entry>>()
+  for (const entry of entries) {
+    const habit = byHabit.get(entry.habitId) || []
+    habit.push(entry); byHabit.set(entry.habitId, habit)
+    const date = byDate.get(entry.date) || []
+    date.push(entry); byDate.set(entry.date, date)
+    const dates = byHabitDate.get(entry.habitId) || new Map<string, Entry>()
+    dates.set(entry.date, entry); byHabitDate.set(entry.habitId, dates)
+  }
+  return { byHabit, byDate, byHabitDate }
 }
 export function paused(habit: Habit, date: string): boolean { return habit.pauses.some(pause => pause.start <= date && (!pause.end || pause.end >= date)) }
 export function eligible(habit: Habit, date: string): boolean {

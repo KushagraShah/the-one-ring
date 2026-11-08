@@ -39,11 +39,11 @@ export function sessionAccountedFor(session: Session): boolean {
   return session.exercises.length > 0 && session.exercises.every(exercise => session.skipped.includes(exercise.name) || exerciseComplete(session, exercise))
 }
 
-export function recentPerformances(workouts: Workout[], target: Exercise, limit = Infinity): { date: string; exercise: WorkoutExercise }[] {
+export function recentPerformances(workouts: Workout[], target: Exercise, limit = Infinity, exact = false): { date: string; exercise: WorkoutExercise }[] {
   const results: { date: string; exercise: WorkoutExercise }[] = []
   if (limit <= 0) return results
-  for (const workout of workouts) for (const exercise of workout.exercises) {
-    if ((exercise.exerciseId && target.id ? exercise.exerciseId === target.id : exercise.name === target.name) &&
+  for (const workout of [...workouts].sort((a, b) => b.date.localeCompare(a.date))) for (const exercise of workout.exercises) {
+    if ((exercise.exerciseId && target.id ? exercise.exerciseId === target.id : exact && (exercise.exerciseId || target.id) ? false : exercise.name === target.name) &&
         (exercise.sets.length > 0 || exercise.cardio?.done)) {
       results.push({ date: workout.date, exercise })
       if (results.length >= limit) return results

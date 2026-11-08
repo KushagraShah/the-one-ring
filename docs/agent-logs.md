@@ -144,3 +144,19 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Added temporary demo-only workout and habit data spanning recent weeks, including linked exercise results, cardio, fixed and flexible habits, varied outcomes and notes. Labeled examples in both mini-apps; demo edits reset on refresh and are never automatically added to accounts. Included the previously local phase 5 insights in this branch change and bumped package versions to 0.3.5 for the requested push.
 - Build, 53 history tests, 18 phone-width fake-server browser tests, PWA and `git diff --check` passed under Node 20.20.2 (project requires Node 24). Tests cover demo/account separation, exact exercise identities, reset and backup. The local preview returned HTTP 200; real-device and live Supabase verification remain outstanding. No database migration, merge or public deployment was performed.
+
+## 2026-11-08 — Habit interaction review preview
+
+- Refreshed phone-first daily cards, entry controls, date and week navigation, management disclosure, form guidance and grouped insights. Week view now includes habits scheduled or recorded throughout the week; continuous note edits undo together and bulk Done explicitly confirms its fixed/flexible scope. Updated the README and setup/handoff docs. No data format or SQL changes.
+- Production build, 53 history tests, 19 phone-width fake-server browser tests and `git diff --check` passed under Node 20.20.2 (Node 24 is required). Chromium used repository-local cached libraries. Owner phone review and live Supabase verification remain outstanding; migration 006 was not applied. Changes are local and uncommitted; no push, merge or public deployment.
+
+## 2026-11-08 — Equal launcher tiles
+
+- Matched the workout and habit launcher tiles in size, styling and prominence and removed the habit preview badge. Added desktop and phone-width launcher/navigation coverage. The habit migration and verification status are unchanged; the work remains local for owner review.
+- Build, focused launcher browser test and `git diff --check` passed under Node 20.20.2, below the required Node 24. Real phone review remains outstanding; no push, deployment or database change.
+
+## 2026-11-08 — Habit preview branch push and migration review
+
+- The owner approved the local launcher revision and requested a feature-branch push before Supabase migration work and a later main merge. Bumped package metadata to 0.3.6 and expanded migration 006's local tests for cross-account separation, direct-table denial, malformed requests and retry identity. No live SQL or main merge was authorized.
+- Build, all four PGlite schema tests and `git diff --check` passed under Node 20.20.2 (Node 24 required); the earlier interaction round passed 19 browser tests, followed by the focused launcher test. Branch pushes do not deploy Pages.
+- Migration 006 still needs a disposable Supabase project, target/schema verification and real-account testing before it can be trusted or applied to the owner's project. PGlite and fake-server checks are not live-service evidence.

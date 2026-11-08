@@ -30,6 +30,10 @@
 [data-theme] .sidebar,[data-theme] .mobile-nav{background:#181919;border-color:#303232}
 [data-theme] .topbar,[data-theme] .detail-divider,[data-theme] .bottom-note{border-color:#303232}
 [data-theme] .workout-card,[data-theme] .coming-card,[data-theme] .quote-card,[data-theme] .detail-panel,[data-theme] .session-aside,[data-theme] .settings-card,[data-theme] .builder-day,[data-theme] .library-form,[data-theme] .library-item,[data-theme] .sync-panel,[data-theme] .rotation-panel,[data-theme] .exercise-card,[data-theme] .history-card{background:#1d1f1e;border-color:#383b3a}
+
+/* The launcher gives each mini-app equal space and prominence. */
+.dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:760px){.dashboard-grid{grid-template-columns:1fr;grid-auto-rows:1fr}.dashboard-grid .workout-card{min-height:240px}}
 [data-theme] .day-row{background:#1b1d1c;border-color:#343736}
 [data-theme] .day-row.selected,[data-theme] .side-link.active,[data-theme] .workout-paths .path-active,[data-theme] .round-bar,[data-theme] .warmup,[data-theme] .resume,[data-theme] .setup-note{background:color-mix(in srgb,var(--accent) 12%,#1a1c1b);border-color:color-mix(in srgb,var(--accent) 28%,#333);color:#eceeea}
 [data-theme] .workout-paths .path-active,[data-theme] .side-link.active,[data-theme] .up-next,[data-theme] .routine-badge,[data-theme] .round-icon,[data-theme] .text-button,[data-theme] .exercise-actions button,[data-theme] .add-exercise,[data-theme] .rotation-panel summary,[data-theme] .exercise-video{color:var(--accent)}

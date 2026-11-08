@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { PGlite } from '@electric-sql/pglite'
-import { SyncStore, type Kind } from '../src/sync/store'
-import { syncOnce, type SyncResult, type SyncTransport } from '../src/sync/engine'
+import { SyncStore, type Kind } from '../src/workout/legacy-sync/store'
+import { syncOnce, type SyncResult, type SyncTransport } from '../src/workout/legacy-sync/engine'
 
 if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto })
 const owner = '00000000-0000-4000-8000-000000000001'

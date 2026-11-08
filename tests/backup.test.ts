@@ -21,6 +21,12 @@ test('history snapshots survive validation and malformed plans are rejected', ()
   assert.deepEqual(parseBackup(JSON.stringify(data)), data)
   assert.throws(() => parseBackup(JSON.stringify({ ...data, data: { ...data.data, workouts: [{ ...workout, plan: [{ name: 'bad' }] }] } })))
 })
+test('identity corrections round trip and invalid original identity is rejected', () => {
+  const workout = { day: 'Push', date: '2026-01-01', exercises: [{ name: 'Press B', exerciseId: 'b', equipmentSnapshot: 'Machine B', correctedFrom: { name: 'Press A', exerciseId: 'a', equipment: 'Machine A' }, skipped: false, sets: [] }] }
+  const backup = { ...valid, data: { ...valid.data, workouts: [workout] } }
+  assert.deepEqual(parseBackup(JSON.stringify(backup)), backup)
+  assert.throws(() => parseBackup(JSON.stringify({ ...backup, data: { ...backup.data, workouts: [{ ...workout, exercises: [{ ...workout.exercises[0], correctedFrom: { name: 4 } }] }] } })))
+})
 test('restore prepares legacy records and rejects duplicate or invalid online IDs', () => {
   const legacy = { ...valid, library: [{ name: 'Press', equipment: '', sets: '' }] }
   const prepared = prepareRestore(parseBackup(JSON.stringify(legacy)), valid.days)

@@ -7,6 +7,8 @@ type Document = { kind: string; id: string; body: Record<string, unknown> }
 async function fakeBackend(page: Page) {
   let documents: Document[] = []
   let revision = 0
+  let habitData: unknown = null
+  let habitRevision = 0
   let offline = false
   let lastOperation = ''
   await page.route('https://mock.invalid/**', async route => {
@@ -14,7 +16,9 @@ async function fakeBackend(page: Page) {
     const request = route.request(); const path = new URL(request.url()).pathname
     if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }); return }
     let body: unknown
-    if (path === '/rest/v1/rpc/tor_online_workout_read') body = { revision, documents }
+    if (path === '/rest/v1/rpc/tor_online_habit_read') body = { revision: habitRevision, data: habitData }
+    else if (path === '/rest/v1/rpc/tor_online_habit_write') { const input = request.postDataJSON(); if (input.p_revision !== habitRevision) body = { status: 'conflict' }; else { habitData = input.p_data; habitRevision++; body = { status: 'ok', revision: habitRevision } } }
+    else if (path === '/rest/v1/rpc/tor_online_workout_read') body = { revision, documents }
     else if (path === '/rest/v1/rpc/tor_online_workout_write') {
       const input = request.postDataJSON()
       if (input.p_operation === lastOperation) body = { status: 'ok', revision }
@@ -69,13 +73,12 @@ test('demo resets after refresh', async ({ page }) => {
   await expect(page.getByText('1 of 4 days accounted for')).toBeVisible()
 })
 
-test('habit preview is independent of a failed workout load', async ({ page }) => {
+test('habit and workout load failures remain independent of navigation', async ({ page }) => {
   const backend = await fakeBackend(page)
   backend.offline(true)
   await page.goto('/')
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
-  await expect(page.getByRole('heading', { name: 'Habit Tracker' })).toBeVisible()
-  await expect(page.getByText('Habit tracking is not implemented yet.', { exact: false })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Could not load habits' })).toBeVisible()
   await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
   await expect(page.getByRole('heading', { name: 'Could not load workouts' })).toBeVisible()
   backend.offline(false)
@@ -109,6 +112,107 @@ test('switching mini-apps warns before discarding unconfirmed workout entries', 
   await expect(page.getByRole('heading', { name: 'Habit Tracker' })).toBeVisible()
   await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
   await expect(page.getByRole('button', { name: /Workout in progress/ })).toBeVisible()
+})
+
+test('create, record and correct a habit without changing workouts', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  const workoutsBefore = JSON.stringify(backend.records())
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Read')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  await page.getByRole('button', { name: /Read.*Not logged/ }).click()
+  await page.getByRole('button', { name: 'Partial', exact: true }).click()
+  await expect(page.getByRole('button', { name: /Read.*Partial/ })).toBeVisible()
+  await expect(page.getByRole('status', { name: '' })).toHaveCount(0)
+  expect(JSON.stringify(backend.records())).toBe(workoutsBefore)
+  await page.reload()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByRole('button', { name: /Read.*Partial/ })).toBeVisible()
+  await page.getByRole('button', { name: /Read.*Partial/ }).click()
+  await page.getByRole('button', { name: 'Clear outcome' }).click()
+  await expect(page.getByRole('button', { name: /Read.*Not logged/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Undo last update' }).click()
+  await expect(page.getByRole('button', { name: /Read.*Partial/ })).toBeVisible()
+})
+
+test('failed habit save can be retried without changing workouts', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  const workoutsBefore = JSON.stringify(backend.records())
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Reading')
+  backend.offline(true)
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect(page.getByRole('heading', { name: 'Could not save habits' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Export unsaved habits' })).toBeVisible()
+  backend.offline(false)
+  await page.getByRole('button', { name: 'Retry habit save' }).click()
+  await expect(page.getByRole('heading', { name: 'Could not save habits' })).toBeHidden()
+  expect(JSON.stringify(backend.records())).toBe(workoutsBefore)
+  await page.reload()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByRole('button', { name: /Reading.*Not logged/ })).toBeVisible()
+})
+
+test('full backup restores workout and habit scopes in demo', async ({ page }) => {
+  page.on('dialog', dialog => dialog.accept())
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Read')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export full backup' }).click()
+  const downloaded = await download
+  expect(downloaded.suggestedFilename()).toMatch(/^one-ring-full-.*\.json$/)
+  const path = await downloaded.path()
+  if (!path) throw new Error('Missing download')
+  const contents = readFileSync(path)
+  const parsed = JSON.parse(contents.toString())
+  expect(parsed.scope).toBe('full')
+  expect(parsed.habits.habits).toHaveLength(1)
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByLabel('Restore full backup').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: contents })
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await expect(page.getByText('Read', { exact: true })).toBeVisible()
+})
+
+test('historical schedule and outcome criteria survive effective-dated edits', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-08T12:00:00'))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Reading')
+  await page.getByLabel('Start date').fill('2026-11-02')
+  await page.getByText('Outcome criteria (optional)').click()
+  await page.getByLabel('Done', { exact: true }).fill('Previous standard')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await page.locator('.habit-form details').evaluate((details: HTMLDetailsElement) => { details.open = true })
+  await page.locator('.habit-form details textarea').first().fill('New standard')
+  await page.getByLabel('Sun', { exact: true }).uncheck()
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  await page.getByLabel('Date', { exact: true }).fill('2026-11-02')
+  await page.getByRole('button', { name: /Reading.*Not logged/ }).click()
+  await expect(page.getByText('Previous standard')).toBeVisible()
+  await page.getByLabel('Date', { exact: true }).fill('2026-11-08')
+  await expect(page.getByText('No habits scheduled for this date.')).toBeVisible()
 })
 
 test('settings displays the version from package metadata', async ({ page }) => {
@@ -177,7 +281,7 @@ test('export and restore validate before replacement and retry a failed restore'
   const invalid = structuredClone(backup)
   invalid.library[0].id = 'not-a-uuid'
   const rejected = page.waitForEvent('dialog')
-  await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) })
+  await page.getByLabel('Restore backup', { exact: true }).setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) })
   expect((await rejected).message()).toContain('Unable to restore')
   expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
 
@@ -187,7 +291,7 @@ test('export and restore validate before replacement and retry a failed restore'
   await expect.poll(() => backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push', 'Pull'])
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   backend.offline(true)
-  await page.locator('input[type=file]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: contents })
+  await page.getByLabel('Restore backup', { exact: true }).setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: contents })
   await expect(page.getByText('Could not save workout data')).toBeVisible()
   expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push', 'Pull'])
   backend.offline(false)

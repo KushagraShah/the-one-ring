@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto'
 import { webcrypto } from 'node:crypto'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { SyncStore } from '../src/sync/store'
-import { syncOnce, type SyncTransport } from '../src/sync/engine'
+import { SyncStore } from '../src/workout/legacy-sync/store'
+import { syncOnce, type SyncTransport } from '../src/workout/legacy-sync/engine'
 
 if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto })
 const record = (name: string) => ({ kind: 'exercise' as const, id: 'exercise-1', body: { name }, deleted: false })

@@ -1,4 +1,4 @@
-import { workspaceDocuments } from '../sync/workspace'
+import { workspaceDocuments } from './workspace'
 import { parseBackup, type Backup } from './backup'
 
 /** Prepare and validate the entire replacement before changing the current workspace. */

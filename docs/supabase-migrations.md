@@ -1,5 +1,14 @@
 # Supabase migrations and sync testing
 
+## Mini-app ownership inventory
+
+- **Shared:** Supabase Auth owns accounts. Appearance is currently a browser preference; there is no separate shared app-data table.
+- **Active Workout Tracker:** `tor_online_workout_heads` and `tor_online_workout_records`, accessed through `tor_online_workout_read` and `tor_online_workout_write`. Migration 005 replaces the write function with the history-format client guard. These are workout-only, even though records include workout settings.
+- **Older Workout Tracker experiments:** migration 001's 16 normalized workout tables and migration 002's `tor_sync_records`, `tor_sync_batches` and `tor_apply_sync_batch` are not the active online workspace. The old client code is under `src/workout/legacy-sync/`; retained does not mean these tables are safe to delete or rerun.
+- **Habit Tracker:** the skeleton has no database tables or persistence. Future habit tables/RPCs should have a distinct habit-specific namespace and concurrency boundary; their schema is not yet designed. No SQL or database objects were modified for the skeleton.
+
+This inventory is based on repository migrations and owner reports, not a live schema inspection. All objects currently use the existing Supabase project; conceptual ownership does not imply separate physical schemas. See the safety instructions below before any migration.
+
 ## Online-only development migration
 
 **Activity/history client guard:** `supabase/migrations/202611070005_history_client_guard.sql` replaces the existing online-write function to reject older clients after an account adopts history format 2. The owner reported applying it on 2026-11-07. It is tested with PGlite, but live guard behavior has not been independently tested. For other projects, verify the target and that migration 004 is present before applying 005. SQL Editor execution does not necessarily update migration history. Do not rerun migrations or reset the database.

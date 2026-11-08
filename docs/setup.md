@@ -36,7 +36,7 @@ The owner removed Supabase's separate GitHub integration after it attempted to a
 
 ## Current preview
 
-The overhaul branch separates the shared launcher (`src/app/`), workout (`src/workout/`) and habit tracker (`src/habits/`). Habit tracking is a local preview: demo habits are temporary, and signed-in habit storage requires the new migration 006, which has not been reported applied to the owner's project. See [migration guidance](supabase-migrations.md) before applying SQL. The launcher and each mini-app remain independently accessible on load failure; account workout and habit data stay in separate revision-checked stores. Real Supabase and phone testing remain outstanding.
+The shared launcher (`src/app/`), workout (`src/workout/`) and habit tracker (`src/habits/`) are separate. Demo habits are temporary, and signed-in habit storage requires migration 006, which the owner reports applying successfully on 2026-11-08. Do not rerun it; see the [migration procedure](supabase-migrations.md#migration-006-manual-preflight-and-application) for other projects. The launcher and each mini-app remain independently accessible on load failure; account workout and habit data stay in separate revision-checked stores. Real account isolation, conflict/recovery and deployed phone testing remain outstanding.
 
 The launcher presents Workout Tracker and Habit Tracker as equal-sized, equally styled app tiles. The habit tile has no preview badge; this visual choice does not change the local preview's migration and verification status.
 

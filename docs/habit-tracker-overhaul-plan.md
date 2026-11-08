@@ -1,6 +1,6 @@
 # Habit Tracker and mini-app separation: handoff plan
 
-This records the owner's 2026-11-07 discussion and implementation approach. The owner reviewed phases 0–1 and said the local preview looks good. The owner said the phases 2–4 preview was not broken but needs significant interface work; it was pushed as v0.3.4. Phase 5 insights and fictional demo histories are in the branch preview, with more interface improvements still expected. The new habit migration is not applied to the owner's project; real-service and owner interaction verification remain outstanding. Read `AGENTS.md`, `README.md`, `docs/setup.md` and `docs/supabase-migrations.md` before future work.
+This records the owner's 2026-11-07 discussion and implementation approach. The owner reviewed phases 0–1 and later requested substantial interface improvements, then approved the revised local preview. On 2026-11-08 the owner reported applying migration 006 successfully and requested deployment as v0.4.0. Real-account security and recovery tests and deployed phone verification remain outstanding. Read `AGENTS.md`, `README.md`, `docs/setup.md` and `docs/supabase-migrations.md` before future work.
 
 ## Direction and sequence
 

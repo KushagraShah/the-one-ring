@@ -160,3 +160,16 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 - The owner approved the local launcher revision and requested a feature-branch push before Supabase migration work and a later main merge. Bumped package metadata to 0.3.6 and expanded migration 006's local tests for cross-account separation, direct-table denial, malformed requests and retry identity. No live SQL or main merge was authorized.
 - Build, all four PGlite schema tests and `git diff --check` passed under Node 20.20.2 (Node 24 required); the earlier interaction round passed 19 browser tests, followed by the focused launcher test. Branch pushes do not deploy Pages.
 - Migration 006 still needs a disposable Supabase project, target/schema verification and real-account testing before it can be trusted or applied to the owner's project. PGlite and fake-server checks are not live-service evidence.
+
+## 2026-11-08 — Prepare manual habit migration
+
+- The owner checked and confirmed migration 006 had not been run and plans to apply it manually. Reviewed the existing workout and habit protocols and left migration 006 unchanged. Added a target/backup checklist and read-only preflight and post-application permission queries, with stop conditions and real-service follow-up, in `docs/supabase-migrations.md`.
+- Added a PGlite test that runs the exact documented queries against migrations 004, 005 and 006; the two targeted habit schema tests passed under Node 20.20.2 (Node 24 required). No live SQL, push, merge or deployment was performed. Disposable Supabase, real account isolation, recovery and phone verification remain outstanding.
+
+## 2026-11-08 — Correct migration backup guidance
+
+- The owner reiterated that there is no real workout data and asked us to stop recommending unnecessary backups. Removed the backup step from the migration preflight and clarified the handoff. No SQL, application code or deployment changed.
+
+## 2026-11-08 — v0.4.0 merge and deployment
+
+- The owner reported manually applying migration 006 and that checks were good, then authorized merging and Pages deployment as v0.4.0. Updated package versions and current documentation. This does not establish real two-account isolation, conflict, failure/retry or phone behavior. Do not rerun migration 006.

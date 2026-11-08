@@ -44,3 +44,33 @@ test('habit writes isolate accounts, reject stale edits and retry idempotently',
     await assert.rejects(write(a, 1, op2, data))
   } finally { await db.close() }
 })
+
+test('documented habit migration checks match before and after states', async () => {
+  const docs = await readFile(new URL('../docs/supabase-migrations.md', import.meta.url), 'utf8')
+  const queries = [...docs.matchAll(/```sql\n([\s\S]*?)\n\s*```/g)].map(match => match[1])
+  const preflight = queries.find(query => query.includes('history_guard_marker_present'))
+  const verification = queries.find(query => query.includes('habit_functions_security_definer'))
+  assert.ok(preflight && verification, 'Migration checks are present in the runbook')
+  const workout = await readFile(new URL('../supabase/migrations/202611070004_online_workouts.sql', import.meta.url), 'utf8')
+  const guard = await readFile(new URL('../supabase/migrations/202611070005_history_client_guard.sql', import.meta.url), 'utf8')
+  const db = new PGlite()
+  try {
+    await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;`)
+    await db.exec(workout)
+    await db.exec(guard)
+    const before = (await db.query(preflight)).rows[0]
+    assert.equal(before.workout_heads_exist, true)
+    assert.equal(before.workout_records_exist, true)
+    assert.equal(before.workout_read_exists, true)
+    assert.equal(before.workout_write_exists, true)
+    assert.equal(before.history_guard_marker_present, true)
+    assert.equal(before.habit_table_exists, false)
+    assert.equal(Number(before.habit_function_count), 0)
+    await db.exec(migration)
+    const after = (await db.query(verification)).rows[0]
+    assert.deepEqual(Object.values(after), [true, true, true, true, true])
+    const repeat = (await db.query(preflight)).rows[0]
+    assert.equal(repeat.habit_table_exists, true)
+    assert.equal(Number(repeat.habit_function_count), 2)
+  } finally { await db.close() }
+})

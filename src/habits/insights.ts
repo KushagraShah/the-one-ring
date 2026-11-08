@@ -54,6 +54,7 @@ export function habitStreak(habit: Habit, entries: Entry[], today: string): { su
     if (versionAt(habit.schedules, day)?.kind !== 'fixed') break
     if (!eligible(habit, day)) continue
     const outcome = records.get(day)?.outcome
+    if (day === today && !outcome) continue // Today is still in progress, not a missed opportunity.
     if (successOpen && outcome === 'done') success++; else successOpen = false
     if (engagementOpen && (outcome === 'done' || outcome === 'partial' || outcome === 'skipped')) engagement++; else engagementOpen = false
     if (!successOpen && !engagementOpen) break

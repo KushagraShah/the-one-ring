@@ -6,7 +6,7 @@ import { recentPerformances } from './sessionLogic'
 import { formatResult } from './ResultTable'
 import { WorkoutStats } from './WorkoutStats'
 import { CardioInsights } from './CardioInsights'
-import { InfoTip } from './InfoTip'
+import { InfoTip } from '../InfoTip'
 
 export function ExerciseDetails({ exercise, workouts, onOpenWorkout }: { exercise: Exercise; workouts: Workout[]; onOpenWorkout?: (result: WorkoutExercise) => void }) {
   const [limit, setLimit] = useState(10)

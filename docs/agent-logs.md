@@ -201,3 +201,21 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — Prepare v0.4.3 maintenance push
 
 - The owner authorized pushing the optimization and consistency work. Set both package versions to v0.4.3: this maintenance-only scope warrants a patch, not a semantic minor release. No tag, GitHub Release, SQL change or migration is included. Check the resulting Pages workflow and deployed version; local checks and their limitations are recorded above.
+
+## 2026-11-08 — Workout study and owner direction
+
+- Documented the Notion workflow, comparison with the current implementation and sourced research, plus the owner's feedback and proposed workout direction. Clarified ongoing phone review, deferred offline work, contextual help for habits later and the distinction between routine, setup and workout-record changes.
+- Documentation only; no application code, build, deployment or migration. Existing real Supabase isolation/conflict/recovery limitations remain; proposals are not implemented.
+
+## 2026-11-08 — Exercise views and workout insights
+
+- Added expandable exact-exercise context/history and strength/cardio insights, a session overview, contextual help, explicit workout completion after notes/extras, activity counts, and historical workout-date and completed-result identity corrections. Corrections retain original plan/identity and do not recompute cycle progress; a date applies to the whole workout. Kept existing three-set entry, quick context, online-only storage and habit UI.
+- Production build, config, PWA, 62 history/unit tests and 24 fake-server browser tests passed; targeted browser tests passed again after the final view change. Checks used Node 20.20.2 rather than required Node 24. Vite warns the main bundle exceeds 500 kB; real Supabase isolation/conflict behavior remains unverified. No migration, commit, push or deployment was performed.
+
+## 2026-11-08 — Prepare v1.0.0 deployment
+
+- The owner chose to retain one shared date per workout and authorized deployment as a major release. Updated package metadata to v1.0.0; this version does not imply live Supabase isolation or recovery has been fully verified. No tag, GitHub Release or database migration is included. Check the Pages workflow and deployed version after push.
+
+## 2026-11-08 — Correct version convention
+
+- The owner clarified the project's versioning convention: increment the final component for smaller updates, the middle component for major updates, and the first component for a new mini-app or major framework overhaul. The owner explicitly authorized rewriting the v1.0.0 commit and force-pushing v0.6.0. No tag or GitHub Release is included; verify the resulting Pages workflow and deployed version. The prior v1.0.0 deployment succeeded before this correction.

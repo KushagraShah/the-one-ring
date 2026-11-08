@@ -59,7 +59,7 @@ test('routine editor exposes a draft and explicit save', () => {
 })
 
 test('exercise library exposes search, tags and reversible archive', () => {
-  const html = renderToStaticMarkup(React.createElement(ExerciseLibrary, { exercises: [{ ...exercise, tags: ['Chest'] }], onSave: noop, onBack: noop }))
+  const html = renderToStaticMarkup(React.createElement(ExerciseLibrary, { exercises: [{ ...exercise, tags: ['Chest'] }], workouts: [], onSave: noop, onBack: noop }))
   assert.match(html, /Exercise, equipment or tag/)
   assert.match(html, /Chest/)
   assert.match(html, /Show archived/)

@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import { ArrowLeft, Plus } from 'lucide-react'
+import type { Workout } from './WorkoutSession'
+import { ExerciseDetails } from './ExerciseDetails'
 
 export type Exercise = { id?: string; name: string; equipment: string; sets: string; kind?: 'strength' | 'cardio'; note?: string; instructions?: string; video?: string; tags?: string[]; archived?: boolean; alternatives?: string[]; rotationGroupId?: string; rotationMode?: 'primary' | 'complement'; plannedName?: string; plannedId?: string; routineSlotId?: string; sessionSlotId?: string; sessionItemId?: string; sessionSource?: 'planned' | 'cycle' | 'substitution' | 'extra' }
 
 type Props = {
   exercises: Exercise[]
+  workouts: Workout[]
   onSave: (exercises: Exercise[]) => void
   onBack: () => void
 }
 
 const empty: Exercise = { name: '', equipment: '', sets: '', note: '', instructions: '', video: '' }
 
-export function ExerciseLibrary({ exercises, onSave, onBack }: Props) {
+export function ExerciseLibrary({ exercises, workouts, onSave, onBack }: Props) {
   const [editing, setEditing] = useState<Exercise | null>(null)
   const [originalName, setOriginalName] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -54,6 +57,6 @@ export function ExerciseLibrary({ exercises, onSave, onBack }: Props) {
     </form>}
     <div className="library-filters"><label>Search<input type="search" placeholder="Exercise, equipment or tag" value={search} onChange={event => setSearch(event.target.value)}/></label><label>Tag<select value={tagFilter} onChange={event => setTagFilter(event.target.value)}><option value="">All tags</option>{tags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></label><label className="library-archive-filter"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)}/> Show archived</label></div>
     <p className="library-count">{visible.length} {visible.length === 1 ? 'exercise' : 'exercises'} · Archiving hides an exercise here without changing routines or history.</p>
-    <div className="library-list">{visible.length === 0 && <p>No exercises match. Try another search or tag.</p>}{visible.map(exercise => <article className="library-item" key={exercise.id || exercise.name}><div><strong>{exercise.name}{exercise.archived ? ' · Archived' : ''}</strong><small>{exercise.equipment || 'No equipment specified'}</small>{Boolean(exercise.tags?.length) && <div className="library-tags">{exercise.tags?.map(tag => <span key={tag}>{tag}</span>)}</div>}{exercise.note && <p>{exercise.note}</p>}</div><div className="library-item-actions"><button className="outline-button" onClick={() => { setOriginalName(exercise.name); setEditing({ ...exercise }); setTagText((exercise.tags || []).join(', ')); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button><button className="outline-button" onClick={() => onSave(exercises.map(item => item === exercise ? { ...item, archived: !item.archived } : item))}>{exercise.archived ? 'Unarchive' : 'Archive'}</button></div></article>)}</div>
+    <div className="library-list">{visible.length === 0 && <p>No exercises match. Try another search or tag.</p>}{visible.map(exercise => <article className="library-item" key={exercise.id || exercise.name}><div><strong>{exercise.name}{exercise.archived ? ' · Archived' : ''}</strong><small>{exercise.equipment || 'No equipment specified'}</small>{Boolean(exercise.tags?.length) && <div className="library-tags">{exercise.tags?.map(tag => <span key={tag}>{tag}</span>)}</div>}{exercise.note && <p>{exercise.note}</p>}<ExerciseDetails exercise={exercise} workouts={workouts}/></div><div className="library-item-actions"><button className="outline-button" onClick={() => { setOriginalName(exercise.name); setEditing({ ...exercise }); setTagText((exercise.tags || []).join(',')); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button><button className="outline-button" onClick={() => onSave(exercises.map(item => item === exercise ? { ...item, archived: !item.archived } : item))}>{exercise.archived ? 'Unarchive' : 'Archive'}</button></div></article>)}</div>
   </>
 }

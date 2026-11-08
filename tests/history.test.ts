@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { previousFor, startingSets, type Workout } from '../src/workout/WorkoutSession'
 import { addSessionExercise, adjacentExercise, recentPerformances, replaceSessionExercise, sessionAccountedFor, toggleSessionSkip } from '../src/workout/sessionLogic'
 import { formatResult } from '../src/workout/ResultTable'
+import { workoutInsights } from '../src/workout/Insights'
 
 const workouts: Workout[] = [{ day: 'Push', date: '2026-01-01', exercises: [{ name: 'Old name', exerciseId: 'machine-one', skipped: false, sets: [12, 10, 8].map(reps => ({ weight: '20', reps: String(reps), done: true })) }] }]
 
@@ -27,6 +28,21 @@ test('different equipment does not share history merely because names match', ()
 test('legacy records without IDs can still be found by their old name', () => {
   const legacy = [{ ...workouts[0], exercises: workouts[0].exercises.map(({ exerciseId: _id, ...item }) => item) }]
   assert.ok(previousFor(legacy, { id: 'machine-one', name: 'Old name', equipment: '', sets: '' }))
+})
+
+test('exact exercise detail excludes ambiguous legacy records and uses corrected dates', () => {
+  const target = { id: 'machine-one', name: 'Old name', equipment: '', sets: '' }
+  const legacy = { ...workouts[0], date: '2026-01-03', exercises: workouts[0].exercises.map(({ exerciseId: _id, ...item }) => item) }
+  const later = { ...workouts[0], date: '2026-01-02' }
+  assert.deepEqual(recentPerformances([workouts[0], legacy, later], target, Infinity, true).map(item => item.date), ['2026-01-02', '2026-01-01'])
+})
+
+test('activity insights count completed sessions and local training days, not skips or future workouts', () => {
+  const date = (day: number) => new Date(2026, 0, day, 12).toISOString()
+  const completed = { ...workouts[0], date: date(8) }
+  const skipped = { ...completed, date: date(7), exercises: completed.exercises.map(item => ({ ...item, sets: [], skipped: true })) }
+  const future = { ...completed, date: date(11) }
+  assert.deepEqual(workoutInsights([completed, completed, skipped, future], 7, new Date(2026, 0, 10, 12)), { sessions: 2, days: 1, weeks: 1, exercises: 1, results: 2 })
 })
 
 test('a session is accounted for only when each exercise is completed or skipped', () => {

@@ -8,7 +8,6 @@ import { parseBackup, type Backup, type CycleEvent } from './backup'
 import { prepareRestore } from './restore'
 import { memoryStorage, OnlineWorkoutStore, seedStorage, type SaveStatus } from './online'
 import { advanceRotations, planExercises, type Rotation } from './rotations'
-import { sessionAccountedFor } from './sessionLogic'
 import { RoutineBuilder, type RoutineDay } from './RoutineBuilder'
 import { mapCycleDays } from './routineDraft'
 import { ConfirmDialog } from '../ConfirmDialog'
@@ -123,8 +122,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   const currentDay = days.find(day => day.name === selectedDay) || nextDay
   const session = data.session
   const updateSession = (next: Session) => {
-    if (sessionAccountedFor(next)) finishSession(next)
-    else save({ ...data, session: next })
+    save({ ...data, session: next })
   }
   const saveRoutineDraft = (nextDays: RoutineDay[], nextRotations: Rotation[], names: Record<string, string | null>, baseline: string) => {
     if (session) { setNotice('Finish or cancel the active workout before saving routine changes.'); return false }
@@ -176,7 +174,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   }
   const finish = () => {
     if (!session) return
-    setConfirmation({ title: 'Finish workout early?', message: `Unfinished exercises will not be saved as completed.${sessionDirty ? ' Unconfirmed result and setup edits will be discarded.' : ''}`, label: 'Finish workout', action: () => finishSession(session) })
+    setConfirmation({ title: 'Finish workout?', message: `Unfinished exercises will not be saved as completed.${sessionDirty ? ' Unconfirmed result and setup edits will be discarded.' : ''}`, label: 'Finish workout', action: () => finishSession(session) })
   }
   const cancelSession = () => {
     if (!session) return
@@ -249,9 +247,9 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
       <div className="routine-layout"><section><div className="section-head compact"><div><div className="eyebrow muted">YOUR CURRENT ROUTINE</div><h2>{book.routines.find(routine => routine.id === book.active)?.name || 'Your routine'} <span className="routine-badge">ACTIVE</span></h2><p>Choose any day, at your own pace.</p></div></div><div className="round-bar"><div><span className="round-icon"><RotateCcw size={16}/></span><span><strong>Your current cycle</strong><small>{data.completed.length} of {days.length} days accounted for</small></span></div><button onClick={() => { if (window.confirm('Start a fresh cycle? Current cycle progress will be cleared.')) { recordCycle([{ type: 'reset' }]); save({ ...data, completed: [], skippedDays: [] }) } }}>Reset cycle</button></div><div className="day-list">{days.map((day, i) => <button className={`day-row ${currentDay.name === day.name ? 'selected' : ''}`} key={day.name} onClick={() => setSelectedDay(day.name)}><span className={`day-number ${data.completed.includes(day.name) ? 'done' : ''}`}>{data.skippedDays?.includes(day.name) ? '–' : data.completed.includes(day.name) ? <Check size={16}/> : `0${i + 1}`}</span><span className="day-info"><strong>{day.name} day {day.name === nextDay.name && <span className="up-next">UP NEXT</span>}</strong><small>{data.skippedDays?.includes(day.name) ? 'Skipped this cycle' : data.completed.includes(day.name) ? 'Completed this cycle' : day.subtitle}</small></span><span className="day-count">{day.exercises.length} exercises</span><ChevronRight size={17}/></button>)}</div><div className="helper"><Sparkles size={16}/><span>Life doesn’t follow a schedule. Choose any day, any time.</span></div></section>
       <aside className="detail-panel"><div className="detail-top"><span className="eyebrow muted">THE GAME PLAN</span><span className="detail-number">0{days.indexOf(currentDay) + 1}</span></div><h2>{currentDay.name} day<span className="accent">.</span></h2><p>{currentDay.subtitle}</p><div className="detail-divider"/><div className="detail-label">ON THE LIST <span>{currentDay.exercises.length} EXERCISES</span></div><div className="preview-exercises">{planExercises(currentDay.name, currentDay.exercises, library, rotations).map((e, i) => <div key={e.name}><span>{String(i + 1).padStart(2, '0')}</span><strong>{e.name}</strong></div>)}</div><button className="primary wide" onClick={() => start(currentDay)}>Start {currentDay.name.toLowerCase()} day <ArrowRight size={17}/></button>{!data.completed.includes(currentDay.name) && <button className="text-button" onClick={() => skipDay(currentDay.name)}>Skip this day in the cycle</button>}<p className="detail-hint">Switch things up anytime. This is your workout.</p></aside></div></>}
     {page === 'builder' && <RoutineBuilder key={book.active} days={days} library={library} rotations={rotations} routines={book.routines} activeRoutine={book.active} hasSession={Boolean(session)} onDirty={setBuilderDirty} onSave={saveRoutineDraft} onLibrary={() => setPage('library')} onNew={createRoutine} onSwitch={switchRoutine} onCancelWorkout={() => { save({ ...data, session: null }); setSessionDirty(false); setNotice('Workout cancelled. Your routine draft is unchanged.') }}/>}
-    {page === 'library' && <ExerciseLibrary exercises={library} onSave={saveLibrary} onBack={() => setPage('builder')}/>}
+    {page === 'library' && <ExerciseLibrary exercises={library} workouts={data.workouts} onSave={saveLibrary} onBack={() => setPage('builder')}/>}
     {page === 'session' && session && <WorkoutSession session={session} workouts={data.workouts} library={library} rotations={rotations} onChange={updateSession} onFinish={finish} onCancel={cancelSession} onDirty={setSessionDirty} onBack={() => setPage('routine')} onSetup={updateSetup}/>}
-    {page === 'activity' && <Activity openLatest={reviewLatest} workouts={data.workouts} library={library} cycleHistory={book.routines.flatMap(routine => (routine.cycleHistory || []).map(event => ({ routine: event.routineName || routine.name, event })))} onSave={(workoutIndex, exerciseIndex, next) => save({ ...data, workouts: data.workouts.map((workout, index) => index === workoutIndex ? { ...workout, exercises: workout.exercises.map((item, i) => i === exerciseIndex ? next : item) } : workout) })}/>}
+    {page === 'activity' && <Activity openLatest={reviewLatest} workouts={data.workouts} library={library} cycleHistory={book.routines.flatMap(routine => (routine.cycleHistory || []).map(event => ({ routine: event.routineName || routine.name, event })))} onSave={(workoutIndex, exerciseIndex, next) => save({ ...data, workouts: data.workouts.map((workout, index) => index === workoutIndex ? { ...workout, exercises: workout.exercises.map((item, i) => i === exerciseIndex ? next : item) } : workout) })} onSaveWorkout={(workoutIndex, next) => save({ ...data, workouts: data.workouts.map((workout, index) => index === workoutIndex ? next : workout) })}/>}
     </div>
     <div hidden={view !== 'settings'} className="settings-card"><h3>Workout backup</h3><p>Export or restore workout data only. Restoring replaces the current workout data.</p><div className="settings-actions"><button className="outline-button" onClick={exportData}><ArrowDownToLine size={16}/> Export backup</button><label className="outline-button file-button"><RotateCcw size={16}/> Restore backup<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }}/></label></div></div>
   </>

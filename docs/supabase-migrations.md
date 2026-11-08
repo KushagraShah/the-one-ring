@@ -9,7 +9,7 @@
 
 This inventory is based on repository migrations and owner reports, not a live schema inspection. All objects currently use the existing Supabase project; conceptual ownership does not imply separate physical schemas. See the safety instructions below before any migration.
 
-The owner reports migration 006 was applied manually to the existing project; real-account isolation, conflict, failure/retry and phone checks remain outstanding. Testing in a disposable Supabase project and accounts first was not reported. Do not rerun migrations or reset any database. Never send credentials in chat. SQL Editor execution does not necessarily record migration history.
+The owner reports migration 006 was applied manually to the existing project; real-account isolation, conflict and failure/retry checks remain unverified. Testing in a disposable Supabase project and accounts first was not reported. Do not rerun migrations or reset any database. Never send credentials in chat. SQL Editor execution does not necessarily record migration history.
 
 ## Migration 006: manual preflight and application
 

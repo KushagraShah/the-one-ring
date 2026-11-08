@@ -4,11 +4,12 @@ import type { Exercise } from './ExerciseLibrary'
 import type { Rotation } from './rotations'
 import { addSessionExercise, adjacentExercise, exerciseComplete, recentPerformances, replaceSessionExercise, sessionAccountedFor, toggleSessionSkip } from './sessionLogic'
 import { ResultTable } from './ResultTable'
+import { ExerciseDetails } from './ExerciseDetails'
 
 export type SetEntry = { weight: string; reps: string; done: boolean }
 export type CardioEntry = { duration: string; speed: string; incline: string; done: boolean }
 export type PlannedExercise = { slotId: string; name: string; exerciseId?: string; equipment: string; cycleId?: string; cycleName?: string }
-export type WorkoutExercise = { id?: string; name: string; exerciseId?: string; plannedName?: string; plannedId?: string; equipmentSnapshot?: string; sessionSlotId?: string; source?: Exercise['sessionSource']; sets: SetEntry[]; skipped: boolean; note?: string; cardio?: CardioEntry }
+export type WorkoutExercise = { id?: string; name: string; exerciseId?: string; plannedName?: string; plannedId?: string; equipmentSnapshot?: string; correctedFrom?: { name: string; exerciseId?: string; equipment?: string }; sessionSlotId?: string; source?: Exercise['sessionSource']; sets: SetEntry[]; skipped: boolean; note?: string; cardio?: CardioEntry }
 export type Workout = { id?: string; day: string; dayId?: string; date: string; exercises: WorkoutExercise[]; startedAt?: string; routineId?: string; routineName?: string; plan?: PlannedExercise[] }
 export type Session = { id?: string; day: string; dayId?: string; exercises: Exercise[]; entries: Record<string, SetEntry[]>; skipped: string[]; warmups: string[]; notes?: Record<string, string>; cardio?: Record<string, CardioEntry>; startedAt?: string; routineId?: string; routineName?: string; plan?: PlannedExercise[] }
 
@@ -63,9 +64,7 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
     setDrafts(current => ({ ...current, [name]: Array.from({ length: Math.max(3, stored.length) }, (_, i) => ({ ...(stored[i] || { reps: '', done: false }), weight: value, done: false })) }))
   }
   const updateCardio = (name: string, patch: Partial<CardioEntry>) => setCardioDrafts(current => ({ ...current, [name]: { ...(current[name] || session.cardio?.[name] || blankCardio()), ...patch } }))
-  const commit = (next: Session, name: string, discardSetup = false) => {
-    const otherEdits = Object.keys(drafts).some(item => item !== name) || Object.keys(cardioDrafts).some(item => item !== name) || Boolean(setupEdit && !discardSetup)
-    if (sessionAccountedFor(next) && otherEdits && !window.confirm('This finishes the workout. Discard unconfirmed edits to other results or setup?')) return false
+  const commit = (next: Session) => {
     onChange(next); return true
   }
   const add = () => {
@@ -91,7 +90,10 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
   }
   return <>
     <button className="back-link" onClick={onBack}><ArrowLeft size={15}/> Leave and resume later</button>
-    <div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> WORKOUT IN PROGRESS</div><h1>{session.day === 'Free workout' ? session.day : `${session.day} day`}<span className="accent">.</span></h1><p>Choose exercises in any order.</p></div><div><button className="outline-button" onClick={onCancel}>Cancel workout</button> <button className="outline-button" onClick={onFinish}>Finish early <Check size={17}/></button></div></div>
+    <div className="page-heading"><div><div className="eyebrow"><span className="live-dot"/> WORKOUT IN PROGRESS</div><h1>{session.day === 'Free workout' ? session.day : `${session.day} day`}<span className="accent">.</span></h1><p>Choose exercises in any order.</p></div><div><button className="outline-button" onClick={onCancel}>Cancel workout</button> <button className="outline-button" onClick={onFinish}>{sessionAccountedFor(session) ? 'Finish workout' : 'Finish early'} <Check size={17}/></button></div></div>
+    {sessionAccountedFor(session) && <div className="notice" role="status">All exercises are accounted for. Add notes or extras, then finish the workout.</div>}
+    <details className="exercise-details"><summary>About changes during a workout ⓘ</summary><p>Setup edits update this exercise in your library. Results and today’s notes are saved to this workout. Replacements and extras do not change your saved routine. Finish the workout to record cycle progress.</p></details>
+    {session.exercises.length > 0 && <details className="exercise-details"><summary>Workout overview · {session.exercises.length} exercises</summary><div className="session-overview">{session.exercises.map(item => <button className="outline-button" key={item.sessionItemId || item.name} onClick={() => { if (setupEdit && !window.confirm('Discard unsaved setup changes?')) return; setSetupEdit(null); setExpanded(item.name); setError('') }}>{item.name} · {session.skipped.includes(item.name) ? 'Skipped' : exerciseComplete(session, item) ? 'Completed' : 'Not completed'}{expanded === item.name ? ' · Current' : ''}</button>)}</div></details>}
     <div className="session-layout"><section>
       {session.exercises.length === 0 && <p>Add an exercise to start this workout.</p>}
       {error && <p role="alert" className="form-error">{error}</p>}
@@ -114,6 +116,7 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
             <div className="setup-note"><strong>Setup</strong>{setupEdit === exercise.name ? <><label className="session-note">Machine setup<textarea rows={5} value={setupDraft} onChange={event => setSetupDraft(event.target.value)} placeholder={'- Seat height\n- Grip and precautions'}/></label><button className="outline-button" onClick={() => { onSetup(exercise, setupDraft); setSetupEdit(null) }}>Save setup</button> <button className="text-button" onClick={() => setSetupEdit(null)}>Cancel</button></> : <><p className="setup-text">{exercise.note || 'No setup notes yet.'}</p><button className="text-button" onClick={() => { setSetupDraft(exercise.note || ''); setSetupEdit(exercise.name) }}>Edit setup</button></>}</div>
             {exercise.instructions && <p className="exercise-instructions">{exercise.instructions}</p>}
             {exercise.video && <a className="exercise-video" href={exercise.video} target="_blank" rel="noreferrer">Watch reference video ↗</a>}
+            <ExerciseDetails key={exercise.id || exercise.name} exercise={exercise} workouts={workouts}/>
             <div className="previous"><strong>Recent results</strong>{previous.length ? <table className="recent-table"><thead><tr><th scope="col">Date</th><th scope="col">{cardioType ? 'Result' : 'Reps × weight'}</th></tr></thead><tbody>{previous.map(({ date, exercise: result }, i) => <tr key={`${date}-${i}`}><td>{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td><td><ResultTable sets={result.sets} cardio={result.cardio}/>{result.note && <small className="previous-note">{result.note}</small>}</td></tr>)}</tbody></table> : <p>No previous record</p>}</div>
             <p className="entry-hint">{previous.length ? 'Previous values are a starting point. Confirm today’s result with the tick.' : 'Enter today’s result and confirm with the tick.'}</p>
             {completed && editing !== exercise.name ? <div className="result-locked"><strong>Log saved</strong><ResultTable sets={session.entries[exercise.name] || []} cardio={cardioType ? cardio : undefined}/><button className="outline-button" onClick={() => setEditing(exercise.name)}>Edit log</button></div> : <>
@@ -128,17 +131,17 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
             <button className="primary confirm-result" aria-label="Save exercise log" onClick={() => {
               if (cardioType) {
                 if (!cardio.duration || !Number.isFinite(Number(cardio.duration)) || Number(cardio.duration) < 0 || [cardio.speed, cardio.incline].some(value => value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0))) { setError('Enter a valid duration and nonnegative cardio values.'); return }
-                if (!commit({ ...session, skipped: session.skipped.filter(item => item !== exercise.name), cardio: { ...session.cardio, [exercise.name]: { ...cardio, done: true } } }, exercise.name)) return
+                if (!commit({ ...session, skipped: session.skipped.filter(item => item !== exercise.name), cardio: { ...session.cardio, [exercise.name]: { ...cardio, done: true } } })) return
                 setCardioDrafts(current => { const next = { ...current }; delete next[exercise.name]; return next })
               } else {
                 if (entries.length !== 3 || entries.some(set => set.reps === '' || !Number.isInteger(Number(set.reps)) || Number(set.reps) < 0 || (set.weight !== '' && (!Number.isFinite(Number(set.weight)) || Number(set.weight) < 0)))) { setError('Enter reps for all three sets. Weight can be left blank for bodyweight.'); return }
-                if (!commit({ ...session, skipped: session.skipped.filter(item => item !== exercise.name), entries: { ...session.entries, [exercise.name]: entries.map(set => ({ ...set, done: true })) } }, exercise.name)) return
+                if (!commit({ ...session, skipped: session.skipped.filter(item => item !== exercise.name), entries: { ...session.entries, [exercise.name]: entries.map(set => ({ ...set, done: true })) } })) return
                 setDrafts(current => { const next = { ...current }; delete next[exercise.name]; return next })
               }
               setEditing(null); setError('')
             }}><Check size={18}/> Save log</button></>}
-            <label className="session-note">Notes<textarea placeholder="How did it feel?" value={session.notes?.[exercise.name] || ''} onChange={event => onChange({ ...session, notes: { ...session.notes, [exercise.name]: event.target.value } })}/></label>
-            <div className="exercise-navigation"><button className="outline-button" disabled={session.exercises.length < 2} onClick={() => navigate(-1)}>← Previous</button><button className="outline-button" onClick={() => { if (completed && !window.confirm('Skip this exercise and remove its saved result?')) return; if (!skipped && setupEdit && !window.confirm('Discard unsaved setup changes and skip this exercise?')) return; const change = toggleSessionSkip(session, exercise, entries, cardio); if (commit(change.session, exercise.name, !skipped && Boolean(setupEdit)) && change.next) { setSetupEdit(null); setExpanded(change.next); setError('') } }}>{skipped ? 'Undo skip' : 'Skip'}</button><button className="outline-button" disabled={session.exercises.length < 2} onClick={() => navigate(1)}>{index === session.exercises.length - 1 ? 'Go to first ↻' : 'Next →'}</button></div>
+            <label className="session-note">Today’s note<textarea placeholder="How did it feel?" value={session.notes?.[exercise.name] || ''} onChange={event => onChange({ ...session, notes: { ...session.notes, [exercise.name]: event.target.value } })}/></label>
+            <div className="exercise-navigation"><button className="outline-button" disabled={session.exercises.length < 2} onClick={() => navigate(-1)}>← Previous</button><button className="outline-button" onClick={() => { if (completed && !window.confirm('Skip this exercise and remove its saved result?')) return; if (!skipped && setupEdit && !window.confirm('Discard unsaved setup changes and skip this exercise?')) return; const change = toggleSessionSkip(session, exercise, entries, cardio); if (commit(change.session) && change.next) { setSetupEdit(null); setExpanded(change.next); setError('') } }}>{skipped ? 'Undo skip' : 'Skip'}</button><button className="outline-button" disabled={session.exercises.length < 2} onClick={() => navigate(1)}>{index === session.exercises.length - 1 ? 'Go to first ↻' : 'Next →'}</button></div>
           </div>}
         </div>
       })}</div>

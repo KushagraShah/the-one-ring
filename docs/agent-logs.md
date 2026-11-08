@@ -178,3 +178,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - The owner tested v0.4.0 and requested Settings tile placement, theme, criteria visibility, management layout and explicit save improvements. Reordered the habit backup, replaced green-tinted habit surfaces with neutral colors, exposed current/date-effective criteria, aligned controls, and replaced global undo with save/cancel outcome and note drafts plus navigation warnings. Bulk and management actions still save directly. Set package versions to 0.5.0 as the requested minor update; no SQL change.
 - Production build and 21 phone-width fake-server browser tests passed locally under Node 20.20.2 rather than the required Node 24. Fake-server tests do not verify real Supabase or the owner's phone; draft changes are not crash-durable. Pages CI/deployment and phone verification must be checked after the authorized push.
+
+## 2026-11-08 — Correct version numbering
+
+- The owner clarified the small habit UI update should have been v0.4.1, not the mistakenly deployed v0.5.0. Corrected both package versions as explicitly requested and recorded that agents must choose version increments logically, treating small updates as patches rather than mechanically interpreting “minor.” No published history or tags were rewritten; application behavior is unchanged.

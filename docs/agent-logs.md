@@ -238,3 +238,17 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Matched export/restore icons and spacing across the workout, habit and full-app backup cards without changing backup behavior; included the previously requested release-tagging documentation. The old-tracker reference remains excluded.
 - Production build, targeted backup/restore and version browser tests, icon/spacing check and `git diff --check` passed under Node 20.20.2 (project requires Node 24). Vite's bundle-size warning remains; no migration. Owner authorized v0.7.1 deployment; verify Pages after push.
+
+## 2026-11-08 — One-time habit backup conversion
+
+- Added `backups/` to Git ignore and generated a timestamped habit-only restore file from the owner's legacy export. Validated it with the current habit parser and checked record counts, outcome mappings, identifiers, ordering, criteria and notes. The original was not changed; nothing was restored, imported into an account, committed or pushed.
+- Current habit records lack icons; prior schedule changes cannot be reconstructed from the export, so its exported schedule is used from the habit start. Restore replaces the destination habit workspace and does not affect workouts. No personal habit content or credentials are recorded here.
+
+## 2026-11-08 — One-time workout backup conversion
+
+- Converted the owner's legacy workout CSV exports into a timestamped workout-only restore file under ignored `backups/`. Rebuilt 36 equipment-specific library entries, 54 dated workouts (253 exercise results, 713 strength sets, 8 cardio entries, 166 notes), the Push/Pull/Accessories/Legs routine and three exercise cycles. Source files and generated data remain ignored; nothing was restored to an account or committed.
+- Validation: the current backup parser, restore preparation and online workspace identifier checks accepted the file; every source log round-tripped exactly by date, exercise, weight, reps, cardio and note; a demo-mode Playwright restore displayed the library, all 54 workouts, the treadmill result and the next rotation suggestion. The PDFs repeated the CSV tables and lacked the old exercise pages, so setup/instructions/reference links are absent. Hidden alternatives stay in the library with an `Alternative` tag; the old treadmill weight was read as duration minutes and the original note kept; trailing missing sets are omitted; cycle progress starts empty. Real-account restore and Supabase behavior were not tested.
+
+## 2026-11-08 — Documentation push v0.7.2
+
+- Committed and pushed the legacy habit and workout conversion documentation, the `backups/` ignore rule and the release-tagging handoff note. Bumped package metadata to v0.7.2 per the version-every-push convention. No app behavior, storage format, migration or backup scope changed; no tag or GitHub Release was created.

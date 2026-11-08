@@ -1,6 +1,6 @@
 # The One Ring
 
-The One Ring is a personal, mobile-first home for small apps that make everyday life easier. It includes Workout Tracker and a developing Habit Tracker preview.
+The One Ring is a personal, mobile-first home for small apps that make everyday life easier. It includes Workout Tracker and Habit Tracker.
 
 This is an early preview. The online-only version uses Supabase storage and still needs live-device and security verification. Demo data is temporary. Export backups and don't rely on the preview as your only copy of important records.
 

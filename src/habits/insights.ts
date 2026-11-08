@@ -1,17 +1,16 @@
-import { eligible, paused, shiftDate, versionAt, weekStart, type Entry, type Habit, type HabitData, type Outcome } from './model'
+import { eligible, indexEntries, paused, shiftDate, versionAt, weekStart, type Entry, type Habit, type HabitData, type Outcome } from './model'
 
 export type Score = { done: number; partial: number; missed: number; skipped: number; due: number; performance: number | null; coverage: number | null }
 const points: Record<Outcome, number> = { done: 1, partial: 0.5, missed: 0, skipped: 0 }
 
 /** Fixed opportunities only: unrecorded is not a missed score. */
-export function fixedScore(data: HabitData, from: string, to: string): Score {
+export function fixedScore(data: HabitData, from: string, to: string, index = indexEntries(data.entries)): Score {
   const counts = { done: 0, partial: 0, missed: 0, skipped: 0, due: 0 }
-  const lookup = new Map(data.entries.map(entry => [`${entry.habitId}/${entry.date}`, entry]))
   for (let day = from; day <= to; day = shiftDate(day, 1)) {
     for (const habit of data.habits) {
       if (habit.archived || !eligible(habit, day) || versionAt(habit.schedules, day)?.kind !== 'fixed') continue
       counts.due++
-      const entry = lookup.get(`${habit.id}/${day}`)
+      const entry = index.byHabitDate.get(habit.id)?.get(day)
       if (entry) counts[entry.outcome]++
     }
   }
@@ -36,11 +35,12 @@ export function flexibleWeek(habit: Habit, entries: Entry[], monday: string, tod
 /** Current streaks only; do not infer across changes of schedule type. */
 export function habitStreak(habit: Habit, entries: Entry[], today: string): { success: number; engagement: number; unit: 'days' | 'weeks' } {
   const schedule = versionAt(habit.schedules, today)
-  const records = new Map(entries.filter(entry => entry.habitId === habit.id).map(entry => [entry.date, entry]))
+  const habitEntries = entries.filter(entry => entry.habitId === habit.id)
+  const records = new Map(habitEntries.map(entry => [entry.date, entry]))
   let success = 0; let engagement = 0; let successOpen = true; let engagementOpen = true
   if (schedule?.kind === 'flexible') {
     for (let monday = shiftDate(weekStart(today), -7), limit = 0; shiftDate(monday, 6) >= habit.start && limit < 5200; monday = shiftDate(monday, -7), limit++) {
-      const result = flexibleWeek(habit, entries, monday, today)
+      const result = flexibleWeek(habit, habitEntries, monday, today)
       if (result.reason === 'Schedule changed') break
       if (result.target === null) continue
       if (successOpen && result.points >= result.target) success++; else successOpen = false

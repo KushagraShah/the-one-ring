@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { workspaceDocuments, workspaceFromRecords } from './workspace'
-import type { StoredDocument } from './legacy-sync/store'
+import type { StoredDocument } from './documents'
 import type { Backup } from './backup'
 
 export function memoryStorage(): Storage {

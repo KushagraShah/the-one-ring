@@ -187,3 +187,17 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Reviewed the shared launcher, account screens, settings, backup/error boundaries, PWA metadata and README for workout-centric messaging. Generalized shared account/connectivity copy, removed the unverified Online status label, identified workout-specific saving separately, and kept explicitly scoped backup and recovery language. Corrected the account avatar initial. Bumped to v0.4.2 for the requested small update; no storage or SQL changes.
 - Production build, three targeted fake-server browser tests and `git diff --check` passed locally under Node 20.20.2 (Node 24 required). Browser tests do not establish real connectivity detection or real Supabase behavior. See Pages CI and the owner's phone review for deployment/interaction verification.
+
+## 2026-11-08 — Local optimization and organization pass
+
+- Indexed habit entries for daily views and insights, avoided sorting effective dates on each lookup and bounded recent workout searches. Extracted habit controls, workout sample days and shared document types. Added large synthetic indexing, history parity and in-flight save coordination tests; no UI, storage protocol, backup format or SQL changes. Kept whole-workspace writes and the separate save coordinators unchanged pending profiling and further safety work.
+- Build, history, schema, config and PWA tests passed; all 22 fake-server browser tests passed with `CHROMIUM_PATH=/snap/bin/chromium` after the default Playwright browser was unavailable. Checks used Node 20.20.2, below the required Node 24. No real-phone performance measurement, real Supabase test, migration, commit, push or deployment was performed. The latest Pages workflow for the previous commit reported success; these local changes await owner review.
+
+## 2026-11-08 — CI efficiency and consistency review
+
+- Changed Pages browser installation to Playwright's headless shell only, keeping OS dependency installation and all interaction tests. Removed an unused builder callback, enabled TypeScript unused-code checks, corrected a misleading browser-storage error and clarified historical manual-sync documentation. The fake habit endpoint now recognizes a repeated last operation. Retained legacy sync and warmup data for compatibility; no storage or SQL changes.
+- Prior successful Pages build spent 16 seconds installing browsers; the new workflow has not run in Actions and actual savings are unknown. Playwright's headless-shell dry run selected the expected binaries, but local execution could not start due to missing system libraries. Production build, history, config, PWA and all 22 browser tests with system Chromium passed under Node 20.20.2 (project requires 24). The schema suite passed in the preceding local pass. No commit, push, deployment or live-service verification occurred.
+
+## 2026-11-08 — Prepare v0.4.3 maintenance push
+
+- The owner authorized pushing the optimization and consistency work. Set both package versions to v0.4.3: this maintenance-only scope warrants a patch, not a semantic minor release. No tag, GitHub Release, SQL change or migration is included. Check the resulting Pages workflow and deployed version; local checks and their limitations are recorded above.

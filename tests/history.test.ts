@@ -49,6 +49,15 @@ test('recent performance keeps exact variant history and notes', () => {
   assert.equal(recentPerformances(workouts, { ...target, id: 'other-machine' }).length, 0)
 })
 
+test('limited recent results keep the same order and legacy matching as full history', () => {
+  const target = { id: 'machine-one', name: 'Old name', equipment: '', sets: '' }
+  const legacy = { ...workouts[0].exercises[0], exerciseId: undefined }
+  const history = Array.from({ length: 100 }, (_, i) => ({ ...workouts[0], date: String(i), exercises: [legacy, workouts[0].exercises[0]] }))
+  const all = recentPerformances(history, target)
+  assert.deepEqual(recentPerformances(history, target, 3), all.slice(0, 3))
+  assert.deepEqual(recentPerformances(history, target, 0), [])
+})
+
 test('replacements and extras belong to the current session and navigation only', () => {
   const original = { id: 'one', name: 'Press', equipment: '', sets: '' }
   const second = { id: 'two', name: 'Row', equipment: '', sets: '' }

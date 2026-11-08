@@ -49,7 +49,7 @@ test('cycle variants have a separate choice from ordinary replacements', () => {
 
 test('routine editor exposes a draft and explicit save', () => {
   const html = renderToStaticMarkup(React.createElement(RoutineBuilder, {
-    days: [{ name: 'Push', subtitle: '', exercises: [exercise] }], library: [exercise, other], rotations: [], routines: [{ id: 'r', name: 'Routine' }], activeRoutine: 'r', hasSession: false, onDirty: noop, onSave: () => true, onBack: noop, onLibrary: noop, onNew: noop, onSwitch: noop, onCancelWorkout: noop,
+    days: [{ name: 'Push', subtitle: '', exercises: [exercise] }], library: [exercise, other], rotations: [], routines: [{ id: 'r', name: 'Routine' }], activeRoutine: 'r', hasSession: false, onDirty: noop, onSave: () => true, onLibrary: noop, onNew: noop, onSwitch: noop, onCancelWorkout: noop,
   }))
   assert.match(html, /Save changes/)
   assert.match(html, /Make exercise cycle/)

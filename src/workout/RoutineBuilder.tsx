@@ -11,10 +11,10 @@ type Props = {
   routines: { id: string; name: string }[]; activeRoutine: string; hasSession: boolean
   onDirty: (dirty: boolean) => void
   onSave: (days: RoutineDay[], rotations: Rotation[], names: Record<string, string | null>, baseline: string) => boolean
-  onBack: () => void; onLibrary: () => void; onNew: (name: string) => void; onSwitch: (id: string) => void; onCancelWorkout: () => void
+  onLibrary: () => void; onNew: (name: string) => void; onSwitch: (id: string) => void; onCancelWorkout: () => void
 }
 
-export function RoutineBuilder({ days, library, rotations, routines, activeRoutine, hasSession, onDirty, onSave, onBack, onLibrary, onNew, onSwitch, onCancelWorkout }: Props) {
+export function RoutineBuilder({ days, library, rotations, routines, activeRoutine, hasSession, onDirty, onSave, onLibrary, onNew, onSwitch, onCancelWorkout }: Props) {
   const [baseline, setBaseline] = useState(() => JSON.stringify({ days, rotations }))
   const [draft, setDraft] = useState<DraftDay[]>(() => days.map(day => ({ ...day, originalName: day.name })))
   const [groups, setGroups] = useState(rotations)

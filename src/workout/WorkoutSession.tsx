@@ -15,7 +15,7 @@ export type Session = { id?: string; day: string; dayId?: string; exercises: Exe
 const blankCardio = (): CardioEntry => ({ duration: '', speed: '', incline: '', done: false })
 export const isCardio = (exercise: Exercise) => exercise.kind === 'cardio' || (!exercise.kind && /treadmill/i.test(exercise.name))
 export function previousFor(workouts: Workout[], target: Exercise): WorkoutExercise | undefined {
-  return recentPerformances(workouts, target)[0]?.exercise
+  return recentPerformances(workouts, target, 1)[0]?.exercise
 }
 export function startingSets(exercise: Exercise, workouts: Workout[]): SetEntry[] {
   const previous = previousFor(workouts, exercise)
@@ -103,7 +103,7 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
         const cardioType = isCardio(exercise)
         const completed = exerciseComplete(session, exercise)
         const skipped = session.skipped.includes(exercise.name)
-        const previous = recentPerformances(workouts, exercise).slice(0, 3)
+        const previous = recentPerformances(workouts, exercise, 3)
         const cycle = rotations.find(group => group.id === exercise.rotationGroupId && exercise.id && group.options.includes(exercise.id))
         const open = expanded === exercise.name
         return <div className={`exercise-card ${open ? 'open' : ''}`} key={`${exercise.name}-${index}`}>

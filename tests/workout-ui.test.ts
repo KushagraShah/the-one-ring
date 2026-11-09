@@ -19,11 +19,11 @@ test('focused session exposes navigation and explains today-only extras', () => 
   assert.match(html, /Skip/)
   assert.match(html, /Next/)
   assert.doesNotMatch(html, /Move earlier|Move later/)
-  assert.match(html, /Your saved routine will not change/)
+  assert.match(html, /replacements and extras do not change your routine/)
   assert.match(html, /Cancel workout/)
   assert.match(html, /Save log/)
-  assert.match(html, /Replace with a different exercise today/)
-  assert.match(html, /This replaces the current exercise only for this workout/)
+  assert.match(html, /Replace for this workout/)
+  assert.match(html, /Add exercise/)
   assert.doesNotMatch(html, /focus-picker/)
 })
 
@@ -32,7 +32,7 @@ test('last exercise offers a return to the first', () => {
     session: { day: 'Push', exercises: [exercise, other], entries: {}, skipped: ['Press'], warmups: [] }, workouts: [], library: [exercise, other], rotations: [],
     onChange: noop, onFinish: noop, onBack: noop, onCancel: noop, onDirty: noop, onSetup: noop,
   }))
-  assert.match(html, /Go to first/)
+  assert.match(html, /Next exercise/)
 })
 
 test('cycle variants have a separate choice from ordinary replacements', () => {
@@ -43,13 +43,13 @@ test('cycle variants have a separate choice from ordinary replacements', () => {
   }))
   assert.match(html, /Exercise cycle · Arms/)
   assert.match(html, /Completing it counts toward this cycle/)
-  assert.match(html, /replacement will not count toward an exercise cycle/)
+  assert.match(html, /Replace for this workout/)
   assert.match(html, /Row/)
 })
 
 test('routine editor exposes a draft and explicit save', () => {
   const html = renderToStaticMarkup(React.createElement(RoutineBuilder, {
-    days: [{ name: 'Push', subtitle: '', exercises: [exercise] }], library: [exercise, other], rotations: [], routines: [{ id: 'r', name: 'Routine' }], activeRoutine: 'r', hasSession: false, onDirty: noop, onSave: () => true, onLibrary: noop, onNew: noop, onSwitch: noop, onCancelWorkout: noop,
+    days: [{ name: 'Push', subtitle: '', exercises: [exercise] }], library: [exercise, other], rotations: [], routines: [{ id: 'r', name: 'Routine' }], activeRoutine: 'r', hasSession: false, onDirty: noop, onSave: () => true, onLibrary: noop, onNew: noop, onSwitch: noop,
   }))
   assert.match(html, /Save changes/)
   assert.match(html, /Make exercise cycle/)
@@ -59,9 +59,9 @@ test('routine editor exposes a draft and explicit save', () => {
 })
 
 test('exercise library exposes search, tags and reversible archive', () => {
-  const html = renderToStaticMarkup(React.createElement(ExerciseLibrary, { exercises: [{ ...exercise, tags: ['Chest'] }], workouts: [], onSave: noop, onBack: noop }))
+  const html = renderToStaticMarkup(React.createElement(ExerciseLibrary, { exercises: [{ ...exercise, tags: ['Chest'] }], workouts: [], onSave: noop, onDirty: noop }))
   assert.match(html, /Exercise, equipment or tag/)
   assert.match(html, /Chest/)
   assert.match(html, /Show archived/)
-  assert.match(html, /Archive/)
+  assert.match(html, /Archiving/)
 })

@@ -261,3 +261,12 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-09 — Deploy updates and insights v0.7.3
 
 - Owner authorized deployment as a minor update. Updated package metadata to v0.7.3; verify Pages and the deployed version after push. No tag or release creation requested.
+
+## 2026-11-09 — Retire Git tagging practice
+
+- Owner is deleting the Git tags and requested no new tags. Updated the handoff and setup guidance to remove the former tagging practice; historical log entries remain historical. No tags were created or deleted by the agent, and no commit or push was requested.
+
+## 2026-11-09 — Fixed app palettes v0.7.4
+
+- Removed the theme picker and set neutral shared/sign-in, blue workout and violet habit accents. Previously stored theme preferences are ignored, not deleted; outcome/status colors and data behavior are unchanged. Included the previously requested no-Git-tags documentation. Owner authorized a minor deployment; verify Pages and the deployed version after push.
+- Production build, targeted palette/navigation, habit draft and backup-card browser tests and `git diff --check` passed; inspected sign-in, launcher and both mini-apps at phone width. CI runs the full test suite. Vite's bundle-size warning remains.

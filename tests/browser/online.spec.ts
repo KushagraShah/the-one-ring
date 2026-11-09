@@ -410,6 +410,25 @@ test('settings displays the version from package metadata', async ({ page }) => 
   await expect(page.getByText(`The One Ring · v${version}`)).toBeVisible()
 })
 
+test('fixed app palettes ignore old preferences and keep shared surfaces neutral', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('one-ring-theme', 'coral'))
+  await page.goto('/')
+  const accent = (selector: string) => page.locator(selector).evaluate(element => getComputedStyle(element).getPropertyValue('--accent').trim())
+  await expect(page.locator('.auth-page')).toHaveAttribute('data-theme', 'neutral')
+  expect(await accent('.auth-page')).toBe('#d1d5d2')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-theme', 'neutral')
+  expect(await accent('.app-shell')).toBe('#d1d5d2')
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  expect(await accent('.app-shell')).toBe('#8fc8f2')
+  await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
+  expect(await accent('.app-shell')).toBe('#c4adf2')
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  expect(await accent('.app-shell')).toBe('#d1d5d2')
+  await expect(page.getByText('Choose an accent color for your space.')).toHaveCount(0)
+  await expect(page.locator('.theme-choice')).toHaveCount(0)
+})
+
 test('habit criteria, draft protection and neutral themed surfaces', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
@@ -417,7 +436,6 @@ test('habit criteria, draft protection and neutral themed surfaces', async ({ pa
   const headings = await page.locator('.content h1, .content h3').allTextContents()
   expect(headings.indexOf('Settings.')).toBeLessThan(headings.indexOf('Habit backup'))
   expect(headings.indexOf('Workout backup')).toBeLessThan(headings.indexOf('Habit backup'))
-  await page.getByRole('button', { name: 'Coral', exact: true }).click()
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
   await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
   const reading = page.locator('article.habit-card').filter({ has: page.getByText('Read a little', { exact: true }) })

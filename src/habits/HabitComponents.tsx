@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react'
-import { localDate, paused, shiftDate, versionAt, type Criteria, type Habit, type Outcome, type Schedule } from './model'
+import { useEffect, useRef, useState } from 'react'
+import { localDate, outcomeLabel, paused, shiftDate, versionAt, type Criteria, type Habit, type Outcome, type Schedule } from './model'
 import { InfoTip } from '../InfoTip'
 
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -11,20 +11,16 @@ export function CriteriaList({ criteria }: { criteria?: Criteria }) {
 }
 
 export type HabitDraft = { habitId: string; date: string; outcome: Outcome | null; note: string; originalOutcome: Outcome | null; originalNote: string }
-export function EntryEditor({ habit, draft, dirty, onChange, onSave, onCancel, onOutcome }: { habit: Habit; draft: HabitDraft; dirty: boolean; onChange: (draft: HabitDraft) => void; onSave: () => void; onCancel: () => void; onOutcome: (outcome: Outcome | null) => void }) {
-  const id = useId()
-  const criteria = versionAt(habit.criteria, draft.date)
+export function EntryEditor({ habit, draft, onChange, onNoteBlur, onOutcome }: { habit: Habit; draft: HabitDraft; onChange: (draft: HabitDraft) => void; onNoteBlur: (note: string) => void; onOutcome: (outcome: Outcome | null) => void }) {
   const options: Outcome[] = ['done', 'partial', 'missed', 'skipped']
   return <div className="habit-details habit-entry-editor">
     {habit.description && <p>{habit.description}</p>}
     <p className="habit-detail-label">{draft.originalOutcome ? 'Change outcome' : 'How did it go?'} <InfoTip label="About habit outcomes">Done and Partial contribute to progress. Missed is a recorded outcome; an unlogged day is not automatically missed. Skipped is neutral for fixed performance, and a skipped flexible week is not judged against its target.</InfoTip></p>
     <div className="habit-outcomes habit-outcome-choices">{options.map(outcome => {
-      const description = outcome === 'skipped' ? '' : criteria?.[outcome] || ''
-      return <button key={outcome} aria-label={cap(outcome)} aria-describedby={description ? `${id}-${outcome}` : undefined} aria-pressed={draft.outcome === outcome} className={draft.outcome === outcome ? `selected outcome-${outcome}` : ''} onClick={() => onOutcome(outcome)}><span className="habit-choice-title">{cap(outcome)}</span>{description && <span id={`${id}-${outcome}`} className="habit-choice-description">{description}</span>}</button>
+      return <button key={outcome} aria-pressed={draft.outcome === outcome} className={draft.outcome === outcome ? `selected outcome-${outcome}` : ''} onClick={() => onOutcome(outcome)}><span className="habit-choice-title">{outcomeLabel(habit, draft.date, outcome)}</span></button>
     })}</div>
-    {draft.outcome && <label>Note<textarea value={draft.note} onChange={event => onChange({ ...draft, note: event.target.value })}/></label>}
-    <div className="habit-entry-actions"><button className="primary" disabled={!dirty} onClick={onSave}>Save note</button><button className="outline-button" onClick={onCancel}>Close</button>{draft.originalOutcome && <button className="text-button" onClick={() => { if (window.confirm('Clear this outcome and its note?')) onOutcome(null) }}>Clear outcome and note</button>}</div>
-    <p className="habit-detail-hint">Outcome choices save immediately. Notes save separately.</p>
+    {draft.outcome && <label>Note<textarea value={draft.note} onChange={event => onChange({ ...draft, note: event.target.value })} onBlur={event => onNoteBlur(event.target.value)}/></label>}
+    {draft.originalOutcome && <div className="habit-entry-actions"><button className="text-button" onClick={() => { if (window.confirm('Clear this outcome and its note?')) onOutcome(null) }}>Clear outcome and note</button></div>}
   </div>
 }
 

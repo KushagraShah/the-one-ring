@@ -25,6 +25,12 @@ export function versionAt<T extends { effective: string }>(items: T[], date: str
   return latest
 }
 
+/** Personal labels are effective-dated; the stored outcome and scoring stay unchanged. */
+export function outcomeLabel(habit: Habit, date: string, outcome: Outcome): string {
+  const fallback = { done: 'Done', partial: 'Partial', missed: 'Missed', skipped: 'Skipped' }
+  return outcome === 'skipped' ? fallback.skipped : versionAt(habit.criteria, date)?.[outcome]?.trim() || fallback[outcome]
+}
+
 /** Derived in-memory indexes; persisted data and its ordering stay unchanged. */
 export function indexEntries(entries: Entry[]) {
   const byHabit = new Map<string, Entry[]>()

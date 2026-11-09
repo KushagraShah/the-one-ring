@@ -284,3 +284,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-09 — Deploy workout redesign v0.8.0
 
 - Owner authorized pushing the major workout redesign for review. Package and lockfile are v0.8.0; verify the Pages workflow and deployed version after push. No Git tags. Reference copy, backup files and screenshots are excluded.
+
+## 2026-11-09 — Habit quick entry and phone redesign v0.9.0
+
+- Owner requested the entire habit redesign and a major push, replacing the previous explicit outcome-save decision with immediate entry. Added one-tap Done, directly saved outcome choices, separate note drafts, compact date/status views, bounded entry and management, optional icons and weekly performance/coverage trends. Existing schedule, scoring and conflict protocols remain in place; old converted backups do not contain icons.
+- Production build, 65 history tests and five schema tests passed. Browser suite: 36 passed and two selector/draft-visibility tests failed initially; both passed after targeted corrections. Browser tests use fake Supabase; real-account behavior and Android rendering remain unverified. Pages pipeline runs the full browser suite. Owner authorized deployment; verify workflow and version. No tag or personal data.

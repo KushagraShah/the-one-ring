@@ -2,7 +2,7 @@ export type Outcome = 'done' | 'partial' | 'missed' | 'skipped'
 export type Schedule = { effective: string; kind: 'fixed' | 'flexible'; weekdays: number[]; target: number }
 export type Criteria = { effective: string; done: string; partial: string; missed: string }
 export type Pause = { start: string; end: string | null }
-export type Habit = { id: string; title: string; description: string; start: string; end: string | null; archived: boolean; schedules: Schedule[]; criteria: Criteria[]; pauses: Pause[] }
+export type Habit = { id: string; title: string; icon?: string; description: string; start: string; end: string | null; archived: boolean; schedules: Schedule[]; criteria: Criteria[]; pauses: Pause[] }
 export type Entry = { habitId: string; date: string; outcome: Outcome; note: string }
 export type HabitData = { version: 1; habits: Habit[]; entries: Entry[] }
 export const emptyHabits = (): HabitData => ({ version: 1, habits: [], entries: [] })
@@ -74,6 +74,7 @@ export function parseHabits(input: string): HabitData {
   for (const h of data.habits) {
     if (!object(h) || !isText(h.id) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(h.id) || ids.has(h.id) || !isText(h.title) || !h.title.trim() || !isText(h.description) || !dateValid(h.start) || !optionalDate(h.end) || (h.end !== null && (h.end as string) < h.start) || typeof h.archived !== 'boolean' || !Array.isArray(h.schedules) || !h.schedules.length || !Array.isArray(h.criteria) || !h.criteria.length || !Array.isArray(h.pauses)) throw new Error('Invalid habit.')
     ids.add(h.id)
+    if (h.icon !== undefined && (!isText(h.icon) || h.icon.length > 32)) throw new Error('Invalid habit icon.')
     const startDate = h.start
     const dates = new Set<string>()
     for (const s of h.schedules) {

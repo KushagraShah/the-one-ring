@@ -252,3 +252,12 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-08 — Documentation push v0.7.2
 
 - Committed and pushed the legacy habit and workout conversion documentation, the `backups/` ignore rule and the release-tagging handoff note. Bumped package metadata to v0.7.2 per the version-every-push convention. No app behavior, storage format, migration or backup scope changed; no tag or GitHub Release was created.
+
+## 2026-11-09 — Updates and workout insights
+
+- Added a user-controlled service-worker update flow with foreground/manual checks and conservative draft/save guards, without automatic reload. Added exact-variant exercise progress, optional strength/cardio trends, previous-period activity comparisons and saved workout-day label counts; historical two-set results remain visible and count in insights. No storage format or migration changes.
+- Owner reports completing their real-account safety check and will handle imported-data cleanup. Production build, history tests, targeted browser interactions and production-worker demo update test passed locally; real Android updates and signed-in update guard behavior remain unverified. No push or deployment requested.
+
+## 2026-11-09 — Deploy updates and insights v0.7.3
+
+- Owner authorized deployment as a minor update. Updated package metadata to v0.7.3; verify Pages and the deployed version after push. No tag or release creation requested.

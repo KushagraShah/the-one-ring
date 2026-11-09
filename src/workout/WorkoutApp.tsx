@@ -24,7 +24,7 @@ const key = 'one-ring-demo-v1'
 function load(storage: Storage, storageKey: string): Data { try { const data = JSON.parse(storage.getItem(storageKey) || 'null'); return data && Array.isArray(data.completed) && Array.isArray(data.workouts) ? data : initial } catch { return initial } }
 type Identity = { id: string; email: string; demo: boolean }
 type View = 'home' | 'workout' | 'habits' | 'settings'
-export type WorkoutHandle = { leave: (done: () => void) => void; open: () => void; canSignOut: () => boolean; snapshot: () => Backup; exportData: () => void; validateBackup: (value: unknown) => Backup; replace: (value: Backup) => void }
+export type WorkoutHandle = { leave: (done: () => void) => void; open: () => void; canSignOut: () => boolean; canUpdate: () => boolean; snapshot: () => Backup; exportData: () => void; validateBackup: (value: unknown) => Backup; replace: (value: Backup) => void }
 export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void }>(function WorkspaceGate({ identity, view, exportHabits }, ref) {
   const [state, setState] = useState<{ storage: Storage; online: OnlineWorkoutStore | null } | null>(null)
   const [error, setError] = useState(false)
@@ -112,7 +112,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
     setPageState(next)
     after?.()
   }
-  useImperativeHandle(ref, () => ({ leave: done => setPage('home', done), open: () => setPage('routine'), canSignOut: () => saveStatus === 'saved', snapshot, exportData, validateBackup: value => prepareRestore(parseBackup(JSON.stringify(value)), days), replace: applyBackup }))
+  useImperativeHandle(ref, () => ({ leave: done => setPage('home', done), open: () => setPage('routine'), canSignOut: () => saveStatus === 'saved', canUpdate: () => saveStatus === 'saved' && !builderDirty && !sessionDirty && (page === 'home' || page === 'routine'), snapshot, exportData, validateBackup: value => prepareRestore(parseBackup(JSON.stringify(value)), days), replace: applyBackup }))
   const [selectedDay, setSelectedDay] = useState('')
   const [warmupItems, setWarmupItems] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(warmupKey) || (identity.demo ? localStorage.getItem('one-ring-warmups') : null) || 'null') || ['A little movement', 'Get the joints moving'] } catch { return ['A little movement', 'Get the joints moving'] } })
   const [notice, setNotice] = useState('')

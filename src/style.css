@@ -72,3 +72,15 @@
 .identity-correction{min-width:0}.identity-action{min-height:40px}.identity-editor,.workout-date-editor{display:grid;gap:10px;padding:12px;margin:8px 0;border:1px solid #434a44;border-radius:8px;background:#242724}.identity-editor p,.workout-date-editor p{color:#b6beb6;font-size:12px;line-height:1.5;margin:0}.identity-actions{display:flex;gap:8px;flex-wrap:wrap}.identity-actions button{min-height:44px}.workout-date-editor{max-width:430px}.workout-date-editor button{justify-self:start}
 .history-chart{padding:0;border:1px solid #3c423d;border-radius:9px;background:#202320}.history-chart summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;min-height:46px;font-size:12px;font-weight:700;color:#eceeeb}.history-chart summary::-webkit-details-marker{display:none}.history-chart summary::after{content:'⌄';color:#aab2aa;font-size:17px}.history-chart[open] summary::after{transform:rotate(180deg)}.history-chart .progress-chart{margin:0 12px 12px}
 @media(max-width:760px){.insight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.insight-tile:last-child{grid-column:1/-1}.workout-insights{padding:15px}.insights-period select,.cardio-insights select,.identity-editor select,.workout-date-editor input{font-size:16px}.context-history-row{align-items:flex-start;flex-wrap:wrap}.context-history-row button{padding-left:0}.library-item{align-items:flex-start;flex-wrap:wrap}.library-item>div:first-child{min-width:100%;flex:1}.workout-info-popover{position:fixed;top:var(--tip-top);left:var(--tip-left);right:auto;bottom:auto;width:min(300px,calc(100vw - 24px))}}
+
+/* Update status and compact exercise progress. */
+.app-update,.exercise-progress{background:#202321;border:1px solid #484c4a;border-radius:10px;padding:16px;margin-bottom:16px}
+.app-update{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.app-update p,.exercise-progress p,.insights-days p,.insights-comparison{color:#bfc4bf;font-size:12px;line-height:1.5;margin:6px 0}
+.exercise-progress h2{margin:4px 0 12px}
+.exercise-progress>label{display:grid;gap:6px;font-size:12px;font-weight:600}
+.exercise-progress select{width:100%;max-width:450px;padding:10px;background:#242625;color:#eee;border:1px solid #484c4a;border-radius:6px}
+.exercise-progress-trends{margin-top:16px}
+.insights-days{margin-top:14px;font-size:12px}
+.insights-days span{display:inline-block;background:#292c2a;border:1px solid #484c4a;border-radius:6px;padding:6px 9px;margin:4px 6px 0 0}
+.update-settings{margin-bottom:12px}

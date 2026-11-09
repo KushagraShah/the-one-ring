@@ -42,7 +42,15 @@ test('activity insights count completed sessions and local training days, not sk
   const completed = { ...workouts[0], date: date(8) }
   const skipped = { ...completed, date: date(7), exercises: completed.exercises.map(item => ({ ...item, sets: [], skipped: true })) }
   const future = { ...completed, date: date(11) }
-  assert.deepEqual(workoutInsights([completed, completed, skipped, future], 7, new Date(2026, 0, 10, 12)), { sessions: 2, days: 1, weeks: 1, exercises: 1, results: 2 })
+  assert.deepEqual(workoutInsights([completed, completed, skipped, future], 7, new Date(2026, 0, 10, 12)), { sessions: 2, days: 1, weeks: 1, exercises: 1, results: 2, dayCounts: [['Push', 2]] })
+})
+
+test('activity periods include historical two-set results and compare disjoint local date ranges', () => {
+  const at = (day: number) => new Date(2026, 0, day, 12).toISOString()
+  const partial = { ...workouts[0], date: at(3), exercises: workouts[0].exercises.map(item => ({ ...item, sets: item.sets.slice(0, 2) })) }
+  const now = new Date(2026, 0, 10, 12)
+  assert.equal(workoutInsights([partial], 7, now).sessions, 0)
+  assert.equal(workoutInsights([partial], 7, now, 7).sessions, 1)
 })
 
 test('a session is accounted for only when each exercise is completed or skipped', () => {

@@ -275,3 +275,12 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Owner reported the installed app and phone browser remained on v0.7.3 and reported no update after v0.7.4 deployed. The new worker revalidates precached shell files against the network and update status stays checking while installation is in progress; no automatic reload or draft/save guard was removed.
 - Production-browser testing with two versioned shell fixtures and cacheable old HTML reproduced the stale-version failure with old precaching and passed with the fix, including delayed installation status and displayed version after reload. Demo update protection and worker unit checks passed. The exact state on the owner's phone, real Android recovery and signed-in update guard behavior remain unverified. Owner authorized deployment; verify Pages/version after push. No Git tag.
+
+## 2026-11-09 — Workout phone-first redesign v0.8.0
+
+- Owner reported v0.7.5 resolved the phone update issue and provided 23 annotated screenshots after a real workout. Redesigned the workout landing, compact session navigation/status, setup and unified log/note entry, routine builder, library and Activity/progress views; see `docs/setup.md`. Existing workout documents, backups, cycle semantics and imported tags are preserved. Owner also requested final-stage testing rather than repeated rebuilds/reinstalls; the handoff was updated.
+- Production build, 65 history tests, three PWA tests and browser coverage for the redesigned flows passed (the full browser run found two test-selector mismatches; both passed on targeted rerun, along with new resume and two-set correction tests). Inspected demo screens at phone width and corrected a library-filter overflow. Browser tests use fake Supabase; real account behavior, swipe ergonomics and Android-specific rendering are not independently verified. The owner authorized implementation, not a push or deployment. Screenshots and personal data remain ignored.
+
+## 2026-11-09 — Deploy workout redesign v0.8.0
+
+- Owner authorized pushing the major workout redesign for review. Package and lockfile are v0.8.0; verify the Pages workflow and deployed version after push. No Git tags. Reference copy, backup files and screenshots are excluded.

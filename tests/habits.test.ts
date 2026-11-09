@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catchUpDays, eligible, indexEntries, parseHabits, shiftDate, versionAt, weekProgress, type Habit, type HabitData } from '../src/habits/model'
+import { catchUpDays, eligible, indexEntries, outcomeLabel, parseHabits, shiftDate, versionAt, weekProgress, type Habit, type HabitData } from '../src/habits/model'
 
 const habit: Habit = { id: '00000000-0000-4000-8000-000000000001', title: 'Read', description: '', start: '2026-11-02', end: null, archived: false, schedules: [{ effective: '2026-11-02', kind: 'flexible', weekdays: [0, 1, 2, 3, 4], target: 4 }, { effective: '2026-11-09', kind: 'fixed', weekdays: [1, 3], target: 1 }], criteria: [{ effective: '2026-11-02', done: 'Long', partial: 'Short', missed: '' }, { effective: '2026-11-09', done: 'New', partial: '', missed: '' }], pauses: [{ start: '2026-11-05', end: '2026-11-06' }] }
 test('dates and historical schedules use local calendar days and effective versions', () => {
@@ -17,6 +17,12 @@ test('effective versions may be unsorted and retain their original object identi
   assert.equal(versionAt(versions, '2026-11-01'), undefined)
   assert.equal(versionAt(versions, '2026-11-08'), habit.criteria[0])
   assert.equal(versionAt(versions, '2026-11-10'), habit.criteria[1])
+})
+test('outcome labels use the selected date and fall back only when not customized', () => {
+  assert.equal(outcomeLabel(habit, '2026-11-08', 'done'), 'Long')
+  assert.equal(outcomeLabel(habit, '2026-11-10', 'done'), 'New')
+  assert.equal(outcomeLabel(habit, '2026-11-10', 'partial'), 'Partial')
+  assert.equal(outcomeLabel(habit, '2026-11-08', 'skipped'), 'Skipped')
 })
 test('entry indexes preserve original records and order across a large history', () => {
   const entries = Array.from({ length: 4000 }, (_, i) => ({ habitId: `habit-${i % 4}`, date: shiftDate('2020-01-01', i), outcome: 'done' as const, note: '' }))
@@ -52,4 +58,12 @@ test('habit backups validate and reject duplicate outcomes', () => {
   assert.deepEqual(parseHabits(JSON.stringify(data)), data)
   assert.throws(() => parseHabits(JSON.stringify({ ...data, entries: [...data.entries, ...data.entries] })))
   assert.throws(() => parseHabits(JSON.stringify({ ...data, habits: [{ ...habit, schedules: [{ ...habit.schedules[0], target: 6 }] }] })))
+})
+
+test('optional habit icons round-trip without changing legacy backups', () => {
+  const data: HabitData = { version: 1, habits: [{ ...habit, icon: '🏃‍♀️' }], entries: [] }
+  assert.deepEqual(parseHabits(JSON.stringify(data)), data)
+  assert.equal(parseHabits(JSON.stringify({ ...data, habits: [habit] })).habits[0].icon, undefined)
+  assert.throws(() => parseHabits(JSON.stringify({ ...data, habits: [{ ...habit, icon: 42 }] })))
+  assert.throws(() => parseHabits(JSON.stringify({ ...data, habits: [{ ...habit, icon: 'x'.repeat(33) }] })))
 })

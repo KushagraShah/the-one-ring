@@ -14,7 +14,7 @@ export function useAppUpdate() {
     setStatus('checking')
     try {
       await worker.update()
-      setStatus(worker.waiting && navigator.serviceWorker.controller ? 'available' : 'current')
+      setStatus(activated.current ? 'activated' : worker.waiting && navigator.serviceWorker.controller ? 'available' : worker.installing ? 'checking' : 'current')
     } catch { setStatus('error') }
   }, [])
   useEffect(() => {
@@ -24,10 +24,20 @@ export function useAppUpdate() {
     void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: 'none' }).then(worker => {
       if (!active) return
       registration.current = worker
-      const waiting = () => { if (worker.waiting && navigator.serviceWorker.controller) setStatus('available') }
+      const waiting = () => {
+        if (activated.current) setStatus('activated')
+        else if (worker.waiting && navigator.serviceWorker.controller) setStatus('available')
+        else if (worker.installing) setStatus('checking')
+        else setStatus('current')
+      }
       const onUpdate = () => {
         const installing = worker.installing
-        installing?.addEventListener('statechange', waiting)
+        if (!installing) return
+        setStatus('checking')
+        installing.addEventListener('statechange', () => {
+          if (installing.state === 'redundant' && !worker.waiting) setStatus('error')
+          else waiting()
+        })
       }
       const onController = () => { activated.current = true; setStatus('activated') }
       const foreground = () => { if (document.visibilityState === 'visible') void check() }
@@ -35,6 +45,7 @@ export function useAppUpdate() {
       navigator.serviceWorker.addEventListener('controllerchange', onController)
       document.addEventListener('visibilitychange', foreground)
       cleanup = () => { worker.removeEventListener('updatefound', onUpdate); navigator.serviceWorker.removeEventListener('controllerchange', onController); document.removeEventListener('visibilitychange', foreground) }
+      if (worker.installing) onUpdate()
       waiting()
       void check()
     }).catch(() => { if (active) setStatus('error') })

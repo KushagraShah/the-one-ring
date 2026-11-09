@@ -21,6 +21,8 @@ Read this file, [`README.md`](README.md), and the relevant files in [`docs/`](do
 
 ## Current implementation and external context
 
+- **Update recovery v0.7.5, 2026-11-09:** The owner reported both the installed Android app and browser showed v0.7.3 and no update after v0.7.4 deployed. A synthetic production-browser test reproduced a stale HTML shell with the old worker; the new worker revalidates precached files and avoids a premature current status during installation. The exact phone cause and real Android recovery remain unverified. Owner authorized implementation and deployment; do not create Git tags.
+
 - **Fixed app palettes v0.7.4, 2026-11-09:** Sign-in and shared pages use a neutral accent; workouts use blue and habits use violet. Removed the theme picker and ignore old browser theme preferences without deleting them. Existing outcome/status colors and storage behavior are unchanged. Owner authorized a minor deployment; verify Pages after push.
 
 - **Updates and workout insights v0.7.3, 2026-11-09:** A user-controlled service-worker update prompt and conservative draft/save guards accompany exact-variant exercise progress and period/day-label insights. See `docs/setup.md` for behavior and verification. Owner reports completing their real-account safety check and will clean up imported data themselves; do not infer individual scenarios were tested. Owner authorized deployment; verify Pages and version after push.

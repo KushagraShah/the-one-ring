@@ -1,5 +1,7 @@
 # Next steps
 
+- **Update recovery v0.7.5, 2026-11-09:** The owner reported the phone remained on v0.7.3 and said no update was available after v0.7.4 deployed. Worker precaching now revalidates HTTP-cached shell files and update status remains checking during installation. A synthetic production-browser transition reproduced the stale-shell failure with old behavior and passed with the fix. Phone cause and Android recovery remain unverified; see `setup.md`.
+
 - **Updates and workout insights v0.7.3, 2026-11-09:** User-controlled service-worker activation and reload guards accompany exact-variant progress, preceding-period comparisons and saved-day-label counts. See `setup.md` for scope and verification. The owner authorized deployment, reports completing their real-account safety check and will clean up their imported data themselves; do not infer individual test scenarios beyond that report.
 
 - **Habit Tracker:** The owner approved the revised local preview and reports applying migration 006. Real two-account isolation, conflicts and recovery remain outstanding. The owner chose effective-dated schedule changes and excluding pause/skip-affected weeks from flexible-target judgments. See [the handoff plan](habit-tracker-overhaul-plan.md).

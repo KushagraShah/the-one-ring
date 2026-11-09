@@ -7,17 +7,18 @@ test('production service worker precaches the shell and ignores external request
   const source = await readFile('dist/sw.js', 'utf8')
   const handlers = {}
   let precached = []
-  const cache = { addAll: async files => { precached = files; await Promise.all(files.map(file => access(`dist/${file.slice(2)}`))) }, match: async () => 'cached shell' }
+  const cache = { addAll: async files => { precached = files; await Promise.all(files.map(file => access(`dist/${new URL(file.url).pathname.replace('/the-one-ring/', '')}`))) }, match: async () => 'cached shell' }
   let skipped = 0
   const self = { location: { origin: 'https://example.test' }, registration: { scope: 'https://example.test/the-one-ring/' }, skipWaiting: () => { skipped++ }, addEventListener: (name, callback) => { handlers[name] = callback } }
   const caches = { open: async () => cache, keys: async () => [], delete: async () => true }
-  vm.runInNewContext(source, { self, caches, URL, fetch: () => { throw new Error('network should not be used') } })
+  vm.runInNewContext(source, { self, caches, URL, Request, fetch: () => { throw new Error('network should not be used') } })
   let installing
   handlers.install({ waitUntil: promise => { installing = promise } })
   await installing
-  assert.ok(precached.includes('./index.html'))
-  assert.ok(precached.some(file => file.endsWith('.js')))
-  assert.ok(precached.includes('./icon-192.png'))
+  assert.ok(precached.some(file => file.url.endsWith('/index.html')))
+  assert.ok(precached.some(file => file.url.endsWith('.js')))
+  assert.ok(precached.some(file => file.url.endsWith('/icon-192.png')))
+  assert.ok(precached.every(file => file.cache === 'reload'))
   handlers.message({ data: { type: 'OTHER' } })
   assert.equal(skipped, 0)
   handlers.message({ data: { type: 'SKIP_WAITING' } })

@@ -270,3 +270,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Removed the theme picker and set neutral shared/sign-in, blue workout and violet habit accents. Previously stored theme preferences are ignored, not deleted; outcome/status colors and data behavior are unchanged. Included the previously requested no-Git-tags documentation. Owner authorized a minor deployment; verify Pages and the deployed version after push.
 - Production build, targeted palette/navigation, habit draft and backup-card browser tests and `git diff --check` passed; inspected sign-in, launcher and both mini-apps at phone width. CI runs the full test suite. Vite's bundle-size warning remains.
+
+## 2026-11-09 — Update recovery v0.7.5
+
+- Owner reported the installed app and phone browser remained on v0.7.3 and reported no update after v0.7.4 deployed. The new worker revalidates precached shell files against the network and update status stays checking while installation is in progress; no automatic reload or draft/save guard was removed.
+- Production-browser testing with two versioned shell fixtures and cacheable old HTML reproduced the stale-version failure with old precaching and passed with the fix, including delayed installation status and displayed version after reload. Demo update protection and worker unit checks passed. The exact state on the owner's phone, real Android recovery and signed-in update guard behavior remain unverified. Owner authorized deployment; verify Pages/version after push. No Git tag.

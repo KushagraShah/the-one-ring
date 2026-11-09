@@ -8,7 +8,8 @@ test('production service worker precaches the shell and ignores external request
   const handlers = {}
   let precached = []
   const cache = { addAll: async files => { precached = files; await Promise.all(files.map(file => access(`dist/${file.slice(2)}`))) }, match: async () => 'cached shell' }
-  const self = { location: { origin: 'https://example.test' }, registration: { scope: 'https://example.test/the-one-ring/' }, addEventListener: (name, callback) => { handlers[name] = callback } }
+  let skipped = 0
+  const self = { location: { origin: 'https://example.test' }, registration: { scope: 'https://example.test/the-one-ring/' }, skipWaiting: () => { skipped++ }, addEventListener: (name, callback) => { handlers[name] = callback } }
   const caches = { open: async () => cache, keys: async () => [], delete: async () => true }
   vm.runInNewContext(source, { self, caches, URL, fetch: () => { throw new Error('network should not be used') } })
   let installing
@@ -17,6 +18,10 @@ test('production service worker precaches the shell and ignores external request
   assert.ok(precached.includes('./index.html'))
   assert.ok(precached.some(file => file.endsWith('.js')))
   assert.ok(precached.includes('./icon-192.png'))
+  handlers.message({ data: { type: 'OTHER' } })
+  assert.equal(skipped, 0)
+  handlers.message({ data: { type: 'SKIP_WAITING' } })
+  assert.equal(skipped, 1)
   let response
   handlers.fetch({ request: { method: 'GET', url: 'https://example.test/the-one-ring/', mode: 'navigate' }, respondWith: value => { response = value } })
   assert.equal(await response, 'cached shell')

@@ -560,6 +560,20 @@ test('activity insights use readable phone-sized controls and dismissible help',
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
+test('exercise progress shows exact-variant results and opens the workout', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  const progress = page.locator('.exercise-progress')
+  await progress.getByLabel('Progress exercise').selectOption({ label: 'Chest press · Chest press machine' })
+  await expect(progress.locator('.context-history-row')).not.toHaveCount(0)
+  await progress.getByRole('button', { name: 'Show trends' }).click()
+  await expect(progress.getByRole('heading', { name: 'Top recorded weight' })).toBeVisible()
+  await progress.getByRole('button', { name: 'Open workout' }).first().click()
+  await expect(page.locator('.latest-review')).toBeVisible()
+})
+
 test('correcting workout date and exercise keeps original plan and cycle history', async ({ page }) => {
   const backend = await fakeBackend(page)
   page.on('dialog', dialog => dialog.accept())

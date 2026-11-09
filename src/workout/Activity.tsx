@@ -7,6 +7,7 @@ import { ResultTable } from './ResultTable'
 import type { CycleEvent } from './backup'
 import { Insights } from './Insights'
 import { ExerciseDetails } from './ExerciseDetails'
+import { ExerciseProgress } from './ExerciseProgress'
 
 const PAGE_SIZE = 10
 const keyFor = (exercise: WorkoutExercise) => exercise.exerciseId ? `id:${exercise.exerciseId}` : `legacy:${exercise.name}`
@@ -46,12 +47,13 @@ export function Activity({ workouts, library, cycleHistory, openLatest, onSave, 
   const now = new Date()
   const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 27).getTime()
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
-  const recent = workouts.filter(item => { const time = new Date(item.date).getTime(); return time >= cutoff && time < end && item.exercises.some(exercise => exercise.sets.length === 3 || exercise.cardio?.done) }).length
+  const recent = workouts.filter(item => { const time = new Date(item.date).getTime(); return time >= cutoff && time < end && item.exercises.some(exercise => !exercise.skipped && (exercise.sets.length > 0 || exercise.cardio?.done)) }).length
 
   if (workout && selectedWorkout !== null) return <section className="latest-review"><button className="back-link" onClick={() => { setSelectedWorkout(null); setEditingDate(false) }}>← All workouts</button><h1>{workout.day}</h1><p>{new Date(workout.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{workout.routineName ? ` · ${workout.routineName}` : ''}</p>{editingDate ? <div className="workout-date-editor"><label>Workout date <input type="date" value={dateDraft} onChange={event => setDateDraft(event.target.value)}/></label> <button className="outline-button" disabled={!dateDraft} onClick={() => { const [year, month, day] = dateDraft.split('-').map(Number); const date = new Date(workout.date); date.setFullYear(year, month - 1, day); if (Number.isNaN(date.getTime())) return; onSaveWorkout(selectedWorkout, { ...workout, date: date.toISOString() }); setEditingDate(false) }}>Save date</button> <button className="text-button" onClick={() => setEditingDate(false)}>Cancel</button><p>Changes the date for this workout and all its results. Cycle history is not changed.</p></div> : <button className="text-button" onClick={() => { setDateDraft(localDay(workout.date)); setEditingDate(true) }}>Edit workout date</button>}{workout.plan && workout.plan.length > 0 && <details className="workout-plan"><summary>Original plan</summary><ol>{workout.plan.map(item => <li key={item.slotId}>{item.cycleName ? `${item.cycleName}: ` : ''}{item.name}{item.equipment ? ` · ${item.equipment}` : ''}</li>)}</ol></details>}{workout.exercises.length ? workout.exercises.map((exercise, index) => <WorkoutReview key={`${workout.id || workout.date}-${index}`} exercise={exercise} library={library} workouts={workouts} onSave={next => onSave(selectedWorkout, index, next)}/>) : <p>No exercises recorded.</p>}</section>
 
   return <><div className="page-heading"><div><div className="eyebrow">YOUR JOURNEY</div><h1>Activity<span className="accent">.</span></h1><p>Browse your workouts and exercise progress.</p></div></div>
     <Insights workouts={workouts}/>
+    <ExerciseProgress workouts={workouts} library={library} onOpenWorkout={setSelectedWorkout}/>
     <section className="history-section"><h2>Workout history</h2><p className="history-count">{recent} workouts with results in the last 28 days</p><div className="history-filters"><label>Exercise<select value={exerciseKey} onChange={event => { setExerciseKey(event.target.value); setVisible(PAGE_SIZE) }}><option value="">All exercises</option>{options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>From<input type="date" value={from} onChange={event => { setFrom(event.target.value); setVisible(PAGE_SIZE) }}/></label><label>To<input type="date" value={to} onChange={event => { setTo(event.target.value); setVisible(PAGE_SIZE) }}/></label></div>
       {from && to && from > to ? <p role="alert">The start date must be on or before the end date.</p> : <>
         <p className="history-count">{filtered.length} {filtered.length === 1 ? 'workout' : 'workouts'} · showing {shown.length}</p>

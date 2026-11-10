@@ -120,3 +120,13 @@
 .habit-intentional-skip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 16px;padding:12px;border:1px solid #48515a;border-radius:9px;background:#242a30}
 .habit-intentional-skip strong{font-size:12px}.habit-intentional-skip p{margin:4px 0 0;color:#c1c9d0;font-size:11px;line-height:1.4}.habit-intentional-skip button{flex:none;min-height:44px;padding:8px 12px;border:1px solid #718293;border-radius:8px;background:#333d48;color:#e1eaf2;font-weight:700}
 .habit-intentional-skip button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+
+/* Inline entry and stable date controls. */
+.habit-date label,.habit-date input{min-width:0}.habit-date button{flex:none}.habit-date .habit-today-button{width:58px;min-width:58px;padding:8px 2px}.habit-date .habit-today-button:disabled{visibility:hidden}
+.habit-card-heading{cursor:default}.habit-card-heading .info-tip{flex:none}
+.habit-inline-outcomes{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(48px,0.55fr)}
+.habit-inline-outcomes .habit-inline-skip{text-align:center;justify-items:center;padding:6px 3px;background:#273039;border-color:#526474}
+.habit-inline-outcomes .habit-inline-skip span{font-size:17px}.habit-inline-outcomes .habit-inline-skip small{font-size:9px;line-height:1.2}
+.habit-note-toggle{padding:0 12px 5px}.habit-note-toggle button{min-height:36px;padding:5px 0;font-size:12px}
+.habit-inline-note{padding:0 12px 10px}.habit-inline-note label{display:grid;gap:5px;font-size:12px}.habit-inline-note textarea{width:100%;min-height:70px;resize:vertical}
+.habit-panel{margin:12px 0;padding:14px;border:1px solid #53535d;border-radius:10px;background:#242426}.habit-panel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.habit-panel>header button{min-height:44px}.habit-panel>div{max-height:60vh;overflow-y:auto}

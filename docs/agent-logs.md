@@ -309,3 +309,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Restored direct daily outcome choices inspired by the old tracker, exposed outcome categories and point values, and separated intentional skip with fixed/flexible explanations. Fixed habit navigation padding overridden by workout styles. Scoring and storage unchanged. Owner authorized deployment as v0.9.3 and future deployments by default unless local-only is requested; verify Pages and version.
 - Production build passed. Browser suite: 43 of 44 passed initially; the remaining test passed after updating selectors for the renamed skip action, alongside the new custom-label/score and navigation test. Browser tests use fake Supabase/demo; Android rendering and live account behavior remain unverified.
+
+## 2026-11-10 — Inline habit check-in v0.10.0
+
+- Added direct intentional skip and tap-again unlogging, inline notes and habit panels, and stable date-control width. Dated skips now behave as one-day pauses for fixed coverage and streaks, including historical skips; flexible affected weeks remain excluded. Retain notes on unlogged dates in optional workspace data; old builds may not display them. No database migration.
+- Build, 68 history tests and all 44 browser tests passed; tests exercise fake Supabase/demo rather than live account saves. Verify Pages and deployed version. Android-specific rendering and real Supabase recovery remain unverified; no tags or private reference data.

@@ -3,6 +3,13 @@ import assert from 'node:assert/strict'
 import { catchUpDays, eligible, indexEntries, outcomeLabel, parseHabits, shiftDate, versionAt, weekProgress, type Habit, type HabitData } from '../src/habits/model'
 
 const habit: Habit = { id: '00000000-0000-4000-8000-000000000001', title: 'Read', description: '', start: '2026-11-02', end: null, archived: false, schedules: [{ effective: '2026-11-02', kind: 'flexible', weekdays: [0, 1, 2, 3, 4], target: 4 }, { effective: '2026-11-09', kind: 'fixed', weekdays: [1, 3], target: 1 }], criteria: [{ effective: '2026-11-02', done: 'Long', partial: 'Short', missed: '' }, { effective: '2026-11-09', done: 'New', partial: '', missed: '' }], pauses: [{ start: '2026-11-05', end: '2026-11-06' }] }
+test('unlogged notes survive backup validation and duplicate notes are rejected', () => {
+  const data: HabitData = { version: 1, habits: [habit], entries: [], unloggedNotes: [{ habitId: habit.id, date: '2026-11-04', note: 'Kept note' }] }
+  assert.deepEqual(parseHabits(JSON.stringify(data)), data)
+  assert.throws(() => parseHabits(JSON.stringify({ ...data, unloggedNotes: [...data.unloggedNotes!, data.unloggedNotes![0]] })))
+  // An older app may add an outcome without knowing about the retained note.
+  assert.doesNotThrow(() => parseHabits(JSON.stringify({ ...data, entries: [{ habitId: habit.id, date: '2026-11-04', outcome: 'done', note: '' }] })))
+})
 test('dates and historical schedules use local calendar days and effective versions', () => {
   assert.equal(shiftDate('2026-12-31', 1), '2027-01-01')
   assert.equal(eligible(habit, '2026-11-04'), true)

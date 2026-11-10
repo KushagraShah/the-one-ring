@@ -1,3 +1,4 @@
+import { confirmAction } from '../../AppDialog'
 import { useEffect, useRef, useState } from 'react'
 import type { Backup } from '../backup'
 import { supabase } from '../../auth'
@@ -58,14 +59,14 @@ export function SyncPanel({ owner, snapshot, hasLocalData, onImport }: Props) {
         if (visible.length) {
           const records: Record<string, StoredDocument> = Object.fromEntries(remote.map(record => [`${record.kind}/${record.id}`, { ...record, generation: 0, dirty: false }]))
           const imported = workspaceFromRecords(records)
-          if (!window.confirm('This account already has cloud data. Download it and replace this device’s local workout data? Export a local backup first. Cancel leaves both unchanged.')) return
+          if (!await confirmAction('This account already has cloud data. Download it and replace this device’s local workout data? Export a local backup first. Cancel leaves both unchanged.')) return
           if (beforeConnection !== JSON.stringify(latest.current)) throw new Error('Local data changed while connecting. Please review and try again.')
           await store.mergeRemote(owner, remote)
           onImport(imported)
           setEnabled(true); setConflict(false); setStatus('Cloud data downloaded to this device.')
           return
         }
-        if (!window.confirm('No cloud data was found. Upload this device’s current workout data to your account?')) return
+        if (!await confirmAction('No cloud data was found. Upload this device’s current workout data to your account?')) return
         await store.replace(owner, workspaceDocuments(latest.current))
         setEnabled(true)
       }
@@ -89,7 +90,7 @@ export function SyncPanel({ owner, snapshot, hasLocalData, onImport }: Props) {
     const message = choice === 'local'
       ? 'Keep the local version of every conflicting item and overwrite its cloud version on the next sync? Export both devices first if you need both copies.'
       : 'Replace every conflicting local item with its cloud version? Local edits to those items will be lost. Export a local backup first.'
-    if (!window.confirm(message)) return
+    if (!await confirmAction(message)) return
     setBusy(true)
     try {
       await queue.current

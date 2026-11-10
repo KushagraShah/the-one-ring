@@ -9,7 +9,7 @@ const e = (date: string, outcome: Entry['outcome']): Entry => ({ habitId: id, da
 const data = (entries: Entry[], habit = fixed): HabitData => ({ version: 1, habits: [habit], entries })
 
 test('fixed performance and coverage distinguish missed, skip and unlogged', () => {
-  assert.deepEqual(fixedScore(data([e('2026-11-02', 'done'), e('2026-11-03', 'partial'), e('2026-11-04', 'missed'), e('2026-11-05', 'skipped')]), '2026-11-02', '2026-11-06'), { done: 1, partial: 1, missed: 1, skipped: 1, due: 5, performance: 0.5, coverage: 0.8 })
+  assert.deepEqual(fixedScore(data([e('2026-11-02', 'done'), e('2026-11-03', 'partial'), e('2026-11-04', 'missed'), e('2026-11-05', 'skipped')]), '2026-11-02', '2026-11-06'), { done: 1, partial: 1, missed: 1, skipped: 1, due: 4, performance: 0.5, coverage: 0.75 })
   assert.equal(fixedScore(data([e('2026-11-02', 'missed')]), '2026-11-02', '2026-11-02').coverage, 1)
   assert.equal(fixedScore(data([e('2026-11-02', 'skipped')]), '2026-11-02', '2026-11-02').performance, null)
   assert.equal(fixedScore(data([], { ...fixed, archived: true }), '2026-11-02', '2026-11-02').coverage, null)
@@ -25,8 +25,9 @@ test('reused entry indexes produce the same fixed scores for different ranges an
     assert.deepEqual(fixedScore(single, from, '2026-11-08', index), fixedScore(single, from, '2026-11-08'))
   }
 })
-test('fixed streak treats partial and skip as engagement but breaks success', () => {
-  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'partial'), e('2026-11-04', 'skipped'), e('2026-11-05', 'done')], '2026-11-05'), { success: 1, engagement: 4, unit: 'days' })
+test('fixed streak treats skip as a pause and partial as engagement', () => {
+  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'partial'), e('2026-11-04', 'skipped'), e('2026-11-05', 'done')], '2026-11-05'), { success: 1, engagement: 3, unit: 'days' })
+  assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'skipped'), e('2026-11-04', 'done')], '2026-11-04'), { success: 2, engagement: 2, unit: 'days' })
   assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done')], '2026-11-03'), { success: 1, engagement: 1, unit: 'days' })
   assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done')], '2026-11-04'), { success: 0, engagement: 0, unit: 'days' })
   assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'missed')], '2026-11-03'), { success: 0, engagement: 0, unit: 'days' })

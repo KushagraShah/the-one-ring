@@ -4,7 +4,7 @@ export type Criteria = { effective: string; done: string; partial: string; misse
 export type Pause = { start: string; end: string | null }
 export type Habit = { id: string; title: string; icon?: string; description: string; start: string; end: string | null; archived: boolean; schedules: Schedule[]; criteria: Criteria[]; pauses: Pause[] }
 export type Entry = { habitId: string; date: string; outcome: Outcome; note: string }
-export type HabitData = { version: 1; habits: Habit[]; entries: Entry[] }
+export type HabitData = { version: 1; habits: Habit[]; entries: Entry[]; unloggedNotes?: { habitId: string; date: string; note: string }[] }
 export const emptyHabits = (): HabitData => ({ version: 1, habits: [], entries: [] })
 
 export function localDate(date = new Date()): string {
@@ -100,6 +100,14 @@ export function parseHabits(input: string): HabitData {
   for (const e of data.entries) {
     if (!object(e) || !isText(e.habitId) || !ids.has(e.habitId) || !dateValid(e.date) || !['done', 'partial', 'missed', 'skipped'].includes(String(e.outcome)) || !isText(e.note) || keys.has(`${e.habitId}/${e.date}`)) throw new Error('Invalid habit outcome.')
     keys.add(`${e.habitId}/${e.date}`)
+  }
+  if (data.unloggedNotes !== undefined) {
+    if (!Array.isArray(data.unloggedNotes)) throw new Error('Invalid unlogged notes.')
+    const noteKeys = new Set<string>()
+    for (const n of data.unloggedNotes) {
+      if (!object(n) || !isText(n.habitId) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(n.habitId) || !dateValid(n.date) || !isText(n.note) || !n.note || noteKeys.has(`${n.habitId}/${n.date}`)) throw new Error('Invalid unlogged note.')
+      noteKeys.add(`${n.habitId}/${n.date}`)
+    }
   }
   return data as HabitData
 }

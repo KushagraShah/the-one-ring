@@ -12,13 +12,15 @@ export function CriteriaList({ criteria }: { criteria?: Criteria }) {
 
 export type HabitDraft = { habitId: string; date: string; outcome: Outcome | null; note: string; originalOutcome: Outcome | null; originalNote: string }
 export function EntryEditor({ habit, draft, onChange, onNoteBlur, onOutcome }: { habit: Habit; draft: HabitDraft; onChange: (draft: HabitDraft) => void; onNoteBlur: (note: string) => void; onOutcome: (outcome: Outcome | null) => void }) {
-  const options: Outcome[] = ['done', 'partial', 'missed', 'skipped']
+  const options: Outcome[] = ['done', 'partial', 'missed']
+  const flexible = versionAt(habit.schedules, draft.date)?.kind === 'flexible'
   return <div className="habit-details habit-entry-editor">
     {habit.description && <p>{habit.description}</p>}
     <p className="habit-detail-label">{draft.originalOutcome ? 'Change outcome' : 'How did it go?'} <InfoTip label="About habit outcomes">Done and Partial contribute to progress. Missed is a recorded outcome; an unlogged day is not automatically missed. Skipped is neutral for fixed performance, and a skipped flexible week is not judged against its target.</InfoTip></p>
     <div className="habit-outcomes habit-outcome-choices">{options.map(outcome => {
-      return <button key={outcome} aria-pressed={draft.outcome === outcome} className={draft.outcome === outcome ? `selected outcome-${outcome}` : ''} onClick={() => onOutcome(outcome)}><span className="habit-choice-title">{outcomeLabel(habit, draft.date, outcome)}</span></button>
+      return <button key={outcome} aria-label={outcomeLabel(habit, draft.date, outcome)} aria-describedby={`editor-${habit.id}-${outcome}`} aria-pressed={draft.outcome === outcome} className={draft.outcome === outcome ? `selected outcome-${outcome}` : ''} onClick={() => onOutcome(outcome)}><span className="habit-choice-title">{outcomeLabel(habit, draft.date, outcome)}</span><span id={`editor-${habit.id}-${outcome}`} className="habit-choice-description">{outcome === 'done' ? 'Done · 1 point' : outcome === 'partial' ? 'Partial · ½ point' : 'Missed · 0 points'}</span></button>
     })}</div>
+    <div className="habit-intentional-skip"><div><strong>Intentional skip</strong><p>{flexible ? 'No points; this week is not judged against its target.' : 'Excluded from the fixed score, not counted as missed.'}</p></div><button type="button" aria-pressed={draft.outcome === 'skipped'} onClick={() => onOutcome('skipped')}>Skip habit</button></div>
     {draft.outcome && <label>Note<textarea value={draft.note} onChange={event => onChange({ ...draft, note: event.target.value })} onBlur={event => onNoteBlur(event.target.value)}/></label>}
     {draft.originalOutcome && <div className="habit-entry-actions"><button className="text-button" onClick={() => { if (window.confirm('Clear this outcome and its note?')) onOutcome(null) }}>Clear outcome and note</button></div>}
   </div>

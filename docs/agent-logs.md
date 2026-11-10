@@ -317,4 +317,9 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 ## 2026-11-10 — Habit polish v0.10.1
 
-- Reworked date navigation with a visible Today control and week strip, moved note action beside history, consolidated logging help and made selected outcomes use their status colors. Skip uses a compact icon and short label. No behavior or data changes. Owner requested this as a separate deployment before v0.11.0; verify Pages and version.
+- Reworked date navigation with a visible Today control and week strip, moved note action beside history, consolidated logging help and made selected outcomes use their status colors. Skip uses a compact icon and short label. No behavior or data changes. Build and 16 targeted browser tests passed; Pages deployed commit `dbb552e` and served v0.10.1 before the separate v0.11.0 push.
+
+## 2026-11-10 — Settings and signup v0.11.0
+
+- Grouped backups in Settings; added username and preset avatar in Supabase Auth user metadata with save/error feedback and demo separation. Signup requires a username and shows verification instructions when confirmation is required. Documented future first-signup tutorial; no migration or tutorial implementation.
+- Build, 68 history tests and all 46 browser tests passed (fake Supabase/demo). Profile metadata is outside app-data backups and revision checks. Actual signup availability, Confirm email, allowed redirect URLs, delivery and real account metadata behavior require Supabase configuration and have not been verified. Owner requested a separate deployment; verify Pages and version.

@@ -2,7 +2,7 @@
 
 ## Mini-app ownership inventory
 
-- **Shared:** Supabase Auth owns accounts. Appearance is currently a browser preference; there is no separate shared app-data table.
+- **Shared:** Supabase Auth owns accounts and the user-editable username and preset avatar in Auth user metadata; there is no separate shared profile table. Metadata is not included in workout, habit or full app-data backups and does not use the workout/habit revision protocol.
 - **Active Workout Tracker:** `tor_online_workout_heads` and `tor_online_workout_records`, accessed through `tor_online_workout_read` and `tor_online_workout_write`. Migration 005 replaces the write function with the history-format client guard. These are workout-only, even though records include workout settings.
 - **Older Workout Tracker experiments:** migration 001's 16 normalized workout tables and migration 002's `tor_sync_records`, `tor_sync_batches` and `tor_apply_sync_batch` are not the active online workspace. The old client code is under `src/workout/legacy-sync/`; retained does not mean these tables are safe to delete or rerun.
 - **Habit Tracker:** migration `202611080006_online_habits.sql` adds the separate `tor_online_habit_workspaces` table and `tor_online_habit_read`/`tor_online_habit_write` RPCs. On 2026-11-08 the owner reported applying migration 006 successfully and that checks were good. Do not rerun it on that project. It stores an independently revision-checked whole habit workspace (10 MB limit), not incremental log records; each write replaces only that habit workspace. It does not touch workout tables. Client validation covers domain structure; JSON is not fully domain-validated by SQL. PGlite tests are not a substitute for real Supabase isolation or retry tests.

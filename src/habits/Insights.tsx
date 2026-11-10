@@ -5,7 +5,7 @@ import { InfoTip } from '../InfoTip'
 import { Sheet } from '../workout/Sheet'
 
 function ScoreSummary({ score }: { score: ReturnType<typeof fixedScore> }) {
-  return <div className="habit-summary-grid"><div><strong>{percent(score.performance)}</strong><span>Performance</span><small>{score.done + score.partial + score.missed} scored</small></div><div><strong>{percent(score.coverage)}</strong><span>Coverage</span><small>{score.done + score.partial + score.missed + score.skipped} of {score.due} logged</small></div></div>
+  return <div className="habit-summary-grid"><div><strong>{percent(score.performance)}</strong><span>Fixed score</span><small>{score.done + score.partial + score.missed} scored</small></div><div><strong>{percent(score.coverage)}</strong><span>Coverage</span><small>{score.done + score.partial + score.missed + score.skipped} of {score.due} logged</small></div></div>
 }
 
 export function Insights({ data, active, onDate }: { data: HabitData; active: boolean; onDate: (date: string, habitId?: string) => void }) {

@@ -294,3 +294,13 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Finished the week grid, insight history notes and return context, and distinguishing zero from missing chart data. Owner corrected the workout-inspired habit flow: outcome selection now saves and closes immediately, personal date-effective labels replace default labels, and notes save on blur or closing with no entry Save button. Old converted backups do not gain icons automatically; no SQL migration or scoring change.
 - Build, 67 history tests, five schema tests, four configuration tests and three PWA tests passed. The 41-test browser run had eight selector failures after accessible labels changed; all eight passed on targeted reruns after corrections. Tests use fake Supabase; live account save/recovery and Android-specific behavior remain unverified. Owner authorized one push; verify Pages and version. No tag or private reference files.
+
+## 2026-11-10 — Habit daily clarity
+
+- Made the existing fixed-habit score and logged count visible on Daily; clarified its exclusions and kept flexible progress separate. Simplified navigation and reduced per-habit history to compact accessible markers, with corrections in Week. No scoring or storage changes, migration, push or release.
+- Production build and 67 history tests passed; 13 targeted browser tests passed with snap Chromium and demo/fake Supabase. An initial browser attempt used a nonexistent Chromium path. Live Supabase and Android-specific rendering remain unverified; the private reference copy remains untracked and untouched.
+
+## 2026-11-10 — Sheet backdrop dismissal v0.9.2
+
+- Shared habit and workout sheets now request their existing close action on backdrop taps, preserving note saves and discard confirmations; drags beginning inside do not dismiss. Includes the preceding local habit UI pass. Owner authorized minor deployment; no tag.
+- Build, all 43 browser tests and three PWA tests passed using snap Chromium, including note persistence, drag protection and workout discard confirmation with fake Supabase/demo. The first PWA attempt lacked a default Playwright browser; the rerun used the installed Chromium. Real account and Android-specific behavior remain unverified. Verify Pages and deployed version after push.

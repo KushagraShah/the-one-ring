@@ -304,3 +304,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Shared habit and workout sheets now request their existing close action on backdrop taps, preserving note saves and discard confirmations; drags beginning inside do not dismiss. Includes the preceding local habit UI pass. Owner authorized minor deployment; no tag.
 - Build, all 43 browser tests and three PWA tests passed using snap Chromium, including note persistence, drag protection and workout discard confirmation with fake Supabase/demo. The first PWA attempt lacked a default Playwright browser; the rerun used the installed Chromium. Real account and Android-specific behavior remain unverified. Verify Pages and deployed version after push.
+
+## 2026-11-10 — Habit outcome clarity
+
+- Restored direct daily outcome choices inspired by the old tracker, exposed outcome categories and point values, and separated intentional skip with fixed/flexible explanations. Fixed habit navigation padding overridden by workout styles. Scoring and storage unchanged. Owner authorized deployment as v0.9.3 and future deployments by default unless local-only is requested; verify Pages and version.
+- Production build passed. Browser suite: 43 of 44 passed initially; the remaining test passed after updating selectors for the renamed skip action, alongside the new custom-label/score and navigation test. Browser tests use fake Supabase/demo; Android rendering and live account behavior remain unverified.

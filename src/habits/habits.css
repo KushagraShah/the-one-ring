@@ -94,7 +94,7 @@
 .habit-row>span:last-child{white-space:normal;overflow-wrap:anywhere}.habit-status{max-width:48%}.habit-choice-title{white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* Compact daily overview: history is a glance, corrections live in Week. */
-.habit-app .habit-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+.habit-app .habit-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px;align-items:stretch}
 .habit-app .habit-nav button{min-width:0;padding:10px 4px}
 .habit-date label{font-size:11px}.habit-date input{min-height:30px;font-size:14px;color-scheme:dark}
 .habit-daily-summary{align-items:center;gap:12px}
@@ -110,3 +110,13 @@
 .habit-marker.is-selected{outline:1px solid var(--accent);outline-offset:1px}
 .habit-marker.is-done{background:#234635;border-color:#47755b;color:#c2ecd2}.habit-marker.is-partial{background:#514226;border-color:#877044;color:#f2d99f}.habit-marker.is-missed{background:#512d30;border-color:#89555a;color:#f0c0c2}.habit-marker.is-skipped{background:#333d48;border-color:#5a6877;color:#d0dce9}.habit-marker.is-unscheduled{background:transparent;border-style:dashed;color:#888}
 @media(max-width:360px){.habit-marker{width:14px}.habit-recent-days{gap:2px}.habit-card-footer{gap:5px}}
+
+/* Personal outcomes stay distinct from an intentional, neutral skip. */
+.habit-inline-outcomes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 12px 10px}
+.habit-inline-outcomes button{min-width:0;min-height:48px;display:grid;align-content:center;gap:3px;text-align:left;padding:7px 9px;border:1px solid #4b4d4c;border-radius:8px;background:#292929;color:#eee}
+.habit-inline-outcomes button span{font-size:12px;font-weight:700;overflow-wrap:anywhere;white-space:pre-wrap}.habit-inline-outcomes button small{font-size:10px;color:#bcbcbc}
+.habit-inline-outcomes button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,#242424)}
+.habit-outcome-choices{grid-template-columns:repeat(3,minmax(0,1fr))}
+.habit-intentional-skip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 16px;padding:12px;border:1px solid #48515a;border-radius:9px;background:#242a30}
+.habit-intentional-skip strong{font-size:12px}.habit-intentional-skip p{margin:4px 0 0;color:#c1c9d0;font-size:11px;line-height:1.4}.habit-intentional-skip button{flex:none;min-height:44px;padding:8px 12px;border:1px solid #718293;border-radius:8px;background:#333d48;color:#e1eaf2;font-weight:700}
+.habit-intentional-skip button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}

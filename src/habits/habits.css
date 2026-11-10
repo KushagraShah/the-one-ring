@@ -92,3 +92,21 @@
 /* Week correction and readable insight context. */
 .habit-insights-back{margin:4px 0}.habit-week-heading{margin-top:12px}.habit-week-heading h2{font-size:18px}.habit-week-heading small{color:#b8b8b8;font-size:11px}.habit-week-legend{display:flex;flex-wrap:wrap;gap:5px 11px;color:#c5c5c5;font-size:11px;margin:12px 0}.habit-week-card{padding:11px;margin:8px 0}.habit-week-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.habit-week-title strong{font-size:14px;overflow-wrap:anywhere}.habit-week-title small{font-size:11px;color:#bcbcbc}.habit-week{margin-top:9px;gap:4px}.habit-week button{display:grid;place-items:center;gap:4px;min-height:52px;padding:4px 0}.habit-week button span{font-size:10px;font-weight:400}.habit-week button strong{font-size:17px;line-height:1}.habit-week button.is-unlogged{border-style:dashed;color:#ddd}.habit-week button.is-available{border-color:#75678d;color:#d5c1f0}.habit-week button.is-unscheduled,.habit-week button.is-future{background:transparent;border-style:dashed}.habit-history-result{display:grid;justify-items:end;gap:4px;min-width:0}.habit-history-result small{display:block;max-width:100%;color:#c8c8c8;white-space:pre-wrap;overflow-wrap:anywhere;text-align:right;font-size:12px}.habit-bars .habit-bar-track{height:100%;width:12px;display:flex;align-items:end;justify-content:center}.habit-bars .habit-bar-fill{width:9px;border-radius:3px 3px 0 0}.habit-bars .habit-bar-zero,.habit-bars .habit-bar-na{width:auto;font-size:10px;line-height:1;background:transparent;font-weight:700}.habit-bar-zero.habit-bar-performance{color:var(--accent)}.habit-bar-zero.habit-bar-coverage{color:#c4c8ca}.habit-bars .habit-bar-na{color:#aaa}
 .habit-row>span:last-child{white-space:normal;overflow-wrap:anywhere}.habit-status{max-width:48%}.habit-choice-title{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Compact daily overview: history is a glance, corrections live in Week. */
+.habit-app .habit-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+.habit-app .habit-nav button{min-width:0;padding:10px 4px}
+.habit-date label{font-size:11px}.habit-date input{min-height:30px;font-size:14px;color-scheme:dark}
+.habit-daily-summary{align-items:center;gap:12px}
+.habit-daily-score{display:grid;justify-items:end;gap:2px;text-align:right;flex:none}
+.habit-daily-score strong{font-size:22px;color:var(--accent)}
+.habit-daily-score span{font-size:11px;color:#d0cbd5}
+.habit-card-footer{display:flex;align-items:end;justify-content:space-between;gap:8px;padding:0 12px 10px}
+.habit-card-footer>div:first-child{min-width:0;display:grid;justify-items:start;gap:5px}
+.habit-quick-done{margin:0;max-width:100%;overflow-wrap:anywhere;text-align:left}
+.habit-history-hint{font-size:10px;color:#b8beb8}
+.habit-recent{padding:0;flex:none}.habit-recent-days{display:flex;gap:3px}
+.habit-marker{width:17px;height:22px;display:grid;place-items:center;border-radius:4px;background:#292d2a;border:1px solid #4d554f;color:#c9ceca;font-size:10px;font-weight:700}
+.habit-marker.is-selected{outline:1px solid var(--accent);outline-offset:1px}
+.habit-marker.is-done{background:#234635;border-color:#47755b;color:#c2ecd2}.habit-marker.is-partial{background:#514226;border-color:#877044;color:#f2d99f}.habit-marker.is-missed{background:#512d30;border-color:#89555a;color:#f0c0c2}.habit-marker.is-skipped{background:#333d48;border-color:#5a6877;color:#d0dce9}.habit-marker.is-unscheduled{background:transparent;border-style:dashed;color:#888}
+@media(max-width:360px){.habit-marker{width:14px}.habit-recent-days{gap:2px}.habit-card-footer{gap:5px}}

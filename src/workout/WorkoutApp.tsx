@@ -1,3 +1,4 @@
+import { confirmAction, showMessage } from '../AppDialog'
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useState } from 'react'
 import { ArrowDownToLine, ArrowRight, Check, ChevronRight, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../auth'
@@ -140,21 +141,21 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
     setDays(nextDays); setData(nextData); setBook(nextBook); setSelectedDay(names[selectedDay] || ''); setNotice('Routine changes saved.'); return true
   }
   const switchRoutine = (id: string) => {
-    if (data.session) { window.alert('Finish your current workout before switching routines.'); return }
+    if (data.session) { void showMessage('Finish your current workout before switching routines.'); return }
     const updated = currentBook()
     const target = updated.routines.find(routine => routine.id === id)
     if (!target) return
     setBook({ ...updated, active: id }); saveDays(target.days); save({ ...data, completed: target.completed, skippedDays: target.skippedDays || [] }); setSelectedDay('')
   }
   const createRoutine = (name: string) => {
-    if (data.session) { window.alert('Finish your current workout before switching routines.'); return }
+    if (data.session) { void showMessage('Finish your current workout before switching routines.'); return }
     const routine = { id: crypto.randomUUID(), name, days: [{ name: 'Day 1', subtitle: '', exercises: [] }], completed: [] as string[] }
     const updated = currentBook(); setBook({ active: routine.id, routines: [...updated.routines, routine] }); saveDays(routine.days); save({ ...data, completed: [], skippedDays: [] }); setSelectedDay('')
   }
   const start = (day: Day | null) => {
     if (session) { setPage('session'); setNotice('Resume your workout in progress.'); return }
     const exercises = day ? planExercises(day.name, day.exercises, library, rotations).map((exercise, index) => ({ ...exercise, sessionSlotId: day.exercises[index].routineSlotId || crypto.randomUUID(), sessionItemId: crypto.randomUUID(), sessionSource: exercise.rotationGroupId ? 'cycle' as const : 'planned' as const })) : []
-    if (new Set(exercises.map(exercise => exercise.name)).size !== exercises.length) { window.alert('This rotation produces the same exercise twice on this day. Adjust the routine or rotation before starting.'); return }
+    if (new Set(exercises.map(exercise => exercise.name)).size !== exercises.length) { void showMessage('This rotation produces the same exercise twice on this day. Adjust the routine or rotation before starting.'); return }
     const plan = day ? exercises.map(exercise => ({ slotId: exercise.sessionSlotId, name: exercise.name, exerciseId: exercise.id, equipment: exercise.equipment, cycleId: exercise.rotationGroupId, cycleName: rotations.find(group => group.id === exercise.rotationGroupId)?.name })) : []
     const routine = book.routines.find(item => item.id === book.active)
     save({ ...data, session: { id: crypto.randomUUID(), day: day?.name || 'Free workout', dayId: day?.id, startedAt: new Date().toISOString(), routineId: day ? routine?.id : undefined, routineName: day ? routine?.name : undefined, plan, exercises, entries: Object.fromEntries(exercises.map(e => [e.name, startingSets(e, data.workouts)])), skipped: [], warmups: [], cardio: Object.fromEntries(exercises.map(e => { const prev = previousFor(data.workouts, e)?.cardio; return [e.name, prev ? { ...prev, done: false } : { duration: '', speed: '', incline: '', done: false }] })) } })
@@ -215,9 +216,9 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
       if (file.size > 10_000_000) throw new Error('Backup is too large.')
       const parsed = parseBackup(await file.text())
       const prepared = prepareRestore(parsed, days)
-      if (!window.confirm('Replace current workout data with this backup? Export your current data first.')) return
+      if (!await confirmAction('Replace current workout data with this backup? Export your current data first.')) return
       applyBackup(prepared); setNotice(identity.demo ? 'Backup restored for this demo.' : 'Backup loaded. Wait for saving to finish before leaving.'); setPage('home')
-    } catch { window.alert('Unable to restore this backup. The file may be invalid, incompatible, or too large. Your current workout data was not replaced.') }
+    } catch { void showMessage('Unable to restore this backup. The file may be invalid, incompatible, or too large. Your current workout data was not replaced.') }
   }
 
   useLayoutEffect(() => {
@@ -236,7 +237,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   }, [saveStatus])
 
   return <>
-    {online && (saveStatus === 'error' || saveStatus === 'conflict') && <div role="alert" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.85)', display: 'grid', placeItems: 'center', padding: 24 }}><div className="auth-card"><h2>{saveStatus === 'conflict' ? 'Workout data changed elsewhere' : 'Could not save workout data'}</h2><p>{saveStatus === 'conflict' ? 'This device has unsaved changes. Export them before reloading the latest server data.' : 'Your changes have not been confirmed. Check your connection and retry. Keep this page open.'} Reloading can also discard unsaved habit changes.</p>{saveStatus === 'error' && <button className="primary" onClick={() => online.retry()}>Retry save</button>}<button className="outline-button" onClick={exportData}>Export unsaved data</button> <button className="outline-button" onClick={exportHabits}>Export habits</button> <button className="outline-button" onClick={() => { if (window.confirm('Discard ALL unsaved workout and habit changes and reload? Export both first.')) window.location.reload() }}>Discard and reload</button></div></div>}
+    {online && (saveStatus === 'error' || saveStatus === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{saveStatus === 'conflict' ? 'Workout data changed elsewhere' : 'Could not save workout data'}</h2><p>{saveStatus === 'conflict' ? 'This device has unsaved changes. Export them before reloading the latest server data.' : 'Your changes have not been confirmed. Check your connection and retry. Keep this page open.'} Reloading can also discard unsaved habit changes.</p>{saveStatus === 'error' && <button className="primary" onClick={() => online.retry()}>Retry save</button>}<button className="outline-button" onClick={exportData}>Export unsaved data</button> <button className="outline-button" onClick={exportHabits}>Export habits</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved workout and habit changes and reload? Export both first.')) window.location.reload() }}>Discard and reload</button></div></div>}
     {online && saveStatus === 'saving' && <div role="status" style={{ position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#171717', color: '#fff', padding: '8px 16px', borderRadius: 8 }}>Saving workouts…</div>}
     {confirmation && <ConfirmDialog title={confirmation.title} message={confirmation.message} confirmLabel={confirmation.label} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation.action; setConfirmation(null); action() }}/> }
     <div hidden={view !== 'workout'}>
@@ -247,7 +248,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
       <div className="workout-home-heading"><h1>Workout<span className="accent">.</span></h1>{!session && <button className="outline-button" onClick={() => start(null)}>Start free workout</button>}</div>
       {session ? <button className="resume active-session" onClick={() => setPage('session')}><span><strong>● Workout in progress</strong><small>{session.day} · {session.exercises.filter(item => session.skipped.includes(item.name) || (session.entries[item.name] || []).filter(set => set.done).length === 3 || session.cardio?.[item.name]?.done).length} / {session.exercises.length} accounted for</small></span><span>Resume <ArrowRight size={16}/></span></button> : <section className="up-next-card"><div><span className="eyebrow muted">UP NEXT</span><h2>{nextDay.name} day</h2><p>First: {planExercises(nextDay.name, nextDay.exercises, library, rotations)[0]?.name || 'No exercises yet'}</p></div><button className="primary" onClick={() => start(nextDay)}>Start workout <ArrowRight size={16}/></button></section>}
       <div className="routine-picker"><label>Active routine<select value={book.active} onChange={event => switchRoutine(event.target.value)}>{book.routines.map(routine => <option key={routine.id} value={routine.id}>{routine.name}</option>)}</select></label></div>
-      <div className="routine-compact-heading"><h2>Routine days</h2><span>{data.completed.length} of {days.length} days accounted for</span><button className="text-button" onClick={() => { if (window.confirm('Start a fresh cycle? Current cycle progress will be cleared.')) { recordCycle([{ type: 'reset' }]); save({ ...data, completed: [], skippedDays: [] }) } }}>Reset cycle</button></div>
+      <div className="routine-compact-heading"><h2>Routine days</h2><span>{data.completed.length} of {days.length} days accounted for</span><button className="text-button" onClick={async () => { if (await confirmAction('Start a fresh cycle? Current cycle progress will be cleared.')) { recordCycle([{ type: 'reset' }]); save({ ...data, completed: [], skippedDays: [] }) } }}>Reset cycle</button></div>
       <div className="day-list">{days.map((day, i) => <button className={`day-row ${currentDay.name === day.name ? 'selected' : ''}`} key={day.id || day.name} onClick={() => setSelectedDay(day.name)}><span className={`day-number ${data.completed.includes(day.name) ? 'done' : ''}`}>{data.skippedDays?.includes(day.name) ? '–' : data.completed.includes(day.name) ? <Check size={16}/> : i + 1}</span><span className="day-info"><strong>{day.name} {day.name === nextDay.name && <span className="up-next">UP NEXT</span>}</strong><small>{data.skippedDays?.includes(day.name) ? 'Skipped this cycle' : data.completed.includes(day.name) ? 'Completed this cycle' : `${day.exercises.length} exercises`}</small></span><ChevronRight size={17}/></button>)}</div>
       {!session && <div className="day-preview"><div className="routine-compact-heading"><h2>{currentDay.name}</h2><span>{currentDay.exercises.length} exercises</span></div><div className="preview-exercises">{planExercises(currentDay.name, currentDay.exercises, library, rotations).map((exercise, index) => <div key={exercise.routineSlotId || index}><span>{index + 1}</span><strong>{exercise.name}</strong></div>)}</div><button className="primary wide" onClick={() => start(currentDay)}>Start {currentDay.name.toLowerCase()} day <ArrowRight size={17}/></button>{!data.completed.includes(currentDay.name) && <button className="text-button" onClick={() => skipDay(currentDay.name)}>Skip this day in the cycle</button>}</div>}
     </div>}

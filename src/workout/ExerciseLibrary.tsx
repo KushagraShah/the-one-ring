@@ -1,3 +1,4 @@
+import { confirmAction } from '../AppDialog'
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { Workout } from './WorkoutSession'
@@ -46,7 +47,7 @@ export function ExerciseLibrary({ exercises, workouts, onSave, onDirty }: Props)
   }
   return <>
     <div className="library-heading"><h1>Exercise library<span className="accent">.</span></h1><button className="primary" onClick={() => { setOriginalName(null); setEditing({ ...empty }); setTagText(''); setError('') }}><Plus size={16}/> New exercise</button></div>
-    {editing && <Sheet title={originalName ? 'Edit exercise' : 'New exercise'} onClose={() => { if (window.confirm('Discard exercise edits?')) setEditing(null) }}><form className="library-form" onSubmit={submit}>
+    {editing && <Sheet title={originalName ? 'Edit exercise' : 'New exercise'} onClose={async () => { if (await confirmAction('Discard exercise edits?')) setEditing(null) }}><form className="library-form" onSubmit={submit}>
       <h2>{originalName ? 'Edit exercise' : 'New exercise'}</h2>
       <p>Give similar machines distinct names so their records stay separate.</p>
       <label>Exercise / variant name<input required maxLength={100} placeholder="e.g. HammerStrength chest press" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })}/></label>

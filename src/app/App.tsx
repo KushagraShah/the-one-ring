@@ -1,3 +1,4 @@
+import { confirmAction, showMessage } from '../AppDialog'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, ArrowUpRight, ChevronRight, Dumbbell, Home, ListChecks, MoreHorizontal, RotateCcw, Settings2 } from 'lucide-react'
 import { version as appVersion } from '../../package.json'
@@ -20,6 +21,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
   const [backupsOpen, setBackupsOpen] = useState(false)
   const profileDirty = profile.username !== savedProfile.username || profile.avatar !== savedProfile.avatar
   const avatar = avatars.find(item => item.id === savedProfile.avatar) || avatars[0]
+  const previewAvatar = avatars.find(item => item.id === profile.avatar) || avatars[0]
   const displayName = savedProfile.username.trim() || identity.email
   useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (profileDirty || profileBusy) event.preventDefault() }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn) }, [profileDirty, profileBusy])
   const saveProfile = async (event: React.FormEvent) => {
@@ -48,23 +50,23 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
     setUpdateMessage('')
     update.activate()
   }
-  const navigate = (next: View) => {
+  const navigate = async (next: View) => {
     if (next === view) { if (next === 'workout') workout.current?.open(); if (next === 'settings') setBackupsOpen(false); return }
-    if (view === 'settings' && (profileBusy || (profileDirty && !window.confirm('Discard unsaved profile changes?')))) return
+    if (view === 'settings' && (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?')))) return
     if (view === 'settings' && profileDirty) { setProfile(savedProfile); setProfileMessage('') }
     const apply = () => { if (next === 'workout') workout.current?.open(); setView(next) }
     if (view === 'workout' && workout.current) workout.current.leave(apply)
     else if (view === 'habits' && habits.current) habits.current.leave(apply)
     else apply()
   }
-  const exit = () => {
-    if (profileBusy || (profileDirty && !window.confirm('Discard unsaved profile changes?'))) return
-    if ((workout.current && !workout.current.canSignOut()) || (habits.current && !habits.current.canSignOut())) { window.alert('Finish your edits and wait for saves before signing out.'); return }
+  const exit = async () => {
+    if (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?'))) return
+    if ((workout.current && !workout.current.canSignOut()) || (habits.current && !habits.current.canSignOut())) { void showMessage('Finish your edits and wait for saves before signing out.'); return }
     signOut()
   }
   const exportFull = () => {
     const w = workout.current; const h = habits.current; const data = h?.snapshot()
-    if (!w || !h || !data || !w.canSignOut() || !h.canSignOut()) { window.alert('Both apps must be loaded and saved before exporting a full backup.'); return }
+    if (!w || !h || !data || !w.canSignOut() || !h.canSignOut()) { void showMessage('Both apps must be loaded and saved before exporting a full backup.'); return }
     const exportedAt = new Date().toISOString()
     const file = { scope: 'full', format: 1, exportedAt, workouts: w.snapshot(), habits: data }
     const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }))
@@ -73,17 +75,17 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
   const restoreFull = async (file?: File) => {
     if (!file) return
     const w = workout.current; const h = habits.current
-    if (!w || !h || !h.snapshot() || !w.canSignOut() || !h.canSignOut()) { window.alert('Both apps must be loaded and saved before restoring.'); return }
+    if (!w || !h || !h.snapshot() || !w.canSignOut() || !h.canSignOut()) { void showMessage('Both apps must be loaded and saved before restoring.'); return }
     let workoutData: ReturnType<WorkoutHandle['validateBackup']>; let habitData: ReturnType<typeof parseHabits>
     try {
       if (file.size > 20_000_000) throw new Error('Too large')
       const value = JSON.parse(await file.text())
       if (value.scope !== 'full' || value.format !== 1) throw new Error('Wrong scope')
       workoutData = w.validateBackup(value.workouts); habitData = parseHabits(JSON.stringify(value.habits))
-    } catch { window.alert('Invalid full backup. Neither app was changed.'); return }
-    if (!window.confirm('Replace BOTH workout and habit data? Export a full backup first. Each app saves separately: a failure may leave only one restored. Keep this page open and follow any save errors.')) return
-    try { w.replace(workoutData); h.replace(habitData); window.alert('Restore started. The two apps save separately; wait for both saving indicators and address any errors before leaving.') }
-    catch { window.alert('Restore could not finish. One app may have changed. Keep this page open, inspect both apps and export their data before retrying.') }
+    } catch { void showMessage('Invalid full backup. Neither app was changed.'); return }
+    if (!await confirmAction('Replace BOTH workout and habit data? Export a full backup first. Each app saves separately: a failure may leave only one restored. Keep this page open and follow any save errors.')) return
+    try { w.replace(workoutData); h.replace(habitData); void showMessage('Restore started. The two apps save separately; wait for both saving indicators and address any errors before leaving.') }
+    catch { void showMessage('Restore could not finish. One app may have changed. Keep this page open, inspect both apps and export their data before retrying.') }
   }
   return <div className="app-shell" data-theme={view === 'workout' ? 'workout' : view === 'habits' ? 'habits' : 'neutral'}>
     <aside className="sidebar"><div className="brand"><span className="brand-mark"><span /></span><span>the one ring<small>YOUR SPACE TO GROW</small></span></div><div className="sidebar-label">YOUR SPACE</div><button className={`side-link ${view === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Home size={18}/> Home</button><button className={`side-link ${view === 'workout' ? 'active' : ''}`} onClick={() => navigate('workout')}><Dumbbell size={18}/> Workouts</button><button className={`side-link ${view === 'habits' ? 'active' : ''}`} onClick={() => navigate('habits')}><ListChecks size={18}/> Habits</button><div className="sidebar-bottom"><button className="profile" onClick={() => navigate('settings')}><span className="avatar">{avatar.symbol}</span><span><strong>{displayName}</strong><small>{identity.demo ? 'Demo mode' : 'Account'}</small></span><MoreHorizontal size={19}/></button></div></aside>
@@ -91,7 +93,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
     <div className="content">
       {(update.status === 'available' || update.status === 'activated') && <div className="app-update" role="status"><div><strong>{update.status === 'available' ? 'An update is available' : 'Update ready to open'}</strong><p>{update.status === 'available' ? 'Install when your edits are saved.' : 'Reload when your edits are saved.'}</p>{updateMessage && <p>{updateMessage}</p>}</div><button className="outline-button" onClick={applyUpdate}>{update.status === 'available' ? 'Prepare update' : 'Reload app'}</button></div>}
       {view === 'home' && <><div className="greeting"><div><h1>Your apps<span className="accent">.</span></h1><p>Choose an app.</p></div></div><div className="dashboard-grid"><div className="workout-card"><div className="workout-card-body"><div className="eyebrow">WORKOUT TRACKER</div><h3>Workouts<span className="accent">.</span></h3><p>Build routines and keep a record of your workouts.</p><button className="primary" onClick={() => navigate('workout')}>Go to workouts <ArrowUpRight size={17}/></button></div></div><div className="workout-card"><div className="workout-card-body"><div className="eyebrow">HABIT TRACKER</div><h3>Habits<span className="accent">.</span></h3><p>Track and reflect on your habits.</p><button className="primary" onClick={() => navigate('habits')}>Go to habits <ArrowUpRight size={17}/></button></div></div></div></>}
-      {view === 'settings' && <div hidden={backupsOpen}><div className="page-heading"><div><h1>Settings<span className="accent">.</span></h1></div></div><div className="settings-card"><div className="settings-row"><span className="avatar" aria-hidden="true">{avatar.symbol}</span><div><strong>{displayName}</strong><small>{identity.demo ? 'Temporary demo' : identity.email}</small></div></div><div className="detail-divider"/><form className="profile-form" onSubmit={saveProfile}><label>Username<input required maxLength={40} autoComplete="nickname" value={profile.username} onChange={event => setProfile({ ...profile, username: event.target.value })}/></label><fieldset><legend>Avatar</legend><div className="profile-avatar-options">{avatars.map(item => <button type="button" key={item.id} aria-label={item.label} aria-pressed={profile.avatar === item.id} onClick={() => setProfile({ ...profile, avatar: item.id })}>{item.symbol}</button>)}</div></fieldset><button className="outline-button" type="submit" disabled={profileBusy || !profileDirty}>{profileBusy ? 'Saving…' : 'Save profile'}</button>{profileMessage && <p role="status">{profileMessage}</p>}</form><div className="demo-warning"><p>{identity.demo ? 'Demo data is temporary and resets on refresh.' : 'Your account data is saved to Supabase. An internet connection is required.'}</p></div><button className="outline-button signout" onClick={exit}>{identity.demo ? 'Exit demo' : 'Sign out'}</button></div><button className="settings-backups-link" onClick={() => setBackupsOpen(true)}><span><strong>Backups</strong><small>Export or restore app data</small></span><ChevronRight size={20} aria-hidden="true"/></button></div>}
+      {view === 'settings' && <div hidden={backupsOpen}><div className="page-heading"><div><h1>Settings<span className="accent">.</span></h1></div></div><div className="settings-card"><div className="settings-row"><span className="avatar" aria-hidden="true">{previewAvatar.symbol}</span><div><strong>{displayName}</strong><small>{identity.demo ? 'Temporary demo' : identity.email}</small></div></div><div className="detail-divider"/><form className="profile-form" onSubmit={saveProfile}><label>Username<input required maxLength={40} autoComplete="nickname" value={profile.username} onChange={event => setProfile({ ...profile, username: event.target.value })}/></label><fieldset><legend>Avatar</legend><div className="profile-avatar-options">{avatars.map(item => <button type="button" key={item.id} aria-label={item.label} aria-pressed={profile.avatar === item.id} onClick={() => setProfile({ ...profile, avatar: item.id })}>{item.symbol}</button>)}</div></fieldset><button className="outline-button" type="submit" disabled={profileBusy || !profileDirty}>{profileBusy ? 'Saving…' : 'Save profile'}</button>{profileMessage && <p role="status">{profileMessage}</p>}</form><div className="demo-warning"><p>{identity.demo ? 'Demo data is temporary and resets on refresh.' : 'Your account data is saved to Supabase. An internet connection is required.'}</p></div><button className="outline-button signout" onClick={exit}>{identity.demo ? 'Exit demo' : 'Sign out'}</button></div><button className="settings-backups-link" onClick={() => setBackupsOpen(true)}><span><strong>Backups</strong><small>Export or restore app data</small></span><ChevronRight size={20} aria-hidden="true"/></button></div>}
       {view === 'settings' && backupsOpen && <div className="backup-page-heading"><button className="text-button" onClick={() => setBackupsOpen(false)}>← Settings</button><div className="page-heading"><div><h1>Backups<span className="accent">.</span></h1><p>Choose which app data to export or restore.</p></div></div></div>}
       <div className={view === 'settings' && !backupsOpen ? 'backup-hidden' : undefined}>
       <WorkspaceGate ref={workout} identity={identity} view={view} exportHabits={() => habits.current?.exportData()}/>

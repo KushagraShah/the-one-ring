@@ -81,6 +81,8 @@ test('profile saves account metadata, handles failures and groups backups', asyn
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.getByLabel('Username').fill('My profile')
   await page.getByRole('button', { name: 'Star', exact: true }).click()
+  await expect(page.locator('.settings-row .avatar')).toHaveText('★')
+  await expect(page.locator('.top-profile .avatar')).not.toHaveText('★')
   backend.offline(true)
   await page.getByRole('button', { name: 'Save profile' }).click()
   await expect(page.getByText('Could not save your profile. Check your connection and try again.')).toBeVisible()
@@ -117,6 +119,11 @@ test('account writes are server-confirmed, retry after failure, and reload from 
   await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
   await page.getByRole('button', { name: 'Skip day', exact: true }).click()
   await expect(page.getByText('Workout data changed elsewhere')).toBeVisible()
+  await page.getByRole('button', { name: 'Discard and reload' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+  await expect(confirmation).toContainText('Discard ALL unsaved workout and habit changes')
+  await confirmation.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByRole('button', { name: 'Export unsaved data' })).toBeVisible()
 })
 
 test('shared account messages describe the whole app, not only workouts', async ({ page }) => {
@@ -147,6 +154,16 @@ test('launcher presents both apps equally on desktop and phone', async ({ page }
   expect(phone[0].width).toBe(phone[1].width)
   expect(phone[0].height).toBe(phone[1].height)
   expect(phone[1].top).toBeGreaterThan(phone[0].top)
+  for (const width of [320, 760, 800, 1024]) {
+    await page.setViewportSize({ width, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    for (const card of await cards.all()) {
+      const box = await card.boundingBox()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
   for (const card of await cards.all()) {
     const box = await card.boundingBox(); const button = await card.getByRole('button').boundingBox()
     expect(button!.x).toBeGreaterThanOrEqual(box!.x)
@@ -357,6 +374,7 @@ test('custom missed and intentional skip toggle separately with stable date cont
   await page.getByRole('button', { name: 'Save habit' }).click()
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   const card = page.locator('.habit-daily-card').filter({ hasText: 'Sleep' })
+  await expect(page.locator('.habit-date-strip')).toHaveCount(0)
   await card.getByRole('button', { name: 'Skipped · Sleep' }).click()
   await expect(page.getByLabel('Fixed habit daily summary')).toContainText('0%')
   await expect(card.getByRole('button', { name: 'Skipped · Sleep' })).toHaveCSS('background-color', 'rgb(81, 45, 48)')
@@ -407,17 +425,16 @@ test('workout backdrop respects exercise edit discard confirmation', async ({ pa
   await page.getByRole('button', { name: 'New exercise' }).click()
   const editor = page.getByRole('dialog', { name: 'New exercise' })
   await editor.getByLabel('Exercise / variant name').fill('Draft')
-  page.once('dialog', dialog => dialog.dismiss())
   await page.mouse.click(5, 5)
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Cancel' }).click()
   await expect(editor).toBeVisible()
   await expect(editor.getByLabel('Exercise / variant name')).toHaveValue('Draft')
-  page.once('dialog', dialog => dialog.accept())
   await page.mouse.click(5, 5)
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await expect(editor).toHaveCount(0)
 })
 
 test('full backup restores workout and habit scopes in demo', async ({ page }) => {
-  page.on('dialog', dialog => dialog.accept())
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
@@ -440,8 +457,11 @@ test('full backup restores workout and habit scopes in demo', async ({ page }) =
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
   await page.getByRole('button', { name: /^Read Active/ }).click()
   await page.locator('.habit-panel').getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await page.getByLabel('Restore full backup').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: contents })
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
   await page.getByRole('button', { name: 'Habits', exact: true }).last().click()
   await expect(page.getByText('Read', { exact: true })).toBeVisible()
 })
@@ -891,7 +911,6 @@ test('exercise progress shows exact-variant results and opens the workout', asyn
 
 test('correcting workout date and exercise keeps original plan and cycle history', async ({ page }) => {
   const backend = await fakeBackend(page)
-  page.on('dialog', dialog => dialog.accept())
   await page.goto('/')
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
@@ -907,6 +926,7 @@ test('correcting workout date and exercise keeps original plan and cycle history
   await page.getByRole('button', { name: 'Save date' }).click()
   await page.getByRole('button', { name: 'Change recorded exercise' }).first().click()
   await page.getByRole('dialog', { name: 'Choose an exercise' }).getByRole('button', { name: /Shoulder press/ }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await expect.poll(() => (backend.records().find(item => item.kind === 'workout')?.body.exercises as { name: string }[])?.[0].name).toBe('Shoulder press')
   await page.reload()
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
@@ -922,7 +942,6 @@ test('correcting workout date and exercise keeps original plan and cycle history
 
 test('export and restore validate before replacement and retry a failed restore', async ({ page }) => {
   const backend = await fakeBackend(page)
-  page.on('dialog', dialog => dialog.accept())
   await page.goto('/')
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
@@ -943,9 +962,9 @@ test('export and restore validate before replacement and retry a failed restore'
 
   const invalid = structuredClone(backup)
   invalid.library[0].id = 'not-a-uuid'
-  const rejected = page.waitForEvent('dialog')
   await page.getByLabel('Restore backup', { exact: true }).setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) })
-  expect((await rejected).message()).toContain('Unable to restore')
+  await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('Unable to restore')
+  await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
   expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
 
   await page.getByRole('button', { name: 'Workouts', exact: true }).first().click()
@@ -955,6 +974,7 @@ test('export and restore validate before replacement and retry a failed restore'
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   backend.offline(true)
   await page.getByLabel('Restore backup', { exact: true }).setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: contents })
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByText('Could not save workout data')).toBeVisible()
   expect(backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push', 'Pull'])
   backend.offline(false)

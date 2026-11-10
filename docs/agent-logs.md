@@ -327,3 +327,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-10 — Backup navigation hotfix v0.11.1
 
 - Replaced the rejected backup accordion with a dedicated Backups screen and return navigation, retaining pending profile edits and existing backup behavior. Recorded the owner's strict requirement against new expandable sections and default browser popups/dropdowns; legacy instances remain for scoped follow-up. Build and eight targeted browser tests passed with fake Supabase/demo, including backup restore retry and phone-width layout. Verify Pages and version.
+
+## 2026-11-10 — Dialog and layout pass v0.12.0
+
+- Replaced JavaScript alert/confirm calls with shared styled dialogs, including recovery and backup flows; revised recovery panel contrast. Fixed launcher overflow at intermediate widths, removed duplicate habit date strip and previewed profile avatar before save. Browser before-unload warnings remain browser-controlled.
+- Scan found native select dropdowns and disclosure widgets still present; they have not been replaced and need careful follow-up to meet the UI requirement. Build and all 46 browser tests passed with fake Supabase/demo; real Supabase recovery and real-device rendering remain unverified. Verify Pages and version.

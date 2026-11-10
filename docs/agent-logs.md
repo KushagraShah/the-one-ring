@@ -323,3 +323,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Grouped backups in Settings; added username and preset avatar in Supabase Auth user metadata with save/error feedback and demo separation. Signup requires a username and shows verification instructions when confirmation is required. Documented future first-signup tutorial; no migration or tutorial implementation.
 - Build, 68 history tests and all 46 browser tests passed (fake Supabase/demo). Profile metadata is outside app-data backups and revision checks. Actual signup availability, Confirm email, allowed redirect URLs, delivery and real account metadata behavior require Supabase configuration and have not been verified. Owner requested a separate deployment; verify Pages and version.
+
+## 2026-11-10 — Backup navigation hotfix v0.11.1
+
+- Replaced the rejected backup accordion with a dedicated Backups screen and return navigation, retaining pending profile edits and existing backup behavior. Recorded the owner's strict requirement against new expandable sections and default browser popups/dropdowns; legacy instances remain for scoped follow-up. Build and eight targeted browser tests passed with fake Supabase/demo, including backup restore retry and phone-width layout. Verify Pages and version.

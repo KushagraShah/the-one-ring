@@ -9,13 +9,14 @@ export function fixedScore(data: HabitData, from: string, to: string, index = in
   for (let day = from; day <= to; day = shiftDate(day, 1)) {
     for (const habit of data.habits) {
       if (habit.archived || !eligible(habit, day) || versionAt(habit.schedules, day)?.kind !== 'fixed') continue
-      counts.due++
       const entry = index.byHabitDate.get(habit.id)?.get(day)
+      if (entry?.outcome === 'skipped') { counts.skipped++; continue }
+      counts.due++
       if (entry) counts[entry.outcome]++
     }
   }
   const scored = counts.done + counts.partial + counts.missed
-  return { ...counts, performance: scored ? (counts.done + 0.5 * counts.partial) / scored : null, coverage: counts.due ? (scored + counts.skipped) / counts.due : null }
+  return { ...counts, performance: scored ? (counts.done + 0.5 * counts.partial) / scored : null, coverage: counts.due ? scored / counts.due : null }
 }
 
 export type FlexibleWeek = { points: number; target: number | null; reason: string | null }
@@ -54,9 +55,10 @@ export function habitStreak(habit: Habit, entries: Entry[], today: string): { su
     if (versionAt(habit.schedules, day)?.kind !== 'fixed') break
     if (!eligible(habit, day)) continue
     const outcome = records.get(day)?.outcome
+    if (outcome === 'skipped') continue // An intentional skip is a one-day pause.
     if (day === today && !outcome) continue // Today is still in progress, not a missed opportunity.
     if (successOpen && outcome === 'done') success++; else successOpen = false
-    if (engagementOpen && (outcome === 'done' || outcome === 'partial' || outcome === 'skipped')) engagement++; else engagementOpen = false
+    if (engagementOpen && (outcome === 'done' || outcome === 'partial')) engagement++; else engagementOpen = false
     if (!successOpen && !engagementOpen) break
   }
   return { success, engagement, unit: 'days' }

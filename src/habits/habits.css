@@ -130,3 +130,17 @@
 .habit-note-toggle{padding:0 12px 5px}.habit-note-toggle button{min-height:36px;padding:5px 0;font-size:12px}
 .habit-inline-note{padding:0 12px 10px}.habit-inline-note label{display:grid;gap:5px;font-size:12px}.habit-inline-note textarea{width:100%;min-height:70px;resize:vertical}
 .habit-panel{margin:12px 0;padding:14px;border:1px solid #53535d;border-radius:10px;background:#242426}.habit-panel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.habit-panel>header button{min-height:44px}.habit-panel>div{max-height:60vh;overflow-y:auto}
+
+/* Date navigation and outcome states. */
+.habit-date{display:grid;grid-template-columns:44px minmax(0,1fr) 44px 64px;gap:6px;margin:8px 0 0;padding:7px}
+.habit-date button{min-width:0;width:100%;padding:6px}.habit-date label{min-width:0}.habit-date input{width:100%}
+.habit-date .habit-today-button{width:100%;min-width:0;min-height:44px;border:1px solid #5b5270;border-radius:8px;background:#302a39;color:#e3d7f3;font-size:12px;font-weight:700}
+.habit-date .habit-today-button:disabled{visibility:visible;opacity:1;color:#aaa3b1;background:#252427;border-color:#454047;cursor:default}
+.habit-date-strip{gap:4px;margin:6px 0 10px}.habit-date-strip button{min-height:48px;border-color:transparent;background:transparent}.habit-date-strip button[aria-current=date]{border-color:var(--accent);background:#30293b;color:#f0e6fa}.habit-date-strip button:disabled{opacity:.4}
+.habit-inline-outcomes .habit-choice-skipped{text-align:center;justify-items:center;padding:6px 3px;background:#273039;border-color:#526474}.habit-choice-skipped span{font-size:17px!important}
+.habit-inline-outcomes .habit-choice-done[aria-pressed=true]{background:#234635;border-color:#619376;color:#d5f1df}
+.habit-inline-outcomes .habit-choice-partial[aria-pressed=true]{background:#514226;border-color:#a68b51;color:#f8e6b9}
+.habit-inline-outcomes .habit-choice-missed[aria-pressed=true]{background:#512d30;border-color:#a6656b;color:#f7d2d4}
+.habit-inline-outcomes .habit-choice-skipped[aria-pressed=true]{background:#354653;border-color:#87a2b7;color:#e0edf6}
+.habit-inline-outcomes button[aria-pressed=true] small{color:inherit}
+.habit-note-button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 4px;background:transparent;color:#c9bed6;font-size:12px;font-weight:600}

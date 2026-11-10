@@ -314,3 +314,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Added direct intentional skip and tap-again unlogging, inline notes and habit panels, and stable date-control width. Dated skips now behave as one-day pauses for fixed coverage and streaks, including historical skips; flexible affected weeks remain excluded. Retain notes on unlogged dates in optional workspace data; old builds may not display them. No database migration.
 - Build, 68 history tests and all 44 browser tests passed; tests exercise fake Supabase/demo rather than live account saves. Verify Pages and deployed version. Android-specific rendering and real Supabase recovery remain unverified; no tags or private reference data.
+
+## 2026-11-10 — Habit polish v0.10.1
+
+- Reworked date navigation with a visible Today control and week strip, moved note action beside history, consolidated logging help and made selected outcomes use their status colors. Skip uses a compact icon and short label. No behavior or data changes. Owner requested this as a separate deployment before v0.11.0; verify Pages and version.

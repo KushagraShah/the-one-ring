@@ -300,6 +300,7 @@ test('custom missed and intentional skip toggle separately with stable date cont
   const card = page.locator('.habit-daily-card').filter({ hasText: 'Sleep' })
   await card.getByRole('button', { name: 'Skipped · Sleep' }).click()
   await expect(page.getByLabel('Fixed habit daily summary')).toContainText('0%')
+  await expect(card.getByRole('button', { name: 'Skipped · Sleep' })).toHaveCSS('background-color', 'rgb(81, 45, 48)')
   await card.getByRole('button', { name: 'Intentional skip Sleep' }).click()
   await expect(page.getByLabel('Fixed habit daily summary')).toContainText('No fixed habits due')
   await expect.poll(() => (backend.habits() as { entries: { outcome: string }[] }).entries[0]?.outcome).toBe('skipped')
@@ -313,6 +314,8 @@ test('custom missed and intentional skip toggle separately with stable date cont
     await expect(button).toHaveAttribute('aria-pressed', 'false')
   }
   const before = await page.getByLabel('Date', { exact: true }).boundingBox()
+  await expect(page.getByRole('button', { name: 'Today', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Today', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Previous day' }).click()
   const after = await page.getByLabel('Date', { exact: true }).boundingBox()
   expect(before?.width).toBe(after?.width)

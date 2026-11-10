@@ -12,6 +12,7 @@ async function fakeBackend(page: Page) {
   let lastHabitOperation = ''
   let offline = false
   let lastOperation = ''
+  let userMetadata: Record<string, unknown> = {}
   await page.route('https://mock.invalid/**', async route => {
     if (offline) { await route.abort('internetdisconnected'); return }
     const request = route.request(); const path = new URL(request.url()).pathname
@@ -25,7 +26,7 @@ async function fakeBackend(page: Page) {
       if (input.p_operation === lastOperation) body = { status: 'ok', revision }
       else if (input.p_revision !== revision) body = { status: 'conflict' }
       else { documents = input.p_documents; revision++; lastOperation = input.p_operation; body = { status: 'ok', revision } }
-    } else if (path === '/auth/v1/user') body = { id: owner, email: 'test@example.invalid', aud: 'authenticated', role: 'authenticated' }
+    } else if (path === '/auth/v1/user') { if (request.method() === 'PUT') userMetadata = { ...userMetadata, ...request.postDataJSON().data }; body = { id: owner, email: 'test@example.invalid', aud: 'authenticated', role: 'authenticated', user_metadata: userMetadata } }
     else { await route.abort(); throw new Error(`Unexpected mock API path: ${path}`) }
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) })
   })
@@ -34,8 +35,55 @@ async function fakeBackend(page: Page) {
     const session = { access_token: 'fake-test-token', refresh_token: 'fake-test-refresh', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user }
     if (!localStorage.getItem('sb-mock-auth-token')) localStorage.setItem('sb-mock-auth-token', JSON.stringify(session))
   }, owner)
-  return { records: () => documents, habits: () => habitData, offline: (value: boolean) => { offline = value }, conflict: () => { revision++ } }
+  return { records: () => documents, habits: () => habitData, metadata: () => userMetadata, offline: (value: boolean) => { offline = value }, conflict: () => { revision++ } }
 }
+
+test('signup requires username and shows email verification instructions', async ({ page }) => {
+  let requestBody: Record<string, unknown> | undefined
+  await page.route('https://mock.invalid/auth/v1/signup**', async route => {
+    if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }); return }
+    requestBody = route.request().postDataJSON()
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ user: { id: owner, email: 'new@example.invalid', aud: 'authenticated', role: 'authenticated' }, session: null }) })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New here? Create an account' }).click()
+  await expect(page.getByLabel('Username')).toBeVisible()
+  await page.getByLabel('Username').fill('My name')
+  await page.getByLabel('Email').fill('new@example.invalid')
+  await page.getByLabel('Password').fill('validpassword')
+  await page.getByRole('button', { name: 'Sign up', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Check your email.' })).toBeVisible()
+  expect(requestBody?.data).toMatchObject({ username: 'My name', avatar: 'circle' })
+  await page.getByRole('button', { name: 'Back to sign in' }).click()
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+})
+
+test('profile saves account metadata, handles failures and groups backups', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  const backups = page.getByRole('button', { name: /Backups/ })
+  await expect(backups).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('heading', { name: 'Workout backup' })).toBeHidden()
+  await backups.click()
+  await expect(page.getByRole('heading', { name: 'Workout backup' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Habit backup' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Full app backup' })).toBeVisible()
+  await page.getByLabel('Username').fill('My profile')
+  await page.getByRole('button', { name: 'Star', exact: true }).click()
+  backend.offline(true)
+  await page.getByRole('button', { name: 'Save profile' }).click()
+  await expect(page.getByText('Could not save your profile. Check your connection and try again.')).toBeVisible()
+  expect(backend.metadata()).toEqual({})
+  backend.offline(false)
+  await page.getByRole('button', { name: 'Save profile' }).click()
+  await expect(page.getByText('Profile saved.')).toBeVisible()
+  expect(backend.metadata()).toMatchObject({ username: 'My profile', avatar: 'star' })
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await expect(page.getByLabel('Username')).toHaveValue('My profile')
+  await expect(page.getByRole('button', { name: 'Star', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
 
 test('account writes are server-confirmed, retry after failure, and reload from the server', async ({ page }) => {
   const backend = await fakeBackend(page)
@@ -69,7 +117,8 @@ test('shared account messages describe the whole app, not only workouts', async 
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await expect(page.getByText('Your account data is saved to Supabase. An internet connection is required.')).toBeVisible()
   await expect(page.getByText('Workout data is saved to Supabase. An internet connection is required.')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Account T/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Account/ })).toBeVisible()
+  await page.getByRole('button', { name: /Backups/ }).click()
   await expect(page.getByRole('heading', { name: 'Workout backup' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Habit backup' })).toBeVisible()
 })
@@ -367,6 +416,7 @@ test('full backup restores workout and habit scopes in demo', async ({ page }) =
   await page.getByLabel('Title').fill('Read')
   await page.getByRole('button', { name: 'Save habit' }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export full backup' }).click()
   const downloaded = await download
@@ -554,6 +604,7 @@ test('backup cards use consistent export and restore icons and spacing', async (
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
   const cards = page.locator('.backup-card:visible')
   await expect(cards).toHaveCount(3)
   for (const card of await cards.all()) {
@@ -869,6 +920,7 @@ test('export and restore validate before replacement and retry a failed restore'
   await page.getByRole('button', { name: 'Skip day', exact: true }).click()
   await expect.poll(() => backend.records().find(item => item.kind === 'routine')?.body.completed).toEqual(['Push'])
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export backup' }).click()
   const download = await downloading

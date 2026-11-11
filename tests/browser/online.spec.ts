@@ -311,6 +311,31 @@ test('switching mini-apps warns before discarding unconfirmed workout entries', 
   await expect(page.getByRole('button', { name: /Workout in progress/ })).toBeVisible()
 })
 
+test('workout exercise navigation uses arrows and ignores horizontal touch gestures', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Workouts', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Start workout', exact: true }).click()
+  const name = page.locator('.exercise-name strong')
+  const before = await name.textContent()
+  await page.locator('.exercise-list').evaluate(element => {
+    const start = new Touch({ identifier: 1, target: element, clientX: 280, clientY: 100 })
+    const end = new Touch({ identifier: 1, target: element, clientX: 80, clientY: 100 })
+    element.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [start], changedTouches: [start] }))
+    element.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [], changedTouches: [end] }))
+  })
+  await expect(name).toHaveText(before!)
+  await page.getByRole('button', { name: 'Next exercise' }).click()
+  await expect(name).not.toHaveText(before!)
+  await page.getByRole('button', { name: 'Previous exercise' }).click()
+  await expect(name).toHaveText(before!)
+  await page.getByRole('button', { name: 'Cancel workout', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Cancel workout?' })).toBeVisible()
+  await page.getByRole('dialog', { name: 'Cancel workout?' }).getByRole('button', { name: 'Go back' }).click()
+  await expect(name).toHaveText(before!)
+})
+
 test('create, record and correct a habit without changing workouts', async ({ page }) => {
   const backend = await fakeBackend(page)
   await page.goto('/')

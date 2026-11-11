@@ -44,7 +44,7 @@ test('cycle variants have a separate choice from ordinary replacements', () => {
   assert.match(html, /Exercise cycle · Arms/)
   assert.match(html, /Completing it counts toward this cycle/)
   assert.match(html, /Replace for this workout/)
-  assert.match(html, /Row/)
+  assert.match(html, /aria-haspopup="dialog"/)
 })
 
 test('routine editor exposes a draft and explicit save', () => {
@@ -52,9 +52,7 @@ test('routine editor exposes a draft and explicit save', () => {
     days: [{ name: 'Push', subtitle: '', exercises: [exercise] }], library: [exercise, other], rotations: [], routines: [{ id: 'r', name: 'Routine' }], activeRoutine: 'r', hasSession: false, onDirty: noop, onSave: () => true, onLibrary: noop, onNew: noop, onSwitch: noop,
   }))
   assert.match(html, /Save changes/)
-  assert.match(html, /Make exercise cycle/)
-  assert.match(html, /Move Press up/)
-  assert.match(html, /Move Press down/)
+  assert.match(html, /Actions/)
   assert.match(html, /New routine/)
 })
 

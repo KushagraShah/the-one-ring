@@ -1,8 +1,10 @@
 # Next steps
 
-- **UI consistency:** Replace the remaining native select dropdowns and expandable disclosures in the active habit and workout screens with accessible, deliberately designed controls and navigation. The v0.12.0 pass replaced JavaScript alert/confirm popups; browser-controlled before-unload warnings cannot be customized. Preserve confirmation and draft protection.
+- **UI consistency:** v0.12.1 replaces native select dropdowns and disclosure widgets with app-styled choices and detail views, and native validation bubbles with in-app messages. Browser date/month and file pickers remain; file selection and before-unload warnings are browser-controlled. Preserve confirmation and draft protection.
 
 - **Future onboarding tutorial:** Once the app is more mature, consider an optional first-signup walkthrough that highlights interface areas and advances with Next. It is not implemented; design dismissal, replay and accessibility before building it.
+
+- **Signup availability:** On 2026-11-11, a read-only public Auth settings check for the locally configured project, matched by URL to the deployed bundle, reported signup enabled and email auto-confirm disabled. The owner intends signup disabled after onboarding and enabled temporarily when needed; onboarding completion was not established. Email delivery and real signup remain unverified. No dashboard settings were changed.
 
 - **Update recovery v0.7.5, 2026-11-09:** The owner reported the phone remained on v0.7.3 and said no update was available after v0.7.4 deployed. Worker precaching now revalidates HTTP-cached shell files and update status remains checking during installation. A synthetic production-browser transition reproduced the stale-shell failure with old behavior and passed with the fix. Phone cause and Android recovery remain unverified; see `setup.md`.
 

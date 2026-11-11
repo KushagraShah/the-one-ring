@@ -355,3 +355,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-11 — Long-term product vision v0.12.5
 
 - Documented the owner's ring-inspired theme, personal-tool ambitions, possible integrations, sharing, infrastructure and AI-agent development direction in `docs/product-vision.md`; linked it from the README, next steps and handoff. Future ideas and proposed principles are explicitly distinguished from current features and binding decisions. Documentation-only apart from the required version bump; no infrastructure or product behavior changed. Verify Pages/version after push.
+
+## 2026-11-11 — Document unmerged theme branch v0.12.6
+
+- Pushed character avatar work as v0.13.1 to `feature/minimal-ring-theme` at `db7691e`, then returned to main without merging it. Recorded the branch and its limitations in the handoff and next steps; reinforced the owner's test-efficiency instruction. Main changes are documentation and the required version bump only. Per owner request, no local main tests were rerun. Verify Pages/version after push; main does not include the feature branch.

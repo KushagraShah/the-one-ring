@@ -112,6 +112,17 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     else if (note) unloggedNotes.push({ habitId, date: day, note })
     update({ ...workspace, entries, unloggedNotes }); setEntryDraft(null); setExpanded(null)
   }
+  const bulkOutcome = async (outcome: 'done' | 'missed') => {
+    if (!discardDraft()) return
+    const scope = outcome === 'done' ? 'fixed and flexible' : 'fixed'
+    if (!await confirmAction(`Mark remaining unlogged ${scope} habits on ${date} ${outcome === 'done' ? 'Done' : 'Missed'}? Existing entries will not change.`)) return
+    const workspace = dataRef.current
+    if (!workspace) return
+    const ids = new Set(workspace.habits.filter(habit => !habit.archived && eligible(habit, date) && (outcome === 'done' || versionAt(habit.schedules, date)?.kind === 'fixed') && !workspace.entries.some(item => item.habitId === habit.id && item.date === date)).map(habit => habit.id))
+    if (!ids.size) return
+    const entries = [...workspace.entries, ...[...ids].map(habitId => ({ habitId, date, outcome, note: workspace.unloggedNotes?.find(item => item.habitId === habitId && item.date === date)?.note || '' }))]
+    update({ ...workspace, entries, unloggedNotes: workspace.unloggedNotes?.filter(item => item.date !== date || !ids.has(item.habitId)) })
+  }
   const saveHabit = (habit: Habit) => {
     if (!data) return
     const exists = data.habits.some(item => item.id === habit.id)
@@ -138,6 +149,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
           {tab === 'today' && <>
             {returnToInsights && <button className="text-button habit-insights-back" onClick={() => { if (discardDraft()) { setReturnToInsights(false); setTab('insights'); requestAnimationFrame(() => window.scrollTo(0, insightsScroll.current)) } }}>← Back to insights</button>}
             <section className="habit-daily-summary" aria-label="Fixed habit daily summary">{(() => { const score = fixedScore(data, date, date, entryIndex); return <><div><h2>{date === localDate() ? 'Today' : date}</h2><p>{score.due ? `${score.done + score.partial + score.missed} of ${score.due} fixed habits logged` : 'No fixed habits due'} <InfoTip label="About logging habits">Tap an outcome to log it; tap it again to unlog. Notes are kept. Intentional skip pauses the habit for the day and excludes flexible weeks from target judgment.</InfoTip></p></div><div className="habit-daily-score"><strong>{score.performance === null ? '—' : `${Math.round(score.performance * 100)}%`}</strong><span>Fixed score <InfoTip label="About the fixed score">Done counts as 1, Partial as ½, Missed as 0. The score is points divided by recorded Done, Partial and Missed outcomes. Intentional skips are one-day pauses, excluded from score and coverage; unlogged days are not missed. Flexible habits track weekly progress separately.</InfoTip></span></div></> })()}</section>
+            {(() => { const pending = data.habits.filter(habit => !habit.archived && eligible(habit, date) && !entry(habit.id, date)); return pending.length > 0 && <section className="habit-bulk" aria-label="Log remaining habits"><p>Log remaining</p><div><button type="button" onClick={() => void bulkOutcome('done')}>✓ Done <span>fixed + flexible</span></button><button type="button" disabled={!pending.some(habit => versionAt(habit.schedules, date)?.kind === 'fixed')} onClick={() => void bulkOutcome('missed')}>× Missed <span>fixed only</span></button></div></section> })()}
             {(() => { const pending = catchUpDays(data, localDate()); return pending.length > 0 && <section className="habit-catchup"><DetailView title="Catch up" trigger={<span><strong>Catch up</strong><small>{pending.length} {pending.length === 1 ? 'day' : 'days'} with unlogged fixed habits · last 7 days</small></span>} closeOnAction><div className="habit-catchup-list">{pending.map(day => <button key={day.date} onClick={() => changeDate(day.date)}><span>{new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span><span>{day.count} not logged <span aria-hidden="true">→</span></span></button>)}</div></DetailView></section> })()}
             {data.habits.filter(habit => (!habit.archived && eligible(habit, date)) || entry(habit.id, date)).map(habit => {
               const record = entry(habit.id, date); const schedule = versionAt(habit.schedules, date); const progress = weekProgress(habit, entryIndex.byHabit.get(habit.id) || [], date)
@@ -150,7 +162,6 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
               </article>
             })}
             {!data.habits.some(habit => (!habit.archived && eligible(habit, date)) || entry(habit.id, date)) && <div className="habit-empty"><p>No habits scheduled for this date.</p>{data.habits.length === 0 && <button className="primary" onClick={() => { setTab('manage'); setEditing('new') }}>Create your first habit</button>}</div>}
-            {data.habits.some(h => !h.archived && eligible(h, date) && !entry(h.id, date)) && <button className="outline-button habit-bulk" onClick={async () => { if (!discardDraft()) return; if (!await confirmAction('Mark all remaining eligible fixed and flexible habits on this date Done?')) return; const entries = [...data.entries]; for (const habit of data.habits) if (!habit.archived && eligible(habit, date) && !entry(habit.id, date)) entries.push({ habitId: habit.id, date, outcome: 'done', note: data.unloggedNotes?.find(item => item.habitId === habit.id && item.date === date)?.note || '' }); update({ ...data, entries, unloggedNotes: data.unloggedNotes?.filter(item => !(item.date === date && data.habits.some(habit => habit.id === item.habitId && !habit.archived && eligible(habit, date) && !entry(habit.id, date)))) }) }}>Mark remaining eligible habits Done</button>}
           </>}
           {tab === 'week' && <HabitWeek date={date} habits={data.habits} entries={entryIndex.byHabitDate} selected={draft} onDate={changeDate} onSelect={(habitId, day) => { openEntry(habitId, day) }} editor={habit => expanded === habit.id && draft?.habitId === habit.id && status !== 'error' && status !== 'conflict' ? <HabitPanel title={`${habit.icon || '◈'} ${habit.title} · ${draft.date}`} onClose={() => { discardDraft() }}><EntryEditor habit={habit} draft={draft} onChange={setEntryDraft} onNoteBlur={saveNote} onOutcome={outcome => saveOutcome(habit.id, draft.date, outcome)}/></HabitPanel> : null}/>}
 

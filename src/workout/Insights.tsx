@@ -1,3 +1,4 @@
+import { ChoiceSelect } from '../ChoiceSelect'
 import { useState } from 'react'
 import type { Workout } from './WorkoutSession'
 import { InfoTip } from '../InfoTip'
@@ -26,6 +27,6 @@ export function Insights({ workouts }: { workouts: Workout[] }) {
   const previous = days === Infinity ? null : workoutInsights(workouts, days, new Date(), days)
   return <section className="workout-insights"><div className="workout-insights-header"><div><div className="context-label">YOUR ACTIVITY</div><h2>Activity insights <InfoTip label="About activity insights">Counts use local calendar days, including today. Workouts need at least one recorded result, including older two-set records. Active weeks run Monday–Sunday. Skips and future workouts are excluded. Day names are saved labels.</InfoTip></h2></div></div>
     {result.sessions ? <><div className="insight-summary"><div><strong>{result.sessions}</strong><span>workouts</span></div><div><strong>{result.weeks}</strong><span>active weeks</span></div><div><strong>{result.exercises}</strong><span>exercises</span></div></div>{previous && <p className="insights-comparison">Previous {days} days: {previous.sessions} workouts</p>}<div className="insights-days"><strong>Workout days</strong>{result.dayCounts.map(([name, count]) => <span key={name}>{name}: {count}</span>)}</div></> : <p className="context-empty">No recorded results in this period.</p>}
-    <label className="insights-period insights-period-bottom"><span>Period</span><select value={String(days)} onChange={event => setDays(Number(event.target.value))}><option value="Infinity">All time</option><option value="28">Last 28 days</option><option value="90">Last 90 days</option><option value="365">Last year</option></select></label>
+    <label className="insights-period insights-period-bottom"><span>Period</span><ChoiceSelect label="Period" value={String(days)} onChange={value => setDays(Number(value))}><option value="Infinity">All time</option><option value="28">Last 28 days</option><option value="90">Last 90 days</option><option value="365">Last year</option></ChoiceSelect></label>
   </section>
 }

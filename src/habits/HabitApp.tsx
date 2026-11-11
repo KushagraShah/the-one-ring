@@ -1,4 +1,5 @@
 import { confirmAction, showMessage } from '../AppDialog'
+import { DetailView } from '../DetailView'
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDownToLine, NotebookPen, RotateCcw } from 'lucide-react'
 import { supabase } from '../auth'
@@ -45,7 +46,6 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const draftDirty = Boolean(draft && (draft.outcome !== draft.originalOutcome || draft.note !== draft.originalNote))
   const [managed, setManaged] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
-  const [catchUpOpen, setCatchUpOpen] = useState(false)
   const [message, setMessage] = useState('')
   const entryIndex = useMemo(() => indexEntries(data?.entries || []), [data?.entries])
   const discardDraft = () => { const current = draftRef.current; if (current && current.note !== current.originalNote) saveNote(current.note); setEntryDraft(null); setExpanded(null); return true }
@@ -138,7 +138,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
           {tab === 'today' && <>
             {returnToInsights && <button className="text-button habit-insights-back" onClick={() => { if (discardDraft()) { setReturnToInsights(false); setTab('insights'); requestAnimationFrame(() => window.scrollTo(0, insightsScroll.current)) } }}>← Back to insights</button>}
             <section className="habit-daily-summary" aria-label="Fixed habit daily summary">{(() => { const score = fixedScore(data, date, date, entryIndex); return <><div><h2>{date === localDate() ? 'Today' : date}</h2><p>{score.due ? `${score.done + score.partial + score.missed} of ${score.due} fixed habits logged` : 'No fixed habits due'} <InfoTip label="About logging habits">Tap an outcome to log it; tap it again to unlog. Notes are kept. Intentional skip pauses the habit for the day and excludes flexible weeks from target judgment.</InfoTip></p></div><div className="habit-daily-score"><strong>{score.performance === null ? '—' : `${Math.round(score.performance * 100)}%`}</strong><span>Fixed score <InfoTip label="About the fixed score">Done counts as 1, Partial as ½, Missed as 0. The score is points divided by recorded Done, Partial and Missed outcomes. Intentional skips are one-day pauses, excluded from score and coverage; unlogged days are not missed. Flexible habits track weekly progress separately.</InfoTip></span></div></> })()}</section>
-            {(() => { const pending = catchUpDays(data, localDate()); return pending.length > 0 && <section className="habit-catchup"><button className="habit-catchup-toggle" aria-expanded={catchUpOpen} onClick={() => setCatchUpOpen(value => !value)}><span><strong>Catch up</strong><small>{pending.length} {pending.length === 1 ? 'day' : 'days'} with unlogged fixed habits · last 7 days</small></span><span aria-hidden="true">{catchUpOpen ? '−' : '+'}</span></button>{catchUpOpen && <div className="habit-catchup-list">{pending.map(day => <button key={day.date} onClick={() => { changeDate(day.date); setCatchUpOpen(false) }}><span>{new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span><span>{day.count} not logged <span aria-hidden="true">→</span></span></button>)}</div>}</section> })()}
+            {(() => { const pending = catchUpDays(data, localDate()); return pending.length > 0 && <section className="habit-catchup"><DetailView title="Catch up" trigger={<span><strong>Catch up</strong><small>{pending.length} {pending.length === 1 ? 'day' : 'days'} with unlogged fixed habits · last 7 days</small></span>} closeOnAction><div className="habit-catchup-list">{pending.map(day => <button key={day.date} onClick={() => changeDate(day.date)}><span>{new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span><span>{day.count} not logged <span aria-hidden="true">→</span></span></button>)}</div></DetailView></section> })()}
             {data.habits.filter(habit => (!habit.archived && eligible(habit, date)) || entry(habit.id, date)).map(habit => {
               const record = entry(habit.id, date); const schedule = versionAt(habit.schedules, date); const progress = weekProgress(habit, entryIndex.byHabit.get(habit.id) || [], date)
               return <article className={`habit-card habit-daily-card ${record ? `is-${record.outcome}` : ''}`} key={habit.id}>

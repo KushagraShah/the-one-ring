@@ -343,3 +343,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Removed horizontal swipe exercise navigation while retaining arrows and overview. Converted in-app link-styled actions to touch-sized buttons, used accessible × close controls and retained confirmation for cancelling workouts; habit/exercise form cancellation now confirms before discarding. External navigation remains semantic links. Owner confirmed email verification is enabled via a dashboard screenshot; no remote settings changed. Verify Pages/version after push.
 - Production build, configuration checks and 15 targeted browser tests passed, including synthetic touch navigation and workout cancellation. Browser tests use demo/fake Supabase and do not verify physical-device gestures or live account behavior.
+
+## 2026-11-11 — Habit daily bulk actions v0.12.3
+
+- Aligned card subtitles and moved compact confirmed bulk actions above the cards. Done covers remaining eligible fixed and flexible habits; Missed covers remaining eligible fixed habits only. Existing entries and retained notes are preserved, including an open note saved before confirmation. Production build, 68 history tests and four targeted fake-server browser tests passed; physical-device rendering and live account behavior remain unverified. Verify Pages/version.

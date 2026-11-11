@@ -347,3 +347,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-11 — Habit daily bulk actions v0.12.3
 
 - Aligned card subtitles and moved compact confirmed bulk actions above the cards. Done covers remaining eligible fixed and flexible habits; Missed covers remaining eligible fixed habits only. Existing entries and retained notes are preserved, including an open note saved before confirmation. Production build, 68 history tests and four targeted fake-server browser tests passed; physical-device rendering and live account behavior remain unverified. Verify Pages/version.
+
+## 2026-11-11 — Habit and launcher hotfix v0.12.4
+
+- Restyled the bulk quick-log buttons with explicit action labels, outcome icons and readable scopes without changing save or confirmation behavior. Fixed missing bottom padding in launcher cards; added spacing assertions at phone, intermediate and desktop widths. Build and two targeted fake-server browser tests passed; physical-phone appearance remains unverified. Verify Pages/version.

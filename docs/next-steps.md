@@ -1,5 +1,7 @@
 # Next steps
 
+- **Long-term direction:** See [product vision](product-vision.md) for the owner's ring-inspired theme, possible future apps, services, integrations, sharing and infrastructure. These are exploratory, not implemented features or an approved build order. A product/security charter and theme exploration are possible future projects.
+
 - **UI consistency:** v0.12.1 replaces native select dropdowns and disclosure widgets with app-styled choices and detail views, and native validation bubbles with in-app messages. Browser date/month and file pickers remain; file selection and before-unload warnings are browser-controlled. Preserve confirmation and draft protection.
 
 - **Future onboarding tutorial:** Once the app is more mature, consider an optional first-signup walkthrough that highlights interface areas and advances with Next. It is not implemented; design dismissal, replay and accessibility before building it.

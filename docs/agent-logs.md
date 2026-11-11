@@ -351,3 +351,7 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-11 — Habit and launcher hotfix v0.12.4
 
 - Restyled the bulk quick-log buttons with explicit action labels, outcome icons and readable scopes without changing save or confirmation behavior. Fixed missing bottom padding in launcher cards; added spacing assertions at phone, intermediate and desktop widths. Build and two targeted fake-server browser tests passed; physical-phone appearance remains unverified. Verify Pages/version.
+
+## 2026-11-11 — Long-term product vision v0.12.5
+
+- Documented the owner's ring-inspired theme, personal-tool ambitions, possible integrations, sharing, infrastructure and AI-agent development direction in `docs/product-vision.md`; linked it from the README, next steps and handoff. Future ideas and proposed principles are explicitly distinguished from current features and binding decisions. Documentation-only apart from the required version bump; no infrastructure or product behavior changed. Verify Pages/version after push.

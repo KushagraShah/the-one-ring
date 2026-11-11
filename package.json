@@ -1,6 +1,6 @@
 {
   "name": "the-one-ring",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "private": true,
   "license": "MIT",
   "engines": { "node": ">=24" },
@@ -9,7 +9,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test:config": "node --test tests/config.test.mjs",
+    "test:config": "node --test tests/config.test.mjs tests/ui-consistency.test.mjs",
     "test:schema": "node --test tests/schema.test.mjs tests/sync-schema.test.mjs tests/online-schema.test.mjs tests/habit-schema.test.mjs",
     "test:history": "node --import tsx --test tests/history.test.ts tests/rotations.test.ts tests/backup.test.ts tests/routine-draft.test.ts tests/workout-ui.test.ts tests/sync-store.test.ts tests/workspace.test.ts tests/sync-integration.test.ts tests/online.test.ts tests/habits.test.ts tests/habit-online.test.ts tests/habit-insights.test.ts tests/demo.test.ts",
     "test:pwa": "node --test tests/pwa.test.mjs tests/pwa-update.test.mjs",

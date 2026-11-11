@@ -1,5 +1,6 @@
 # Next steps
 
+- **Unmerged ring theme and avatars:** `origin/feature/minimal-ring-theme` at `db7691e` contains the v0.13.0 ring-themed launcher, account screens, tracker styling and scrollable navigation, plus the v0.13.1 character avatar chooser. The owner liked the preview but explicitly requested that it remain unmerged for now. The branch's `AGENTS.md`, `docs/setup.md` and `src/assets/README.md` record its behavior, verification, source and intellectual-property caveats; it is not deployed main functionality. Avatar IDs are saved in Auth metadata and older builds use a fallback for the new IDs. Do not merge or deploy the branch without further authorization.
 - **Long-term direction:** See [product vision](product-vision.md) for the owner's ring-inspired theme, possible future apps, services, integrations, sharing and infrastructure. These are exploratory, not implemented features or an approved build order. A product/security charter and theme exploration are possible future projects.
 
 - **UI consistency:** v0.12.1 replaces native select dropdowns and disclosure widgets with app-styled choices and detail views, and native validation bubbles with in-app messages. Browser date/month and file pickers remain; file selection and before-unload warnings are browser-controlled. Preserve confirmation and draft protection.

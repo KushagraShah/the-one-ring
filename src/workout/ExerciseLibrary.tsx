@@ -32,6 +32,7 @@ export function ExerciseLibrary({ exercises, workouts, onSave, onDirty }: Props)
   useEffect(() => { onDirty(Boolean(editing)); return () => onDirty(false) }, [editing, onDirty])
   const tags = [...new Set(exercises.flatMap(exercise => exercise.tags || []))].sort((a, b) => a.localeCompare(b))
   const visible = exercises.filter(exercise => (showArchived || !exercise.archived) && (!tagFilter || exercise.tags?.includes(tagFilter)) && [exercise.name, exercise.equipment, ...(exercise.tags || [])].some(value => value.toLowerCase().includes(search.trim().toLowerCase())))
+  const closeEditor = async () => { if (await confirmAction('Discard exercise edits?')) setEditing(null) }
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editing) return
@@ -49,7 +50,7 @@ export function ExerciseLibrary({ exercises, workouts, onSave, onDirty }: Props)
   }
   return <>
     <div className="library-heading"><h1>Exercise library<span className="accent">.</span></h1><button className="primary" onClick={() => { setOriginalName(null); setEditing({ ...empty }); setTagText(''); setError('') }}><Plus size={16}/> New exercise</button></div>
-    {editing && <Sheet title={originalName ? 'Edit exercise' : 'New exercise'} onClose={async () => { if (await confirmAction('Discard exercise edits?')) setEditing(null) }}><form noValidate className="library-form" onSubmit={submit}>
+    {editing && <Sheet title={originalName ? 'Edit exercise' : 'New exercise'} onClose={closeEditor}><form noValidate className="library-form" onSubmit={submit}>
       <h2>{originalName ? 'Edit exercise' : 'New exercise'}</h2>
       <p>Give similar machines distinct names so their records stay separate.</p>
       <label>Exercise / variant name<input required maxLength={100} placeholder="e.g. HammerStrength chest press" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })}/></label>
@@ -61,7 +62,7 @@ export function ExerciseLibrary({ exercises, workouts, onSave, onDirty }: Props)
       <label>Video link <span>(optional)</span><input type="url" placeholder="https://…" value={editing.video || ''} onChange={e => setEditing({ ...editing, video: e.target.value })}/></label>
       {originalName && <p>Changing the name updates future routine workouts. Past workouts keep their original name.</p>}
       {error && <p role="alert" className="auth-message">{error}</p>}
-      <div className="library-actions"><button className="primary">Save exercise</button><button className="outline-button" type="button" onClick={() => setEditing(null)}>Cancel</button></div>
+      <div className="library-actions"><button className="primary">Save exercise</button><button className="outline-button" type="button" onClick={closeEditor}><span aria-hidden="true">×</span> Cancel</button></div>
     </form></Sheet>}
     <div className="library-filters"><label>Search<input type="search" placeholder="Exercise, equipment or tag" value={search} onChange={event => setSearch(event.target.value)}/></label><label>Tag<ChoiceSelect label="Tag" value={tagFilter} onChange={value => setTagFilter(value)}><option value="">All tags</option>{tags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</ChoiceSelect></label><label className="library-archive-filter"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)}/> Show archived</label></div>
     <p className="library-count">{visible.length} {visible.length === 1 ? 'exercise' : 'exercises'} · Archiving hides an exercise here without changing routines or history.</p>

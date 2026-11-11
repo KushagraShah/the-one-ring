@@ -1,7 +1,7 @@
 import { confirmAction, showMessage } from '../AppDialog'
 import { DetailView } from '../DetailView'
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDownToLine, NotebookPen, RotateCcw } from 'lucide-react'
+import { ArrowDownToLine, NotebookPen, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../auth'
 import { catchUpDays, eligible, indexEntries, localDate, outcomeLabel, parseHabits, paused, shiftDate, versionAt, weekProgress, type Habit, type HabitData, type Outcome } from './model'
 import { demoHabitData } from './demo'
@@ -145,7 +145,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
                 <div className="habit-row habit-card-heading"><span className="habit-row-main"><strong><span aria-hidden="true">{habit.icon || '◈'}</span> {habit.title}</strong><small>{!eligible(habit, date) ? 'Not scheduled · recorded' : schedule?.kind === 'flexible' ? `Flexible · ${progress.points} / ${progress.target} through this day${progress.affected ? ' · target not judged' : ''}` : 'Fixed · scheduled'}</small></span></div>
                 {(eligible(habit, date) || record) && <div className="habit-inline-outcomes" aria-label={`Quick outcomes for ${habit.title}`}>{(['done', 'partial', 'missed', 'skipped'] as const).map((outcome, index) => <button key={outcome} type="button" className={`habit-choice-${outcome}`} aria-label={outcome === 'skipped' ? `Intentional skip ${habit.title}` : `${outcomeLabel(habit, date, outcome)} · ${habit.title}`} aria-describedby={`quick-${habit.id}-${outcome}`} aria-pressed={record?.outcome === outcome} onClick={() => { if (discardDraft()) saveOutcome(habit.id, date, record?.outcome === outcome ? null : outcome) }}><span>{outcome === 'skipped' ? '⏭' : outcomeLabel(habit, date, outcome)}</span><small id={`quick-${habit.id}-${outcome}`}>{['Done · 1 point', 'Partial · ½ point', 'Missed · 0 points', 'Skip'][index]}</small></button>)}</div>}
                 {expanded === habit.id && draft?.habitId === habit.id && <div className="habit-inline-note"><label>Note<textarea value={draft.note} onChange={event => setEntryDraft({ ...draft, note: event.target.value })} onBlur={event => saveNote(event.target.value)}/></label></div>}
-                <div className="habit-card-footer"><button className="habit-note-button" type="button" onClick={() => expanded === habit.id ? discardDraft() : openEntry(habit.id, date)}><NotebookPen size={15} aria-hidden="true"/>{expanded === habit.id ? 'Close note' : record?.note || data.unloggedNotes?.some(item => item.habitId === habit.id && item.date === date) ? 'Edit note' : 'Add note'}</button>
+                <div className="habit-card-footer"><button className="habit-note-button" type="button" onClick={() => expanded === habit.id ? discardDraft() : openEntry(habit.id, date)}>{expanded === habit.id ? <X size={15} aria-hidden="true"/> : <NotebookPen size={15} aria-hidden="true"/>}{expanded === habit.id ? 'Close note' : record?.note || data.unloggedNotes?.some(item => item.habitId === habit.id && item.date === date) ? 'Edit note' : 'Add note'}</button>
                 <RecentHabitDays habit={habit} date={date} entries={entryIndex.byHabitDate.get(habit.id)}/></div>
               </article>
             })}

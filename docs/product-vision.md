@@ -16,7 +16,7 @@ The name and envisioned overhaul draw inspiration from *The Lord of the Rings*. 
 - **Seven dwarf rings, four eaten by dragons:** potentially services or background capabilities.
 - **Three elven rings:** potentially integrations or monitors.
 
-The owner clarified that the nine Rings of Men are the nine mini-app slots: the local Home shows the two existing apps and seven unassigned placeholders. This visual choice does not impose a technical app limit. The roles of the dwarf and elven rings remain undecided and should follow actual needs; a separate view presents them as concepts. The experimental dragon-ring branch adds a playful, non-persistent interaction with four randomly selected Dwarf rings; it does not implement services. Keep labels and navigation explicit. The local theme preserves workout and habit accents and workflows and awaits owner review. Consider intellectual-property implications if the project is ever distributed or marketed beyond personal use.
+The owner clarified that the nine Rings of Men are the nine mini-app slots: Home shows the two existing apps and seven unassigned placeholders. This visual choice does not impose a technical app limit. The roles of the dwarf and elven rings remain undecided and should follow actual needs; a separate view presents them as concepts. The deployed dragon-ring interaction is playful and non-persistent, with four randomly selected Dwarf rings; it does not implement services. The ring theme preserves workout and habit accents and workflows. Keep labels and navigation explicit. Consider intellectual-property implications if the project is ever distributed or marketed beyond personal use.
 
 ## Privacy, sharing and integrations
 
@@ -49,7 +49,7 @@ For consequential work, document the relevant decision and alternatives, affecte
 
 1. Develop a concise product/security charter with the owner, including trust and sharing boundaries.
 2. Verify real-account isolation, conflicts and recovery; decide signup availability when onboarding is complete.
-3. Explore and review the ring-inspired visual direction without forcing a speculative platform structure.
+3. Continue evolving the deployed ring-inspired visual direction without forcing a speculative platform structure.
 4. Build the next useful tool and extract shared capabilities only as actual workflows justify them.
 5. Design each sensitive integration and any infrastructure migration separately, with an explicit security and operational review.
 

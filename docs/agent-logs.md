@@ -423,3 +423,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - The v0.13.0 Pages run stopped at the browser suite: the full-backup test returned to Settings without reopening Backups. Corrected the test navigation; application backup behavior is unchanged. The previous Pages deployment remains live until the corrected workflow succeeds.
 - The targeted fake-server browser test passed locally; Pages CI and deployment remain to be verified after push.
+
+## 2026-11-12 — Development priorities and branch cleanup v0.13.2
+
+- Owner confirmed signup stays open during development and ongoing app verification and minor improvements continue in parallel with next-app planning. Refreshed the roadmap and deployed-theme status, corrected stale swipe wording, and added a non-destructive real-account verification outline; no Auth, account or database changes were made.
+- Fetched and checked branch tips, confirmed the habit branch is merged and ring/dragon work was squash-integrated, and removed those three local and remote branches as requested. Preserved the RxDB branch. Configuration and PGlite schema checks passed; they do not verify real Supabase isolation, conflicts or recovery. The v0.13.1 Pages workflow succeeded at `3ec72b4`; verify v0.13.2 deployment after push.

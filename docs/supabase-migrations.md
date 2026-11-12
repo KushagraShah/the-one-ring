@@ -9,6 +9,16 @@
 
 This inventory is based on repository migrations and owner reports, not a live schema inspection. All objects currently use the existing Supabase project; conceptual ownership does not imply separate physical schemas. See the safety instructions below before any migration.
 
+## Real-account verification outline
+
+This is a future test outline, not a claim that it has been performed. Coordinate with the owner and use a verified disposable project and two disposable accounts where feasible; do not create accounts, change Auth settings, reset data or run migrations without appropriate authorization. If using an existing project, agree on the exact test scope and protect any existing data. Never put credentials, tokens, personal records or backup contents in chat or logs.
+
+1. Confirm the target project and deployed app version without exposing credentials. Prepare clearly identifiable, disposable workout and habit entries for each account; keep demo separate. Confirm each save completes before reloading.
+2. Check each account can read and change its own entries but not the other's, including direct cross-owner read/write attempts using the real authenticated API. A missing item in the UI alone does not prove server isolation. Test both mini-apps and record actual outcomes without recording private data.
+3. Open the same account in two independent sessions. For each mini-app, save a change in one session and then attempt an edit from the stale session. Verify the stale change is not silently accepted and the app offers the expected recovery path; preserve the test draft until the result is understood.
+4. With disposable data, simulate an interrupted or rejected save and check that the app reports the failure and provides the applicable retry/export/reload options. Test retry after an uncertain response where safely possible; verify it does not duplicate or silently overwrite changes.
+5. Separately check signup, email confirmation and redirect behavior if suitable test accounts and email access are available. Record the date, target environment, app version, scenarios, observed outcomes and limitations. Do not treat a subset of checks as proof of complete security.
+
 The owner reports migration 006 was applied manually to the existing project; real-account isolation, conflict and failure/retry checks remain unverified. Testing in a disposable Supabase project and accounts first was not reported. Do not rerun migrations or reset any database. Never send credentials in chat. SQL Editor execution does not necessarily record migration history.
 
 ## Migration 006: manual preflight and application

@@ -737,6 +737,7 @@ test('full backup restores workout and habit scopes in demo', async ({ page }) =
   await page.locator('.habit-panel').getByRole('button', { name: 'Delete', exact: true }).click()
   await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
   await page.getByLabel('Restore full backup').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: contents })
   await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()

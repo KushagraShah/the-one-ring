@@ -359,3 +359,62 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 ## 2026-11-11 — Document unmerged theme branch v0.12.6
 
 - Pushed character avatar work as v0.13.1 to `feature/minimal-ring-theme` at `db7691e`, then returned to main without merging it. Recorded the branch and its limitations in the handoff and next steps; reinforced the owner's test-efficiency instruction. Main changes are documentation and the required version bump only. Per owner request, no local main tests were rerun. Verify Pages/version after push; main does not include the feature branch.
+
+## 2026-11-11 — Local minimalist ring theme
+
+- On local branch `feature/minimal-ring-theme`, redesigned Home and refreshed sign-in and Settings with warm neutral ring details, original SVG artwork, and non-interactive conceptual ring categories without named future apps. Existing mini-app workflows and blue/violet accents remain intact. Strengthened the handoff's instruction to defer routine tests until implementation is complete.
+- Production build, configuration tests, 68 history tests, and three targeted fake-server browser tests passed (system Chromium). The Playwright headless shell could not start due to missing system libraries; PWA browser tests were not completed. A local Vite preview was started; phone appearance and live account behavior remain unverified. Owner requested no push; no release, migration or deployment occurred.
+
+## 2026-11-11 — Correct the nine-ring launcher
+
+- Following owner feedback, made the nine Rings of Men the actual app launcher: two working app rings and seven unassigned, non-interactive placeholders. Added original mountain artwork and a more distinctive Middle-earth-inspired treatment; dwarf and elven rings remain future concepts. No app data or tracker workflows changed.
+- Production build and three targeted fake-server browser tests passed using system Chromium, including nine-ring and multiple-width checks. Local preview only; owner visual review and real-device appearance remain unverified. Nothing was pushed.
+
+## 2026-11-11 — Strengthen the ring theme
+
+- Removed repeated launcher action labels and moved the seven Dwarf and three Elven rings to a separate, keyboard-accessible conceptual view, marking the four lost to dragons as lore. Applied a more explicit forest, gold and parchment treatment to Home, sign-in and Settings without changing tracker or account workflows.
+- Production build and three focused fake-server browser tests passed using system Chromium. Local preview only; physical-phone appearance and real-account behavior remain unverified. Nothing was pushed.
+
+## 2026-11-11 — Scalable app navigation and tracker theme
+
+- Replaced permanent mini-app navigation tabs with a shared Apps switcher, preserving existing leave confirmations. Added ring-inspired forest, gold and landscape styling to workout and habit surfaces while retaining their blue/violet accents and status meanings. Updated browser tests for the switcher and intentional shared-palette change.
+- Production build and configuration tests passed. The full fake-server browser run passed 47 of 49; the two failures were outdated test expectations, and both passed after those expectations were corrected. Local preview only; physical-phone appearance and real-account behavior remain unverified. Nothing was pushed.
+
+## 2026-11-11 — Scrollable app-ring navigation
+
+- Replaced the rejected Apps popup with a thin mobile app-ring strip between fixed Home and Settings controls; the desktop sidebar lists the same rings. Two apps switch directly with existing leave safeguards, and seven placeholders remain non-interactive. Added keyboard scrolling for the horizontal strip.
+- Production build and configuration tests passed; targeted fake-server checks passed for multiple launcher widths, keyboard scrolling, independent load failures and both workout leave safeguards. Physical-phone appearance remains unverified. Local preview only; nothing was pushed.
+
+## 2026-11-11 — Hide desktop sidebar placeholders
+
+- At the owner's request, hid the unassigned numbered rings in the desktop sidebar only; mobile navigation and Home remain unchanged. CSS-only change; no tests rerun. Local preview only; nothing was pushed.
+
+## 2026-11-11 — Prepare ring theme v0.13.0 branch
+
+- Owner approved pushing `feature/minimal-ring-theme` only, not merging to main or deploying. Versioned the theme and navigation update as 0.13.0; no Git tag or release. Production build, configuration, schema, history, all 49 fake-server browser tests and three production-shell tests passed locally using system Chromium. Real Supabase and device behavior are not established by these checks; Pages remains on its existing main deployment.
+
+## 2026-11-11 — Local character avatar preview
+
+- Added 27 original stylized LOTR-inspired portraits in an SVG sprite, a categorized phone-friendly chooser and immediate profile preview while retaining all five classic avatar IDs and existing Auth metadata/save behavior. Sources used for written character research and IP caveats are documented with the assets; portraits are interpretive, not film likenesses. No migration or public deployment.
+- Production build, configuration tests and three targeted fake-server browser tests passed; checked a 390-pixel browser screenshot. Real-account avatar persistence and physical-phone appearance remain unverified. The local preview is for owner review; no push was requested.
+
+## 2026-11-11 — Character portrait detail review
+
+- Checked selected character details against written references, corrected Gondorian beards and hair, Treebeard, Théoden, Shelob, Saruman and Legolas's overlapping bow, and documented uncertain and adaptation-specific choices. The portraits remain stylized rather than definitive or film likenesses; no profile behavior or IDs changed.
+- Production build and two targeted fake-server profile tests passed, including a 27-symbol SVG parsing check; visually reviewed a 390-pixel browser screenshot. Local preview only; no push or deployment.
+
+## 2026-11-11 — Preserve avatar work on feature branch
+
+- Owner accepted the avatar preview for now and authorized pushing it to `feature/minimal-ring-theme` without merging. Versioned the branch update as 0.13.1. Prior production build and focused profile tests passed; no new test run for the version and handoff changes. Main will receive only a separate versioned documentation handoff.
+
+## 2026-11-11–12 — Dragon-ring and avatar experiment
+
+- On `experiment/dragon-rings`, created a temporary seven-ring interaction: four unmarked random rings can be consumed by a swooping dragon; reduced motion and leaving the view are handled. The final asset is GDJ's CC0 Openclipart silhouette, credited in Settings and `src/assets/README.md`.
+- Refined the original character busts using the owner's images as general references, not copied assets. Sauron is the default. Classic symbols and six retired characters are hidden in the chooser but remain supported for saved IDs. Researched alternative artwork without including it; see `docs/avatar-artwork-research.md`.
+- Added a separate Artwork credits page, individual generated avatar SVGs and phone-width sizing safeguards. Existing profile drafts and storage behavior are unchanged. Previous log entries remain in place; only experiment-branch entries were consolidated at the owner's request.
+- Production builds, configuration checks and targeted fake-server browser tests passed, covering avatar persistence, credits, ring behavior, reduced motion and narrow layouts. Actual phone and real Supabase behavior remain unverified. No merge, public deployment or history rewrite.
+
+## 2026-11-12 — Ring-theme main release v0.13.0
+
+- Owner authorized merging and deploying the ring theme and dragon experiment. Squash-merged their combined changes into main without rewriting the published feature branches; retained the existing main and feature log entries. Versioned this first main release of the combined work as v0.13.0.
+- Pages CI and live deployment verification are required after push. Real Supabase isolation and physical-device behavior remain unverified.

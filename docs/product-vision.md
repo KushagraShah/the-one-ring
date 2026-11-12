@@ -16,7 +16,7 @@ The name and envisioned overhaul draw inspiration from *The Lord of the Rings*. 
 - **Seven dwarf rings, four eaten by dragons:** potentially services or background capabilities.
 - **Three elven rings:** potentially integrations or monitors.
 
-How to divide responsibilities among these categories is deliberately undecided and should follow actual needs. Treat the numbers and categories as creative inspiration, not enforced technical limits or a reason to create empty slots. Keep the interface understandable with explicit labels: the theme should add personality without obscuring actions, permissions or navigation. A theme overhaul needs its own design and owner review; existing palettes and UI decisions remain in force until then. Consider intellectual-property implications if the project is ever distributed or marketed beyond personal use.
+The owner clarified that the nine Rings of Men are the nine mini-app slots: the local Home shows the two existing apps and seven unassigned placeholders. This visual choice does not impose a technical app limit. The roles of the dwarf and elven rings remain undecided and should follow actual needs; a separate view presents them as concepts. The experimental dragon-ring branch adds a playful, non-persistent interaction with four randomly selected Dwarf rings; it does not implement services. Keep labels and navigation explicit. The local theme preserves workout and habit accents and workflows and awaits owner review. Consider intellectual-property implications if the project is ever distributed or marketed beyond personal use.
 
 ## Privacy, sharing and integrations
 

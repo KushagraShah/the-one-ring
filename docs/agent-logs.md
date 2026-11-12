@@ -418,3 +418,8 @@ Brief, append-only task summaries for future sessions. Record changes, verificat
 
 - Owner authorized merging and deploying the ring theme and dragon experiment. Squash-merged their combined changes into main without rewriting the published feature branches; retained the existing main and feature log entries. Versioned this first main release of the combined work as v0.13.0.
 - Pages CI and live deployment verification are required after push. Real Supabase isolation and physical-device behavior remain unverified.
+
+## 2026-11-12 — Backup test correction v0.13.1
+
+- The v0.13.0 Pages run stopped at the browser suite: the full-backup test returned to Settings without reopening Backups. Corrected the test navigation; application backup behavior is unchanged. The previous Pages deployment remains live until the corrected workflow succeeds.
+- The targeted fake-server browser test passed locally; Pages CI and deployment remain to be verified after push.

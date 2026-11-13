@@ -1,6 +1,6 @@
 import { confirmAction, showMessage } from '../AppDialog'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDownToLine, ArrowLeft, ChevronRight, Dumbbell, Home, ListChecks, MoreHorizontal, RotateCcw, Settings2 } from 'lucide-react'
+import { ArrowDownToLine, ArrowLeft, BookOpen, ChevronRight, Dumbbell, Home, ListChecks, MoreHorizontal, RotateCcw, Settings2 } from 'lucide-react'
 import { Home as HomeScreen } from './Home'
 import { AvatarImage, avatars } from './avatars'
 import { AvatarPicker } from './AvatarPicker'
@@ -10,9 +10,10 @@ import { parseHabits } from '../habits/model'
 import { WorkspaceGate, type WorkoutHandle } from '../workout/WorkoutApp'
 import { useAppUpdate } from './useAppUpdate'
 import { supabase } from '../auth'
+import { RecipeApp, type RecipeHandle } from '../recipes/RecipeApp'
 
 type Identity = { id: string; email: string; demo: boolean; username: string; avatar: string }
-type View = 'home' | 'workout' | 'habits' | 'settings'
+type View = 'home' | 'workout' | 'habits' | 'recipes' | 'settings'
 
 export function App({ identity, signOut }: { identity: Identity; signOut: () => void }) {
   const [view, setView] = useState<View>('home')
@@ -46,11 +47,12 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
   }
   const workout = useRef<WorkoutHandle>(null)
   const habits = useRef<HabitHandle>(null)
+  const recipes = useRef<RecipeHandle>(null)
   const update = useAppUpdate()
   const [updateMessage, setUpdateMessage] = useState('')
   const applyUpdate = () => {
     if (identity.demo) { setUpdateMessage('Exit demo mode before updating; demo data is temporary and would be lost.'); return }
-    if (profileDirty || profileBusy || !workout.current || !habits.current || !workout.current.canUpdate() || !habits.current.canSignOut()) { setUpdateMessage('Finish or cancel edits, leave workout editing and wait for saves before updating.'); return }
+    if (profileDirty || profileBusy || !workout.current || !habits.current || !recipes.current || !workout.current.canUpdate() || !habits.current.canSignOut() || !recipes.current.canLeave()) { setUpdateMessage('Finish or cancel edits, leave workout editing and wait for saves before updating.'); return }
     setUpdateMessage('')
     update.activate()
   }
@@ -62,11 +64,12 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
     const apply = () => { if (next === 'workout') workout.current?.open(); setView(next) }
     if (view === 'workout' && workout.current) workout.current.leave(apply)
     else if (view === 'habits' && habits.current) habits.current.leave(apply)
+    else if (view === 'recipes' && recipes.current) recipes.current.leave(apply)
     else apply()
   }
   const exit = async () => {
     if (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?'))) return
-    if ((workout.current && !workout.current.canSignOut()) || (habits.current && !habits.current.canSignOut())) { void showMessage('Finish your edits and wait for saves before signing out.'); return }
+    if ((workout.current && !workout.current.canSignOut()) || (habits.current && !habits.current.canSignOut()) || (recipes.current && !recipes.current.canLeave())) { void showMessage('Finish your edits and wait for saves before signing out.'); return }
     signOut()
   }
   const exportFull = () => {
@@ -94,7 +97,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
   }
   return <div className="app-shell" data-view={view} data-theme={view === 'workout' ? 'workout' : view === 'habits' ? 'habits' : 'neutral'}>
     <aside className="sidebar"><div className="brand"><span className="brand-mark"><span /></span><span>the one ring<small>YOUR SPACE TO GROW</small></span></div><div className="sidebar-label">YOUR SPACE</div><button className={`side-link ${view === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Home size={18}/> Home</button><div className="sidebar-app-label">YOUR APPS</div><AppStrip view={view} navigate={navigate}/><div className="sidebar-bottom"><button className="profile" onClick={() => navigate('settings')}><span className="avatar"><AvatarImage id={savedProfile.avatar}/></span><span><strong>{displayName}</strong><small>{identity.demo ? 'Demo mode' : 'Account'}</small></span><MoreHorizontal size={19}/></button></div></aside>
-    <main className="main"><header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span/></span> the one ring</div><div className="breadcrumb">YOUR SPACE <ChevronRight size={13}/> <span>{view === 'home' ? 'Overview' : view === 'settings' ? 'Settings' : view === 'habits' ? 'Habit Tracker' : 'Workout Tracker'}</span></div><button className="top-profile" onClick={() => navigate('settings')}>{identity.demo ? 'Demo mode' : 'Account'} <span className="avatar small"><AvatarImage id={savedProfile.avatar}/></span></button></header>
+    <main className="main"><header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span/></span> the one ring</div><div className="breadcrumb">YOUR SPACE <ChevronRight size={13}/> <span>{view === 'home' ? 'Overview' : view === 'settings' ? 'Settings' : view === 'habits' ? 'Habit Tracker' : view === 'recipes' ? 'Recipe Book' : 'Workout Tracker'}</span></div><button className="top-profile" onClick={() => navigate('settings')}>{identity.demo ? 'Demo mode' : 'Account'} <span className="avatar small"><AvatarImage id={savedProfile.avatar}/></span></button></header>
     <div className="content">
       {(update.status === 'available' || update.status === 'activated') && <div className="app-update" role="status"><div><strong>{update.status === 'available' ? 'An update is available' : 'Update ready to open'}</strong><p>{update.status === 'available' ? 'Install when your edits are saved.' : 'Reload when your edits are saved.'}</p>{updateMessage && <p>{updateMessage}</p>}</div><button className="outline-button" onClick={applyUpdate}>{update.status === 'available' ? 'Prepare update' : 'Reload app'}</button></div>}
       {view === 'home' && <HomeScreen open={next => void navigate(next)}/>}
@@ -103,9 +106,10 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
       {view === 'settings' && backupsOpen && <div className="backup-page-heading"><button className="text-button" onClick={() => setBackupsOpen(false)}>← Settings</button><div className="page-heading"><div><h1>Backups<span className="accent">.</span></h1><p>Choose which app data to export or restore.</p></div></div></div>}
       {view === 'settings' && creditsOpen && <section className="artwork-credits" aria-labelledby="artwork-credits-heading"><button className="ring-back" onClick={() => setCreditsOpen(false)}><ArrowLeft size={18} aria-hidden="true"/> Settings</button><div className="page-heading credits-heading"><div><h1 id="artwork-credits-heading">Artwork credits<span className="accent">.</span></h1><p>Artists and sources behind this space.</p></div></div><div className="settings-card"><h3>Flying dragon</h3><p>Artwork by <a href="https://openclipart.org/detail/315379/flying-dragon-silhouette-isolated">GDJ / Openclipart</a> · <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a></p></div></section>}
       <div className={view === 'settings' && (!backupsOpen || avatarPickerOpen || creditsOpen) ? 'backup-hidden' : undefined}>
-      <WorkspaceGate ref={workout} identity={identity} view={view} exportHabits={() => habits.current?.exportData()}/>
-      <HabitApp ref={habits} identity={identity} view={view} exportWorkout={() => workout.current?.exportData()}/>
-      {view === 'settings' && backupsOpen && <div className="settings-card backup-card"><h3>Full app backup</h3><p>Includes workouts and habits. Restoring saves each app separately and may partially complete.</p><div className="settings-actions"><button className="outline-button" onClick={exportFull}><ArrowDownToLine size={16} aria-hidden="true"/> Export full backup</button><label className="outline-button file-button"><RotateCcw size={16} aria-hidden="true"/> Restore full backup<input type="file" accept="application/json,.json" onChange={event => { void restoreFull(event.target.files?.[0]); event.target.value = '' }}/></label></div></div>}
+      <WorkspaceGate ref={workout} identity={identity} view={view} exportHabits={() => habits.current?.exportData()} exportRecipes={() => recipes.current?.exportData()}/>
+      <HabitApp ref={habits} identity={identity} view={view} exportWorkout={() => workout.current?.exportData()} exportRecipes={() => recipes.current?.exportData()}/>
+      <RecipeApp ref={recipes} identity={identity} view={view} exportWorkout={() => workout.current?.exportData()} exportHabits={() => habits.current?.exportData()}/>
+      {view === 'settings' && backupsOpen && <div className="settings-card backup-card"><h3>Workout and habit backup</h3><p>Includes workouts and habits only, not recipes. Restoring saves each app separately and may partially complete.</p><div className="settings-actions"><button className="outline-button" onClick={exportFull}><ArrowDownToLine size={16} aria-hidden="true"/> Export workout and habit backup</button><label className="outline-button file-button"><RotateCcw size={16} aria-hidden="true"/> Restore workout and habit backup<input type="file" accept="application/json,.json" onChange={event => { void restoreFull(event.target.files?.[0]); event.target.value = '' }}/></label></div></div>}
       </div>
       {view === 'settings' && !backupsOpen && !avatarPickerOpen && !creditsOpen && <div className="settings-card update-settings"><h3>App updates</h3><p role="status">{({ unavailable: 'Update checks are unavailable in this browser or build.', checking: 'Checking for updates…', current: 'No update found.', available: 'An update is ready to prepare.', activated: 'The update is ready to open.', error: 'Could not check for updates. Check your connection and try again.' })[update.status]}</p><button className="outline-button" disabled={update.status === 'unavailable' || update.status === 'checking'} onClick={() => void update.check()}>Check for updates</button></div>}
       {view === 'settings' && !backupsOpen && !avatarPickerOpen && !creditsOpen && <p className="app-version">The One Ring · v{appVersion}</p>}
@@ -126,6 +130,7 @@ function AppStrip({ view, navigate }: { view: View; navigate: (next: View) => vo
   }}>
     <button className={`app-strip-button ${view === 'workout' ? 'active' : ''}`} aria-current={view === 'workout' ? 'page' : undefined} onClick={() => navigate('workout')}><span className="app-strip-icon"><Dumbbell size={16} aria-hidden="true"/></span><span>Workouts</span></button>
     <button className={`app-strip-button ${view === 'habits' ? 'active' : ''}`} aria-current={view === 'habits' ? 'page' : undefined} onClick={() => navigate('habits')}><span className="app-strip-icon"><ListChecks size={16} aria-hidden="true"/></span><span>Habits</span></button>
-    {Array.from({ length: 7 }, (_, index) => <span className="app-strip-empty" role="img" aria-label={`App ring ${index + 3}, unassigned`} key={index}>{String(index + 3).padStart(2, '0')}</span>)}
+    <button className={`app-strip-button ${view === 'recipes' ? 'active' : ''}`} aria-current={view === 'recipes' ? 'page' : undefined} onClick={() => navigate('recipes')}><span className="app-strip-icon"><BookOpen size={16} aria-hidden="true"/></span><span>Recipes</span></button>
+    {Array.from({ length: 6 }, (_, index) => <span className="app-strip-empty" role="img" aria-label={`App ring ${index + 4}, unassigned`} key={index}>{String(index + 4).padStart(2, '0')}</span>)}
   </div>
 }

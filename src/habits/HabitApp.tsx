@@ -16,7 +16,7 @@ import { fixedScore } from './insights'
 import './habits.css'
 
 type Identity = { id: string; demo: boolean }
-type Props = { identity: Identity; view: string; exportWorkout: () => void }
+type Props = { identity: Identity; view: string; exportWorkout: () => void; exportRecipes: () => void }
 export type HabitHandle = { canSignOut: () => boolean; leave: (done: () => void) => void; snapshot: () => HabitData | null; exportData: () => void; replace: (data: HabitData) => void }
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const combineNotes = (recorded: string, retained: string) => recorded && retained && recorded !== retained ? `${recorded}\n\n${retained}` : recorded || retained
@@ -27,7 +27,7 @@ function download(data: unknown, scope: string) {
   const link = document.createElement('a'); link.href = url; link.download = `one-ring-${scope}-${stamp}.json`; link.click(); URL.revokeObjectURL(url)
 }
 
-export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ identity, view, exportWorkout }, ref) {
+export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ identity, view, exportWorkout, exportRecipes }, ref) {
   const [data, setData] = useState<HabitData | null>(() => identity.demo ? demoHabitData() : null)
   const dataRef = useRef(data)
   const [store, setStore] = useState<OnlineHabitStore | null>(null)
@@ -136,7 +136,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   }
   const loading = loadError ? <div className="settings-card"><h2>Could not load habits</h2><p>Check your connection and that the habit database migration is installed. No local account data was loaded.</p><button className="outline-button" onClick={() => setAttempt(n => n + 1)}>Retry</button></div> : <p>Loading habits…</p>
   return <>
-    {(status === 'error' || status === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{status === 'conflict' ? 'Habits changed elsewhere' : 'Could not save habits'}</h2><p>Your edits are not confirmed. Keep this page open and export them before reloading. A reload can also discard unsaved workout changes.</p>{status === 'error' && <button className="primary" onClick={() => store?.retry()}>Retry habit save</button>} <button className="outline-button" onClick={exportData}>Export unsaved habits</button> <button className="outline-button" onClick={exportWorkout}>Export workouts</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved habit and workout changes and reload? Export both first.')) window.location.reload() }}>Discard and reload</button></div></div>}
+    {(status === 'error' || status === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{status === 'conflict' ? 'Habits changed elsewhere' : 'Could not save habits'}</h2><p>Your edits are not confirmed. Keep this page open and export them before reloading. A reload can also discard unsaved workout and recipe changes.</p>{status === 'error' && <button className="primary" onClick={() => store?.retry()}>Retry habit save</button>} <button className="outline-button" onClick={exportData}>Export unsaved habits</button> <button className="outline-button" onClick={exportWorkout}>Export workouts</button> <button className="outline-button" onClick={exportRecipes}>Export recipes</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved habit, workout and recipe changes and reload? Export them first.')) window.location.reload() }}>Discard and reload</button></div></div>}
     {status === 'saving' && <div role="status" className="habit-saving">Saving habits…</div>}
     <div hidden={view !== 'habits'} className="habit-app">
       {identity.demo && <p className="demo-example-note">Demo mode · Fictional sample habits. Changes reset when you refresh.</p>}

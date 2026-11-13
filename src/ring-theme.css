@@ -108,6 +108,7 @@
 .app-ring-empty { background: #1a231d; border-color: #414c3c; }
 .ring-workouts .app-ring-art svg { color: #a9c8e8; }
 .ring-habits .app-ring-art svg { color: #d1b6e9; }
+.ring-recipes .app-ring-art svg { color: #e7b39b; }
 .other-rings-link { width: 100%; min-height: 86px; margin-top: 30px; padding: 15px; display: flex; gap: 14px; align-items: center; text-align: left; color: #f3eddc; border: 1px solid #807044; border-radius: 10px; background: linear-gradient(115deg, #2c3829, #26291f); }
 .other-rings-link:hover, .ring-back:hover { border-color: #e1c684; background-color: #364331; }
 .other-rings-link > span:nth-child(2) { flex: 1; display: grid; gap: 5px; }

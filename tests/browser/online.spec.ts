@@ -22,7 +22,8 @@ async function fakeBackend(page: Page, initialAvatar?: string) {
     const request = route.request(); const path = new URL(request.url()).pathname
     if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }); return }
     let body: unknown
-    if (path === '/rest/v1/rpc/tor_online_habit_read') body = { revision: habitRevision, data: habitData }
+    if (path === '/rest/v1/rpc/tor_online_recipe_read') body = { revision: 0, data: null }
+    else if (path === '/rest/v1/rpc/tor_online_habit_read') body = { revision: habitRevision, data: habitData }
     else if (path === '/rest/v1/rpc/tor_online_habit_write') { const input = request.postDataJSON(); if (input.p_operation === lastHabitOperation) body = { status: 'ok', revision: habitRevision }; else if (input.p_revision !== habitRevision) body = { status: 'conflict' }; else { habitData = input.p_data; habitRevision++; lastHabitOperation = input.p_operation; body = { status: 'ok', revision: habitRevision } } }
     else if (path === '/rest/v1/rpc/tor_online_workout_read') body = { revision, documents }
     else if (path === '/rest/v1/rpc/tor_online_workout_write') {
@@ -78,8 +79,8 @@ test('profile saves account metadata, handles failures and groups backups', asyn
   await backups.click()
   await expect(page.getByRole('heading', { name: 'Backups.' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Workout backup' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Habit backup' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Full app backup' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Habit backup', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workout and habit backup' })).toBeVisible()
   await expect(page.getByLabel('Username')).toBeHidden()
   await page.getByRole('button', { name: '← Settings' }).click()
   await expect(page.getByLabel('Username')).toHaveValue('Unsaved draft')
@@ -225,12 +226,12 @@ test('launcher presents both apps equally on desktop and phone', async ({ page }
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await expect(page.locator('.mobile-nav .mobile-fixed-nav')).toHaveCount(2)
-  await expect(page.locator('.mobile-nav .app-strip-button')).toHaveCount(2)
-  await expect(page.locator('.mobile-nav .app-strip-empty')).toHaveCount(7)
+  await expect(page.locator('.mobile-nav .app-strip-button')).toHaveCount(3)
+  await expect(page.locator('.mobile-nav .app-strip-empty')).toHaveCount(6)
   const cards = page.locator('.app-rings > .app-ring')
   await expect(cards).toHaveCount(9)
-  await expect(page.locator('.app-rings > button')).toHaveCount(2)
-  await expect(page.locator('.app-ring-empty')).toHaveCount(7)
+  await expect(page.locator('.app-rings > button')).toHaveCount(3)
+  await expect(page.locator('.app-ring-empty')).toHaveCount(6)
   await expect(page.getByText('OPEN APP', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: /The other rings/ }).click()
   await expect(page.getByRole('heading', { name: 'The other rings.' })).toBeFocused()
@@ -723,7 +724,7 @@ test('full backup restores workout and habit scopes in demo', async ({ page }) =
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await page.getByRole('button', { name: /Backups/ }).click()
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export full backup' }).click()
+  await page.getByRole('button', { name: 'Export workout and habit backup' }).click()
   const downloaded = await download
   expect(downloaded.suggestedFilename()).toMatch(/^one-ring-full-.*\.json$/)
   const path = await downloaded.path()
@@ -738,7 +739,7 @@ test('full backup restores workout and habit scopes in demo', async ({ page }) =
   await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await page.getByRole('button', { name: /Backups/ }).click()
-  await page.getByLabel('Restore full backup').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: contents })
+  await page.getByLabel('Restore workout and habit backup').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: contents })
   await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
   await openApp(page, 'Habits')
@@ -917,7 +918,7 @@ test('backup cards use consistent export and restore icons and spacing', async (
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await page.getByRole('button', { name: /Backups/ }).click()
   const cards = page.locator('.backup-card:visible')
-  await expect(cards).toHaveCount(3)
+  await expect(cards).toHaveCount(4)
   for (const card of await cards.all()) {
     await expect(card.locator('.settings-actions button svg')).toHaveCount(1)
     await expect(card.locator('.settings-actions label svg')).toHaveCount(1)

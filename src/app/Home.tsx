@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Dumbbell, ListChecks } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Dumbbell, ListChecks } from 'lucide-react'
 import mountains from '../assets/brand/mountains.svg'
 import { DwarfRings } from './DwarfRings'
 
-export function Home({ open }: { open: (view: 'workout' | 'habits') => void }) {
+export function Home({ open }: { open: (view: 'workout' | 'habits' | 'recipes') => void }) {
   const [showOtherRings, setShowOtherRings] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   const changePage = (show: boolean) => {
@@ -32,12 +32,13 @@ export function Home({ open }: { open: (view: 'workout' | 'habits') => void }) {
       <div className="ring-hero-copy"><p className="ring-kicker">THE ONE RING</p><h1 ref={heading} tabIndex={-1}>Your rings<span>.</span></h1><p>A little corner of Middle-earth, for your everyday life.</p></div>
     </header>
     <section aria-labelledby="your-apps" className="rings-of-men">
-      <div className="ring-section-heading"><div><p className="ring-kicker">NINE RINGS OF MEN</p><h2 id="your-apps">Your apps</h2></div><span>2 OF 9 IN USE</span></div>
+      <div className="ring-section-heading"><div><p className="ring-kicker">NINE RINGS OF MEN</p><h2 id="your-apps">Your apps</h2></div><span>3 OF 9 IN USE</span></div>
       <p className="ring-intro">Each ring holds an app. The rest await their purpose.</p>
       <div className="app-rings" aria-label="Nine app rings">
         <button className="app-ring app-ring-active ring-workouts" aria-label="Go to workouts" onClick={() => open('workout')}><span className="app-ring-art"><Dumbbell size={25} aria-hidden="true"/></span><strong>Workouts</strong></button>
         <button className="app-ring app-ring-active ring-habits" aria-label="Go to habits" onClick={() => open('habits')}><span className="app-ring-art"><ListChecks size={25} aria-hidden="true"/></span><strong>Habits</strong></button>
-        {Array.from({ length: 7 }, (_, index) => <div className="app-ring app-ring-empty" role="img" key={index} aria-label={`App ring ${index + 3}, unassigned`}><span className="app-ring-art" aria-hidden="true"><span className="ring-star">✦</span></span><small aria-hidden="true">{String(index + 3).padStart(2, '0')}</small></div>)}
+        <button className="app-ring app-ring-active ring-recipes" aria-label="Go to recipes" onClick={() => open('recipes')}><span className="app-ring-art"><BookOpen size={25} aria-hidden="true"/></span><strong>Recipes</strong></button>
+        {Array.from({ length: 6 }, (_, index) => <div className="app-ring app-ring-empty" role="img" key={index} aria-label={`App ring ${index + 4}, unassigned`}><span className="app-ring-art" aria-hidden="true"><span className="ring-star">✦</span></span><small aria-hidden="true">{String(index + 4).padStart(2, '0')}</small></div>)}
       </div>
     </section>
     <button className="other-rings-link" onClick={() => changePage(true)}><span className="other-rings-symbol" aria-hidden="true">✧</span><span><strong>The other rings</strong><small>Explore the seven and the three</small></span><ArrowRight size={20} aria-hidden="true"/></button>

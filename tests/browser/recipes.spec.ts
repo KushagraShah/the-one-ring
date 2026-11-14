@@ -1,5 +1,30 @@
 import { expect, test } from '@playwright/test'
 
+test('recipe views use readable ring-themed colors', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Go to recipes' }).click()
+  const contrast = async (selector: string) => page.locator(selector).first().evaluate(element => {
+    const styles = getComputedStyle(element)
+    const lum = (value: string) => {
+      const channels = value.match(/\d+/g)!.slice(0, 3).map(Number).map(n => { const v = n / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4 })
+      return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2]
+    }
+    const [a, b] = [lum(styles.color), lum(styles.backgroundColor)].sort((x, y) => y - x)
+    return (a + .05) / (b + .05)
+  })
+  expect(await contrast('.recipe-card')).toBeGreaterThan(4.5)
+  expect(await contrast('.recipe-primary')).toBeGreaterThan(4.5)
+  await page.getByRole('button', { name: /Tofu rice bowl/ }).click()
+  await page.getByRole('button', { name: 'Start cooking' }).click()
+  expect(await contrast('.recipe-document')).toBeGreaterThan(4.5)
+  await expect(page.locator('.recipe-step')).toHaveCSS('background-color', 'rgb(48, 55, 42)')
+  await page.getByRole('navigation', { name: 'Recipe Book' }).getByRole('button', { name: /Shopping/ }).click()
+  await page.getByLabel('🍲 Tofu rice bowl').check()
+  await page.getByRole('button', { name: 'Start shopping' }).click()
+  await expect(page.getByText('400 g tofu')).toBeVisible()
+})
+
 test('recipe shopping and cooking resume after account reload', async ({ page }) => {
   const owner = '10000000-0000-4000-8000-000000000001'
   let recipes: unknown = null; let revision = 0; let workoutRevision = 0; let documents: unknown[] = []

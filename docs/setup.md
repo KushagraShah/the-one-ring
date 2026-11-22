@@ -44,7 +44,7 @@ The owner removed Supabase's separate GitHub integration after it attempted to a
 
 ### Local Recipe Book branch
 
-The owner rejected the first preview's expanding interaction, ambiguous shopping states and indirect cooking navigation. Library recipes and the Add/Edit flow open in separate styled dialogs, full-screen on phones; import review is a separate view in the editor, and the full recipe during cooking is a separate screen. Shopping items stay in order with distinct Have/Bought controls, a Need reset and a count summary; Cooking has its own direct recipe picker. These are local-preview changes only; phase data formats and save behavior are unchanged.
+The owner rejected the first preview's expanding interaction, ambiguous shopping states and indirect cooking navigation. Library recipes, the Add/Edit flow and the full recipe during cooking open in separate styled dialogs, full-screen on phones; import review is a separate view in the editor. Closing the cooking recipe returns to the same step without resizing the cooking panel. Shopping items stay in order with distinct Have/Bought controls, a Need reset and a count summary; Cooking has its own direct recipe picker. These are local-preview changes only; phase data formats and save behavior are unchanged.
 
 Recipe details and the cooking full-recipe view render Markdown rather than source. An authored `## Quick glance` section is shown during cooking; no summary is generated. Older recipes without the section show an empty-state instruction. Markdown rendering supports common formatting and tables but does not execute raw HTML or load external images; original text and existing snapshots are unchanged.
 

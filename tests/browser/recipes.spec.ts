@@ -1,6 +1,32 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
+test('recipe rotation, ideas and archive keep the original recipe', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Go to recipes' }).click()
+  const views = page.getByRole('group', { name: 'Recipe library views' })
+  await page.getByRole('button', { name: /Tofu rice bowl/ }).click()
+  await page.getByRole('button', { name: 'Add to rotation' }).click()
+  await page.getByRole('button', { name: 'Close recipe' }).click()
+  await views.getByRole('button', { name: 'Rotation' }).click()
+  await page.getByRole('button', { name: /Tofu rice bowl/ }).click()
+  await page.getByRole('button', { name: 'Mark as idea' }).click()
+  await page.getByRole('button', { name: 'Close recipe' }).click()
+  await expect(page.getByRole('button', { name: /Tofu rice bowl/ })).toHaveCount(0)
+  await views.getByRole('button', { name: 'Ideas' }).click()
+  await page.getByRole('button', { name: /Tofu rice bowl/ }).click()
+  await page.getByRole('button', { name: 'Archive recipe' }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Archive recipe' }).click()
+  await page.getByRole('button', { name: 'Close recipe' }).click()
+  await views.getByRole('button', { name: 'Archived' }).click()
+  await page.getByRole('button', { name: /Tofu rice bowl/ }).click()
+  await page.getByRole('button', { name: 'Restore recipe' }).click()
+  await page.getByRole('button', { name: 'Close recipe' }).click()
+  await views.getByRole('button', { name: 'Ideas' }).click()
+  await expect(page.getByRole('button', { name: /Tofu rice bowl/ })).toBeVisible()
+})
+
 test('recipe views use readable ring-themed colors', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()

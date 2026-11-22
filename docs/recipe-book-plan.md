@@ -1,5 +1,11 @@
 # Recipe Book: local first implementation
 
+## Meal-prep redesign: partial local preview
+
+The owner approved the proposed rotation, reusable sides, optional combined macros and Ideas view. This revision implements only library organization: All recipes, Rotation, Ideas and Archived filters, with reversible archive and manual rotation membership from recipe detail. Marking an item as an idea or archiving it removes it from rotation; restoring an archive preserves its idea status. No suggestions or preparation history are implemented.
+
+Meal-prep planning, reusable sides, combined macros, guided structured editing, JSON import and robust Notion-style extraction remain **unimplemented**. Existing Markdown extraction still needs review and can miss example content. The version-2 recipe workspace converts version-1 records on load while retaining shopping and cooking snapshots; the previous client rejects version 2 on normal load, but deliberate restores or other clients are not protected by a server-side version guard. Do not use older clients to restore over newer data.
+
 ## Purpose and decisions
 
 The owner creates precise vegetarian, macro-aware meal-prep recipes outside the app with AI tools. The app is not an AI recipe generator, meal diary or nutrition authority. It should support a personal collection, explicit shopping and cooking phases, fixed portions, metric ingredients and authored per-portion macros. A pantry inventory, images, web importing, automatic nutrition calculation, scaling, offline sync and sharing are not in scope. No real recipe examples were supplied; demo examples are fictional.

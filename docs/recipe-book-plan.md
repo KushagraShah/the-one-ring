@@ -35,6 +35,8 @@ The library remains behind detail/editor dialogs without resizing. App actions u
 
 Recipe detail gives cooking and planning the two prominent action buttons. A pencil in the header edits the recipe; the adjacent options icon opens a separate styled window for rotation, readiness, archive, guided conversion and deletion. These controls retain their existing confirmation and snapshot behavior. Small “i” controls explain recipe status, macros, plan snapshots, rotation suggestions, combined nutrition and editor nutrition/quick glance. They open on hover, keyboard focus or phone tap, dismiss with another tap, outside interaction or Escape, and Escape closes help before its containing recipe window. The small icon retains a 44-pixel touch target.
 
+Help is brief and specific to the adjacent label: status explains only the current state, and combined-nutrition help explains either the total or the missing fields. An open info control paints above neighboring info icons so they cannot overlap the tip text.
+
 ## Data, drafts and compatibility
 
 Workspace version 3 adds structured content, metadata, sides and plan snapshots. Version 1 and 2 load into version 3 without rewriting recipes or phase snapshots. Recipe-only backups and full three-app format-2 backups retain all saved recipe workspace fields. Workout/habit format 1 remains compatible. Full restore validates first but saves each app separately and can partially complete.

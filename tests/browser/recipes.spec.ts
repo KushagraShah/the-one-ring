@@ -14,7 +14,7 @@ test('recipe detail keeps secondary actions in options and help supports hover a
   const macros = page.getByRole('button', { name: 'About recipe macros' })
   await macros.hover()
   await expect(macros).toHaveAttribute('aria-expanded', 'true')
-  await expect(detail.getByRole('tooltip')).toContainText('authored values')
+  await expect(detail.getByRole('tooltip')).toContainText('Entered per portion')
   await page.keyboard.press('Escape')
   await expect(macros).toBeFocused()
   await expect(detail.getByRole('tooltip')).toHaveCount(0)
@@ -51,6 +51,22 @@ test.describe('recipe help on touch screens', () => {
     const help = page.getByRole('button', { name: 'About recipe macros' })
     for (const width of [320, 390, 760]) {
       await page.setViewportSize({ width, height: 844 })
+      const status = page.getByRole('button', { name: 'About recipe status' })
+      await status.tap()
+      const statusTip = detail.getByRole('tooltip')
+      await expect(statusTip).toHaveText('A regular recipe used for meal suggestions.')
+      await expect(statusTip).toHaveCSS('opacity', '1')
+      // The status tip overlaps the following macro icon. Its text must paint above it.
+      const macroBox = (await help.boundingBox())!
+      const point = { x: macroBox.x + macroBox.width / 2, y: macroBox.y + macroBox.height / 2 }
+      const statusBox = (await statusTip.boundingBox())!
+      expect(point.x).toBeGreaterThan(statusBox.x)
+      expect(point.x).toBeLessThan(statusBox.x + statusBox.width)
+      expect(point.y).toBeGreaterThan(statusBox.y)
+      expect(point.y).toBeLessThan(statusBox.y + statusBox.height)
+      expect(await statusTip.evaluate((tip, p) => tip.contains(document.elementFromPoint(p.x, p.y)), point)).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath(`recipe-status-help-${width}.png`), animations: 'disabled' })
+      await status.tap()
       await help.tap()
       const tip = detail.getByRole('tooltip')
       await expect(tip).toBeVisible()

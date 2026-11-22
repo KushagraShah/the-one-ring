@@ -168,6 +168,8 @@
 .recipe-info-heading .workout-info, .recipe-status-line .workout-info { flex: none; }
 .recipe-app .workout-info-button { width: 44px; min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #c3c5b5; }
 .recipe-app .workout-info-button:hover, .recipe-app .workout-info-button[aria-expanded=true] { color: #efaa89; background: #374136; }
+/* Lift the whole info control so later sibling icons cannot paint over its tip. */
+.recipe-app .workout-info.is-open { z-index: 20; }
 .recipe-app .workout-info-popover { position: fixed; top: var(--tip-top); left: var(--tip-left); width: min(300px, calc(100vw - 24px)); color: #f3eddc; background: #28352b; border-color: #927657; text-transform: none; }
 .recipe-app .recipe-detail-macros .workout-info-popover { font-size: 12px; font-weight: 400; letter-spacing: normal; }
 .recipe-detail-macros .recipe-info-heading { margin: -8px 0; }

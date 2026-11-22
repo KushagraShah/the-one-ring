@@ -1,6 +1,6 @@
 export type Recipe = { id: string; markdown: string }
 export type ShoppingItem = { id: string; recipe: string; text: string; pantry: boolean; state: 'needed' | 'have' | 'bought' }
-export type RecipeData = { version: 1; recipes: Recipe[]; shopping: { items: ShoppingItem[] } | null; cooking: { recipe: Recipe; step: number } | null }
+export type RecipeData = { version: 1; recipes: Recipe[]; shopping: { items: ShoppingItem[]; sources?: Recipe[] } | null; cooking: { recipe: Recipe; step: number } | null }
 export const emptyRecipes = (): RecipeData => ({ version: 1, recipes: [], shopping: null, cooking: null })
 
 export const template = `# 🥣 Recipe name
@@ -30,21 +30,30 @@ export function parseMarkdown(markdown: string) {
   const lines = markdown.replace(/\r\n/g, '\n').split('\n')
   const title = lines.find(line => /^#\s+\S/.test(line))?.replace(/^#\s+/, '').trim() || ''
   const field = (name: string) => lines.map(line => line.match(new RegExp(`^\\s*(?:\\*\\*)?${name}(?:\\*\\*)?:\\s*(.+)$`, 'i'))).find(Boolean)?.[1]?.trim() || ''
-  const ingredients: { text: string; pantry: boolean }[] = []; const steps: string[] = []; const quickGlance: string[] = []
+  const ingredients: { text: string; pantry: boolean }[] = []; const steps: string[] = []; const quickGlance: string[] = []; const warnings: string[] = []
+  const warn = (message: string) => { if (!warnings.includes(message)) warnings.push(message) }
   let section = ''; let inFence = false
   for (const line of lines) {
-    if (/^\s{0,3}(`{3,}|~{3,})/.test(line)) { inFence = !inFence; if (section === 'quick glance') quickGlance.push(line); continue }
+    if (/^\s{0,3}(`{3,}|~{3,})/.test(line)) { inFence = !inFence; if (section === 'quick glance') quickGlance.push(line); else if (['ingredients', 'pantry', 'instructions'].includes(section)) warn(`Code blocks in ${section} are not extracted.`); continue }
     if (inFence) { if (section === 'quick glance') quickGlance.push(line); continue }
     const heading = line.match(/^##\s+(.+?)\s*#*\s*$/)
     if (heading) { section = heading[1].trim().toLowerCase(); continue }
-    if (section === 'quick glance') quickGlance.push(line)
+    if (section === 'quick glance') { quickGlance.push(line); continue }
+    if (!line.trim()) continue
     const item = line.match(/^\s*[-*+]\s+(.+\S|\S)\s*$/)
-    if (item && (section === 'ingredients' || section === 'pantry')) ingredients.push({ text: item[1].trim(), pantry: section === 'pantry' })
+    if (item && (section === 'ingredients' || section === 'pantry')) {
+      ingredients.push({ text: item[1].trim(), pantry: section === 'pantry' })
+      if (/^\s/.test(line)) warn(`Indented ${section} bullets were extracted as separate items. Check the full recipe.`)
+    }
+    else if (section === 'ingredients' || section === 'pantry') warn(`Some ${section} lines were not extracted. Check the full recipe.`)
     const step = line.match(/^\s*\d+[.)]\s+(.+\S|\S)\s*$/)
-    if (step && section === 'instructions') steps.push(step[1].trim())
-    else if (section === 'instructions' && steps.length && /^\s{2,}\S/.test(line)) steps[steps.length - 1] += `\n${line.trim()}`
+    if (step && section === 'instructions') { steps.push(step[1].trim()); if (/^\s/.test(line)) warn('Indented numbered instruction lines were extracted as separate steps. Check the full recipe.') }
+    else if (section === 'instructions') {
+      if (steps.length && /^\s{2,}\S/.test(line)) { steps[steps.length - 1] += `\n${line.trim()}`; warn('Indented instruction content was kept in the preceding step; check its structure.') }
+      else warn('Some instruction lines were not extracted. Check the full recipe.')
+    }
   }
-  return { title, portions: field('Portions'), macros: field('Macros per portion'), ingredients, steps, quickGlance: quickGlance.join('\n').trim() }
+  return { title, portions: field('Portions'), macros: field('Macros per portion'), ingredients, steps, quickGlance: quickGlance.join('\n').trim(), warnings }
 }
 
 export function parseRecipeData(input: string): RecipeData {
@@ -54,6 +63,7 @@ export function parseRecipeData(input: string): RecipeData {
   const recipe = (x: unknown): x is Recipe => obj(x) && typeof x.id === 'string' && /^[0-9a-f-]{36}$/i.test(x.id) && typeof x.markdown === 'string' && !!parseMarkdown(x.markdown).title
   if (!obj(value) || value.version !== 1 || !Array.isArray(value.recipes) || !value.recipes.every(recipe) || new Set(value.recipes.map(r => r.id)).size !== value.recipes.length) throw Error('Invalid recipes')
   if (value.shopping !== null && (!obj(value.shopping) || !Array.isArray(value.shopping.items) || !value.shopping.items.every((i: unknown) => obj(i) && typeof i.id === 'string' && typeof i.recipe === 'string' && typeof i.text === 'string' && typeof i.pantry === 'boolean' && ['needed', 'have', 'bought'].includes(String(i.state))))) throw Error('Invalid shopping')
+  if (obj(value.shopping) && value.shopping.sources !== undefined && (!Array.isArray(value.shopping.sources) || !value.shopping.sources.every(recipe) || new Set(value.shopping.sources.map(r => r.id)).size !== value.shopping.sources.length)) throw Error('Invalid shopping sources')
   if (value.cooking !== null && (!obj(value.cooking) || !recipe(value.cooking.recipe) || !Number.isInteger(value.cooking.step) || (value.cooking.step as number) < 0 || (value.cooking.step as number) >= Math.max(1, parseMarkdown(value.cooking.recipe.markdown).steps.length))) throw Error('Invalid cooking')
   return value as RecipeData
 }

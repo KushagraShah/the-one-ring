@@ -918,7 +918,7 @@ test('backup cards use consistent export and restore icons and spacing', async (
   await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
   await page.getByRole('button', { name: /Backups/ }).click()
   const cards = page.locator('.backup-card:visible')
-  await expect(cards).toHaveCount(4)
+  await expect(cards).toHaveCount(5)
   for (const card of await cards.all()) {
     await expect(card.locator('.settings-actions button svg')).toHaveCount(1)
     await expect(card.locator('.settings-actions label svg')).toHaveCount(1)

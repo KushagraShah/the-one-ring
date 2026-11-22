@@ -9,9 +9,10 @@ type Props = {
   setReview: (review: boolean) => void
   close: () => void
   save: () => void
+  phaseWarning?: string
 }
 
-export function RecipeEditor({ editor, review, change, setReview, close, save }: Props) {
+export function RecipeEditor({ editor, review, change, setReview, close, save, phaseWarning }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const title = useRef<HTMLHeadingElement>(null)
   const body = useRef<HTMLDivElement>(null)
@@ -33,6 +34,10 @@ export function RecipeEditor({ editor, review, change, setReview, close, save }:
         {review ? <section className="recipe-panel recipe-review-screen">
           <h2 id="recipe-editor-title" ref={title} tabIndex={-1}>Review recipe</h2>
           <p>Check what was recognized before saving. The original Markdown is preserved.</p>
+          <p className="recipe-warning">Extracted items may be incomplete. Compare the list and steps below with your Markdown before using them for shopping or cooking.</p>
+          {parsed.warnings.length > 0 && <ul className="recipe-warning">{parsed.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
+          {editor.id && <p className="recipe-warning">If ingredients or portions changed, review the authored per-portion macros. They are not recalculated.</p>}
+          {phaseWarning && <p className="recipe-warning">{phaseWarning}</p>}
           <div className="recipe-review-summary"><p><strong>Title:</strong> {parsed.title || 'Missing — add a # heading'}</p><p><strong>Portions:</strong> {parsed.portions || 'Not recognized'}</p><p><strong>Macros per portion:</strong> {parsed.macros || 'Not recognized'}</p><p><strong>Quick glance:</strong> {parsed.quickGlance ? 'Included' : 'Not included'}</p></div>
           <h3>Ingredients · {parsed.ingredients.length}</h3><ul>{parsed.ingredients.map((item, index) => <li key={index}>{item.pantry ? 'Pantry · ' : ''}{item.text}</li>)}</ul>
           <h3>Instructions · {parsed.steps.length}</h3><ol>{parsed.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>

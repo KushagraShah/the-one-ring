@@ -1,6 +1,6 @@
 # The One Ring
 
-The One Ring is a personal, mobile-first home for small apps that make everyday life easier. It includes Workout Tracker and Habit Tracker.
+The One Ring is a personal, mobile-first home for small apps that make everyday life easier. It includes Workout Tracker, Habit Tracker and Recipe Book for meal prep.
 
 This is an early preview. The online-only version uses Supabase storage and still needs live-device and security verification. Demo data is temporary. Export backups and don't rely on the preview as your only copy of important records.
 
@@ -18,6 +18,8 @@ npm run dev
 Open the URL printed in the terminal. Run `npm run build` to check the production build.
 
 See the [product vision](docs/product-vision.md), [setup and current limitations](docs/setup.md), and [next steps](docs/next-steps.md).
+
+Recipe Book account storage uses the [Supabase setup documented here](docs/recipe-book-supabase.md); the owner confirmed its installation on the existing project.
 
 ## License
 

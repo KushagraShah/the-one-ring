@@ -26,9 +26,9 @@ const initial: Data = { completed: ['Push'], workouts: [], session: null }
 const key = 'one-ring-demo-v1'
 function load(storage: Storage, storageKey: string): Data { try { const data = JSON.parse(storage.getItem(storageKey) || 'null'); return data && Array.isArray(data.completed) && Array.isArray(data.workouts) ? data : initial } catch { return initial } }
 type Identity = { id: string; email: string; demo: boolean }
-type View = 'home' | 'workout' | 'habits' | 'settings'
+type View = 'home' | 'workout' | 'habits' | 'recipes' | 'settings'
 export type WorkoutHandle = { leave: (done: () => void) => void; open: () => void; canSignOut: () => boolean; canUpdate: () => boolean; snapshot: () => Backup; exportData: () => void; validateBackup: (value: unknown) => Backup; replace: (value: Backup) => void }
-export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void }>(function WorkspaceGate({ identity, view, exportHabits }, ref) {
+export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void; exportRecipes: () => void }>(function WorkspaceGate({ identity, view, exportHabits, exportRecipes }, ref) {
   const [state, setState] = useState<{ storage: Storage; online: OnlineWorkoutStore | null } | null>(null)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -48,9 +48,9 @@ export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; vie
   }, [identity.id, identity.demo, attempt])
   if (error) return <div hidden={view !== 'workout' && view !== 'settings'} className="auth-card"><h1>Could not load workouts</h1><p>Check your connection and that the online workout database migration has been applied. No local workout data was loaded.</p><button className="primary" onClick={() => setAttempt(value => value + 1)}>Retry</button></div>
   if (!state) return <p hidden={view !== 'workout' && view !== 'settings'}>Loading workouts…</p>
-  return <WorkoutApp ref={ref} identity={identity} view={view} exportHabits={exportHabits} storage={state.storage} online={state.online}/>
+  return <WorkoutApp ref={ref} identity={identity} view={view} exportHabits={exportHabits} exportRecipes={exportRecipes} storage={state.storage} online={state.online}/>
 })
-const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void; storage: Storage; online: OnlineWorkoutStore | null }>(function WorkoutApp({ identity, view, exportHabits, storage: localStorage, online }, ref) {
+const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void; exportRecipes: () => void; storage: Storage; online: OnlineWorkoutStore | null }>(function WorkoutApp({ identity, view, exportHabits, exportRecipes, storage: localStorage, online }, ref) {
   const storageKey = identity.demo ? key : `one-ring-user-${identity.id}`
   const warmupKey = `${storageKey}-warmups`
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -238,7 +238,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   }, [saveStatus])
 
   return <>
-    {online && (saveStatus === 'error' || saveStatus === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{saveStatus === 'conflict' ? 'Workout data changed elsewhere' : 'Could not save workout data'}</h2><p>{saveStatus === 'conflict' ? 'This device has unsaved changes. Export them before reloading the latest server data.' : 'Your changes have not been confirmed. Check your connection and retry. Keep this page open.'} Reloading can also discard unsaved habit changes.</p>{saveStatus === 'error' && <button className="primary" onClick={() => online.retry()}>Retry save</button>}<button className="outline-button" onClick={exportData}>Export unsaved data</button> <button className="outline-button" onClick={exportHabits}>Export habits</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved workout and habit changes and reload? Export both first.')) window.location.reload() }}>Discard and reload</button></div></div>}
+    {online && (saveStatus === 'error' || saveStatus === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{saveStatus === 'conflict' ? 'Workout data changed elsewhere' : 'Could not save workout data'}</h2><p>{saveStatus === 'conflict' ? 'This device has unsaved changes. Export them before reloading the latest server data.' : 'Your changes have not been confirmed. Check your connection and retry. Keep this page open.'} Reloading can also discard unsaved habit and recipe changes.</p>{saveStatus === 'error' && <button className="primary" onClick={() => online.retry()}>Retry save</button>}<button className="outline-button" onClick={exportData}>Export unsaved data</button> <button className="outline-button" onClick={exportHabits}>Export habits</button> <button className="outline-button" onClick={exportRecipes}>Export recipes</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved workout, habit and recipe changes and reload? Export them first.')) window.location.reload() }}>Discard and reload</button></div></div>}
     {online && saveStatus === 'saving' && <div role="status" style={{ position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#171717', color: '#fff', padding: '8px 16px', borderRadius: 8 }}>Saving workouts…</div>}
     {confirmation && <ConfirmDialog title={confirmation.title} message={confirmation.message} confirmLabel={confirmation.label} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation.action; setConfirmation(null); action() }}/> }
     <div hidden={view !== 'workout'}>

@@ -33,6 +33,8 @@ Cooking starts directly from its picker, a recipe or a planned snapshot. A plann
 
 The library remains behind detail/editor dialogs without resizing. App actions use styled touch-sized buttons, × close controls and action-specific confirmations; no accordion or native select/popup is added. Markdown supports tables without executing raw HTML or loading remote images. Actual external references remain links because they navigate to external content.
 
+Recipe detail gives cooking and planning the two prominent action buttons. A pencil in the header edits the recipe; the adjacent options icon opens a separate styled window for rotation, readiness, archive, guided conversion and deletion. These controls retain their existing confirmation and snapshot behavior. Small “i” controls explain recipe status, macros, plan snapshots, rotation suggestions, combined nutrition and editor nutrition/quick glance. They open on hover, keyboard focus or phone tap, dismiss with another tap, outside interaction or Escape, and Escape closes help before its containing recipe window. The small icon retains a 44-pixel touch target.
+
 ## Data, drafts and compatibility
 
 Workspace version 3 adds structured content, metadata, sides and plan snapshots. Version 1 and 2 load into version 3 without rewriting recipes or phase snapshots. Recipe-only backups and full three-app format-2 backups retain all saved recipe workspace fields. Workout/habit format 1 remains compatible. Full restore validates first but saves each app separately and can partially complete.

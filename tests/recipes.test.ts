@@ -25,12 +25,33 @@ test('quick glance preserves authored Markdown and stops at the next section', (
   assert.equal(parsed.ingredients[0].text, '400 g tofu')
 })
 
+test('partial ingredient and instruction extraction warns without inventing lines', () => {
+  const parsed = parseMarkdown('# Bowl\n\n## Ingredients\n- 400 g tofu\n### Sauce\n| amount | item |\n| --- | --- |\n| 20 g | oil |\n\n## Instructions\n1. Cook tofu.\nUnindented continuation.\n2. Finish.')
+  assert.deepEqual(parsed.ingredients.map(item => item.text), ['400 g tofu'])
+  assert.deepEqual(parsed.steps, ['Cook tofu.', 'Finish.'])
+  assert.ok(parsed.warnings.some(w => w.includes('ingredients')))
+  assert.ok(parsed.warnings.some(w => w.includes('instruction')))
+})
+
+test('legacy indented instruction and ingredient extraction remains compatible with active snapshots', () => {
+  const markdown = '# Nested\n\n## Ingredients\n- 100 g tofu\n  - 10 g oil\n\n## Instructions\n1. Start.\n   1. Continue.\n2. Finish.'
+  const parsed = parseMarkdown(markdown)
+  assert.deepEqual(parsed.ingredients.map(item => item.text), ['100 g tofu', '10 g oil'])
+  assert.deepEqual(parsed.steps, ['Start.', 'Continue.', 'Finish.'])
+  assert.ok(parsed.warnings.some(w => w.includes('Indented ingredients')))
+  assert.ok(parsed.warnings.some(w => w.includes('Indented numbered instruction')))
+  const recipe = { id: '00000000-0000-4000-8000-000000000001', markdown }
+  assert.equal(parseRecipeData(JSON.stringify({ ...emptyRecipes(), recipes: [recipe], cooking: { recipe, step: 2 } })).cooking?.step, 2)
+})
+
 test('workspace validation keeps phase snapshots and rejects invalid data', () => {
   const recipe = { id: '00000000-0000-4000-8000-000000000001', markdown: template }
   const data = { ...emptyRecipes(), recipes: [recipe], cooking: { recipe, step: 1 } }
   assert.deepEqual(parseRecipeData(JSON.stringify(data)), data)
   assert.throws(() => parseRecipeData(JSON.stringify({ ...data, cooking: { recipe, step: 4 } })))
   assert.throws(() => parseRecipeData(JSON.stringify({ ...data, recipes: [recipe, recipe] })))
+  assert.deepEqual(parseRecipeData(JSON.stringify({ ...data, shopping: { items: [] } })).shopping, { items: [] })
+  assert.throws(() => parseRecipeData(JSON.stringify({ ...data, shopping: { items: [], sources: [recipe, recipe] } })))
 })
 
 test('recipe save retries the same operation and rejects conflicts', async () => {

@@ -11,6 +11,7 @@ import { WorkspaceGate, type WorkoutHandle } from '../workout/WorkoutApp'
 import { useAppUpdate } from './useAppUpdate'
 import { supabase } from '../auth'
 import { RecipeApp, type RecipeHandle } from '../recipes/RecipeApp'
+import { parseRecipeData, type RecipeData } from '../recipes/model'
 
 type Identity = { id: string; email: string; demo: boolean; username: string; avatar: string }
 type View = 'home' | 'workout' | 'habits' | 'recipes' | 'settings'
@@ -95,6 +96,31 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
     try { w.replace(workoutData); h.replace(habitData); void showMessage('Restore started. The two apps save separately; wait for both saving indicators and address any errors before leaving.') }
     catch { void showMessage('Restore could not finish. One app may have changed. Keep this page open, inspect both apps and export their data before retrying.') }
   }
+  const exportAllApps = () => {
+    const w = workout.current; const h = habits.current; const r = recipes.current
+    const habitData = h?.snapshot(); const recipeData = r?.snapshot()
+    if (!w || !h || !r || !habitData || !recipeData || !w.canSignOut() || !h.canSignOut() || !r.canLeave()) { void showMessage('All three apps must be loaded and saved before exporting a full backup.'); return }
+    const exportedAt = new Date().toISOString()
+    const file = { scope: 'full', format: 2, exportedAt, workouts: w.snapshot(), habits: habitData, recipes: recipeData }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }))
+    const link = document.createElement('a'); link.href = url; link.download = `one-ring-full-${exportedAt.replace(/[:.]/g, '-')}.json`; link.click(); URL.revokeObjectURL(url)
+  }
+  const restoreAllApps = async (file?: File) => {
+    if (!file) return
+    const w = workout.current; const h = habits.current; const r = recipes.current
+    if (!w || !h || !r || !h.snapshot() || !r.snapshot() || !w.canSignOut() || !h.canSignOut() || !r.canLeave()) { void showMessage('All three apps must be loaded and saved before restoring a full backup.'); return }
+    let workoutData: ReturnType<WorkoutHandle['validateBackup']>; let habitData: ReturnType<typeof parseHabits>; let recipeData: RecipeData
+    try {
+      if (file.size > 30_000_000) throw Error('Too large')
+      const value = JSON.parse(await file.text())
+      if (value.scope !== 'full' || value.format !== 2) throw Error('Wrong scope')
+      workoutData = w.validateBackup(value.workouts); habitData = parseHabits(JSON.stringify(value.habits)); recipeData = parseRecipeData(JSON.stringify(value.recipes))
+    } catch { void showMessage('Invalid three-app backup. No app data was changed. Older workout and habit backups can be restored separately.'); return }
+    if (!await confirmAction('Replace workout, habit and recipe data, including active recipe phases? Each app saves separately; a failure may leave only some restored. Keep this page open and follow save errors.')) return
+    if (!w.canSignOut() || !h.canSignOut() || !r.canLeave()) { void showMessage('App data changed while confirming. Finish saving and try again.'); return }
+    try { w.replace(workoutData); h.replace(habitData); r.replace(recipeData); void showMessage('Restore started. The three apps save separately; wait for all saving indicators and address any errors before leaving.') }
+    catch { void showMessage('Restore could not finish. Some apps may have changed. Keep this page open, inspect each app and export its data before retrying.') }
+  }
   return <div className="app-shell" data-view={view} data-theme={view === 'workout' ? 'workout' : view === 'habits' ? 'habits' : view === 'recipes' ? 'recipes' : 'neutral'}>
     <aside className="sidebar"><div className="brand"><span className="brand-mark"><span /></span><span>the one ring<small>YOUR SPACE TO GROW</small></span></div><div className="sidebar-label">YOUR SPACE</div><button className={`side-link ${view === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Home size={18}/> Home</button><div className="sidebar-app-label">YOUR APPS</div><AppStrip view={view} navigate={navigate}/><div className="sidebar-bottom"><button className="profile" onClick={() => navigate('settings')}><span className="avatar"><AvatarImage id={savedProfile.avatar}/></span><span><strong>{displayName}</strong><small>{identity.demo ? 'Demo mode' : 'Account'}</small></span><MoreHorizontal size={19}/></button></div></aside>
     <main className="main"><header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span/></span> the one ring</div><div className="breadcrumb">YOUR SPACE <ChevronRight size={13}/> <span>{view === 'home' ? 'Overview' : view === 'settings' ? 'Settings' : view === 'habits' ? 'Habit Tracker' : view === 'recipes' ? 'Recipe Book' : 'Workout Tracker'}</span></div><button className="top-profile" onClick={() => navigate('settings')}>{identity.demo ? 'Demo mode' : 'Account'} <span className="avatar small"><AvatarImage id={savedProfile.avatar}/></span></button></header>
@@ -110,6 +136,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
       <HabitApp ref={habits} identity={identity} view={view} exportWorkout={() => workout.current?.exportData()} exportRecipes={() => recipes.current?.exportData()}/>
       <RecipeApp ref={recipes} identity={identity} view={view} exportWorkout={() => workout.current?.exportData()} exportHabits={() => habits.current?.exportData()}/>
       {view === 'settings' && backupsOpen && <div className="settings-card backup-card"><h3>Workout and habit backup</h3><p>Includes workouts and habits only, not recipes. Restoring saves each app separately and may partially complete.</p><div className="settings-actions"><button className="outline-button" onClick={exportFull}><ArrowDownToLine size={16} aria-hidden="true"/> Export workout and habit backup</button><label className="outline-button file-button"><RotateCcw size={16} aria-hidden="true"/> Restore workout and habit backup<input type="file" accept="application/json,.json" onChange={event => { void restoreFull(event.target.files?.[0]); event.target.value = '' }}/></label></div></div>}
+      {view === 'settings' && backupsOpen && <div className="settings-card backup-card"><h3>Full app backup</h3><p>Includes workouts, habits, recipes and active recipe phases. Apps restore separately and may partially complete.</p><div className="settings-actions"><button className="outline-button" onClick={exportAllApps}><ArrowDownToLine size={16} aria-hidden="true"/> Export full backup</button><label className="outline-button file-button"><RotateCcw size={16} aria-hidden="true"/> Restore full backup<input type="file" accept="application/json,.json" onChange={event => { void restoreAllApps(event.target.files?.[0]); event.target.value = '' }}/></label></div></div>}
       </div>
       {view === 'settings' && !backupsOpen && !avatarPickerOpen && !creditsOpen && <div className="settings-card update-settings"><h3>App updates</h3><p role="status">{({ unavailable: 'Update checks are unavailable in this browser or build.', checking: 'Checking for updates…', current: 'No update found.', available: 'An update is ready to prepare.', activated: 'The update is ready to open.', error: 'Could not check for updates. Check your connection and try again.' })[update.status]}</p><button className="outline-button" disabled={update.status === 'unavailable' || update.status === 'checking'} onClick={() => void update.check()}>Check for updates</button></div>}
       {view === 'settings' && !backupsOpen && !avatarPickerOpen && !creditsOpen && <p className="app-version">The One Ring · v{appVersion}</p>}

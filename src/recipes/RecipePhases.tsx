@@ -11,12 +11,6 @@ type ShoppingProps = {
   end: () => void
 }
 
-const states = [
-  { value: 'needed', label: 'Need', Icon: RotateCcw },
-  { value: 'have', label: 'Have', Icon: House },
-  { value: 'bought', label: 'Bought', Icon: ShoppingBag },
-] as const
-
 export function ShoppingList({ items, changeItem, manualItem, setManualItem, addItem, end }: ShoppingProps) {
   const counts = { needed: items.filter(item => item.state === 'needed').length, have: items.filter(item => item.state === 'have').length, bought: items.filter(item => item.state === 'bought').length }
   return <section className="recipe-panel shopping-screen">
@@ -26,7 +20,9 @@ export function ShoppingList({ items, changeItem, manualItem, setManualItem, add
     <div className="shopping-items">{items.map(item => <article key={item.id} className={`recipe-item shopping-item is-${item.state}`}>
       <div className="shopping-item-heading"><div><strong>{item.text}</strong><small>{item.recipe}{item.pantry ? ' · Pantry check' : ''}</small></div><span className="shopping-state">{item.state === 'needed' ? 'Need' : item.state === 'have' ? 'Have' : 'Bought'}</span></div>
       <div className="shopping-choices" role="group" aria-label={`Shopping status for ${item.text}, ${item.recipe}`}>
-        {states.map(({ value, label, Icon }) => <button key={value} type="button" className={`shopping-choice choice-${value}`} aria-pressed={item.state === value} onClick={() => changeItem(item.id, value)}><Icon size={16} aria-hidden="true"/>{label}{item.state === value && <Check size={14} aria-hidden="true"/>}</button>)}
+        <button type="button" className="shopping-choice choice-have" aria-pressed={item.state === 'have'} onClick={() => changeItem(item.id, item.state === 'have' ? 'needed' : 'have')}><House size={16} aria-hidden="true"/> Have{item.state === 'have' && <Check size={14} aria-hidden="true"/>}</button>
+        <button type="button" className="shopping-choice choice-bought" aria-pressed={item.state === 'bought'} onClick={() => changeItem(item.id, item.state === 'bought' ? 'needed' : 'bought')}><ShoppingBag size={16} aria-hidden="true"/> Bought{item.state === 'bought' && <Check size={14} aria-hidden="true"/>}</button>
+        <button type="button" className="shopping-reset" aria-label={`Mark ${item.text} from ${item.recipe} as needed`} disabled={item.state === 'needed'} onClick={() => changeItem(item.id, 'needed')}><RotateCcw size={17} aria-hidden="true"/></button>
       </div>
     </article>)}</div>
     <div className="shopping-add"><label>Add an item<input value={manualItem} onChange={event => setManualItem(event.target.value)} placeholder="e.g. pantry restock"/></label><button disabled={!manualItem.trim()} onClick={addItem}>Add item</button></div>

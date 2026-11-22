@@ -45,6 +45,29 @@
 .recipe-step small { color: #efc5ae; font-weight: 800; letter-spacing: .08em; }
 .recipe-step p { white-space: pre-wrap; font-size: 1.2rem; line-height: 1.55; margin: .5rem 0; }
 
+/* The library remains behind a deliberately separate, full-height recipe window. */
+.recipe-detail-dialog { position: fixed; width: min(720px, calc(100% - 32px)); height: min(900px, calc(100dvh - 32px)); max-width: none; max-height: none; padding: 0; border: 1px solid #927657; border-radius: 16px; background: #18231b; color: #f3eddc; box-shadow: 0 24px 70px #000a; overflow: hidden; }
+.recipe-detail-dialog::backdrop { background: #090f0bd9; }
+.recipe-detail-shell { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.recipe-detail-top { display: flex; justify-content: space-between; align-items: center; flex: none; padding: 8px 16px; border-bottom: 1px solid #5d604b; background: #26352a; color: #efaa89; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.recipe-detail-dialog .recipe-detail-close { min-width: 44px; min-height: 44px; padding: 0; border: 1px solid #786c4b; border-radius: 10px; background: #202b22; color: #f3eddc; font-size: 26px; line-height: 1; }
+.recipe-detail-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; overscroll-behavior: contain; }
+.recipe-detail-title h2 { margin: 7px 0; font: 400 clamp(26px, 5vw, 34px)/1.15 Georgia, serif; overflow-wrap: anywhere; }
+.recipe-detail-title h2:focus { outline: none; }
+.recipe-detail-title p { color: #d1c9b4; }
+.recipe-detail-macros { padding: 12px; border: 1px solid #5c624b; border-radius: 10px; background: #30372a; }
+.recipe-detail-macros span { color: #efc5ae; font-size: 10px; font-weight: 800; letter-spacing: .09em; }
+.recipe-detail-macros p { margin: 6px 0 0; color: #f0e3c6; }
+.recipe-detail-actions { display: flex; gap: 8px; margin: 16px 0; }
+.recipe-detail-dialog .recipe-detail-actions button, .recipe-detail-dialog .recipe-detail-delete { min-height: 44px; padding: 9px 14px; border: 1px solid #786c4b; border-radius: 10px; background: #263228; color: #f3eddc; font-weight: 700; }
+.recipe-detail-dialog .recipe-detail-actions .recipe-detail-start { flex: 1; background: var(--recipe-accent); border-color: var(--recipe-accent); color: #30221c; }
+.recipe-detail-dialog .recipe-document { margin: 0 0 16px; }
+@media (max-width: 600px) {
+  .recipe-detail-dialog { inset: 0; width: 100%; height: 100dvh; border: 0; border-radius: 0; }
+  .recipe-detail-top { padding-top: max(8px, env(safe-area-inset-top)); }
+  .recipe-detail-body { padding: 16px 16px max(24px, env(safe-area-inset-bottom)); }
+}
+
 /* Shopping keeps every item in place; color, labels and icons communicate status. */
 .shopping-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .shopping-summary { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0; }
@@ -64,11 +87,11 @@
 .is-needed .shopping-state { background: #70503a; color: #fff0de; }
 .is-have .shopping-state { background: #3a5c6a; color: #e1f5fa; }
 .is-bought .shopping-state { background: #3d654b; color: #e5f8e9; }
-.shopping-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.shopping-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 44px; gap: 6px; margin-top: 10px; }
 .recipe-panel .shopping-choice { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 8px 3px; border-color: #6d7267; background: #1c2922; color: #e0e3d6; font-size: 12px; }
-.recipe-panel .choice-needed[aria-pressed=true] { background: #70503a; border-color: #e5ad81; color: #fff4e4; }
 .recipe-panel .choice-have[aria-pressed=true] { background: #3a5c6a; border-color: #9cc9da; color: #e9f8fc; }
 .recipe-panel .choice-bought[aria-pressed=true] { background: #3d654b; border-color: #a5d5b1; color: #effff2; }
+.recipe-panel .shopping-reset { width: 44px; padding: 0; display: grid; place-items: center; border-color: #6d7267; background: #1c2922; color: #e0e3d6; }
 .shopping-add { display: flex; align-items: end; gap: 8px; }
 .shopping-add label { flex: 1; min-width: 0; }
 .recipe-review-summary { background: #30372a; border-radius: 10px; padding: 10px 12px; }
@@ -81,4 +104,4 @@
 .cooking-controls { display: flex; gap: 8px; }
 .cooking-controls button { flex: 1; }
 .cooking-ingredients { margin-top: 18px; padding-top: 1px; border-top: 1px solid #56604e; }
-@media (max-width: 360px) { .shopping-choice svg { display: none; } .cooking-choice { flex-wrap: wrap; } }
+@media (max-width: 360px) { .shopping-choice svg { flex: none; } .cooking-choice { flex-wrap: wrap; } }

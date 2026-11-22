@@ -202,7 +202,7 @@ test('account writes are server-confirmed, retry after failure, and reload from 
   await expect(page.getByText('Workout data changed elsewhere')).toBeVisible()
   await page.getByRole('button', { name: 'Discard and reload' }).click()
   const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
-  await expect(confirmation).toContainText('Discard ALL unsaved workout and habit changes')
+  await expect(confirmation).toContainText('Discard ALL unsaved workout, habit and recipe changes')
   await confirmation.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('button', { name: 'Export unsaved data' })).toBeVisible()
 })
@@ -218,7 +218,8 @@ test('shared account messages describe the whole app, not only workouts', async 
   await expect(page.getByRole('button', { name: /Account/ })).toBeVisible()
   await page.getByRole('button', { name: /Backups/ }).click()
   await expect(page.getByRole('heading', { name: 'Workout backup' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Habit backup' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Habit backup', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Recipe backup', exact: true })).toBeVisible()
 })
 
 test('launcher presents both apps equally on desktop and phone', async ({ page }) => {

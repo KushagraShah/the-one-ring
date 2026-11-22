@@ -169,6 +169,37 @@ async function account(page: Page, initial: RecipeData) {
   return state
 }
 
+test('stale recipe saves preserve a recoverable draft and reload the winning account copy', async ({ page }) => {
+  const content = { ...emptyContent(), title: 'Original soup', steps: ['Cook.'] }
+  const recipe = { id: recipeId, content, markdown: contentMarkdown(content) }
+  const initial: RecipeData = { ...emptyRecipes(), recipes: [recipe], meta: { [recipeId]: { idea: false, archived: false, rotation: true } } }
+  const state = await account(page, initial)
+  await page.getByRole('button', { name: /Original soup/ }).click()
+  await page.getByRole('button', { name: 'Edit recipe' }).click()
+  await page.getByLabel('Recipe name', { exact: true }).fill('Unsaved soup')
+  const remoteContent = { ...content, title: 'Saved elsewhere' }
+  state.data = { ...initial, recipes: [{ ...recipe, content: remoteContent, markdown: contentMarkdown(remoteContent) }] }
+  state.revision++
+  await page.getByRole('button', { name: 'Review recipe', exact: true }).click()
+  await page.getByRole('button', { name: 'Save recipe', exact: true }).click()
+  const recovery = page.getByRole('dialog', { name: 'Recipes changed elsewhere' })
+  await expect(recovery).toBeVisible()
+  await expect(recovery.getByRole('button', { name: 'Retry recipe save' })).toHaveCount(0)
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export unsaved recipes' }).click()
+  const backup = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(backup.data.recipes[0].content.title).toBe('Unsaved soup')
+  expect(state.data.recipes[0].content?.title).toBe('Saved elsewhere')
+  await recovery.getByRole('button', { name: 'Discard and reload' }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(recovery).toBeVisible()
+  await recovery.getByRole('button', { name: 'Discard and reload' }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Discard and reload', exact: true }).click()
+  await page.getByRole('button', { name: 'Go to recipes' }).click()
+  await expect(page.getByRole('button', { name: /Saved elsewhere/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Unsaved soup/ })).toHaveCount(0)
+})
+
 test('plans, sides and preparation dates survive reload and backups; failed saves preserve side drafts', async ({ page }) => {
   const content = { ...emptyContent(), title: 'Stored curry', portions: '4', fresh: ['400 g lentils'], steps: ['Cook.'] }
   const recipe = { id: recipeId, content, markdown: contentMarkdown(content), source: 'Retained source' }

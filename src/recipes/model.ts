@@ -1,7 +1,8 @@
 export type Recipe = { id: string; markdown: string }
 export type ShoppingItem = { id: string; recipe: string; text: string; pantry: boolean; state: 'needed' | 'have' | 'bought' }
-export type RecipeData = { version: 1; recipes: Recipe[]; shopping: { items: ShoppingItem[]; sources?: Recipe[] } | null; cooking: { recipe: Recipe; step: number } | null }
-export const emptyRecipes = (): RecipeData => ({ version: 1, recipes: [], shopping: null, cooking: null })
+export type RecipeMeta = { idea: boolean; archived: boolean; rotation: boolean; lastPrepared?: string }
+export type RecipeData = { version: 2; recipes: Recipe[]; shopping: { items: ShoppingItem[]; sources?: Recipe[] } | null; cooking: { recipe: Recipe; step: number } | null; meta: Record<string, RecipeMeta> }
+export const emptyRecipes = (): RecipeData => ({ version: 2, recipes: [], shopping: null, cooking: null, meta: {} })
 
 export const template = `# 🥣 Recipe name
 
@@ -61,9 +62,11 @@ export function parseRecipeData(input: string): RecipeData {
   const value: unknown = JSON.parse(input)
   const obj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)
   const recipe = (x: unknown): x is Recipe => obj(x) && typeof x.id === 'string' && /^[0-9a-f-]{36}$/i.test(x.id) && typeof x.markdown === 'string' && !!parseMarkdown(x.markdown).title
-  if (!obj(value) || value.version !== 1 || !Array.isArray(value.recipes) || !value.recipes.every(recipe) || new Set(value.recipes.map(r => r.id)).size !== value.recipes.length) throw Error('Invalid recipes')
+  if (!obj(value) || (value.version !== 1 && value.version !== 2) || !Array.isArray(value.recipes) || !value.recipes.every(recipe) || new Set(value.recipes.map(r => r.id)).size !== value.recipes.length) throw Error('Invalid recipes')
   if (value.shopping !== null && (!obj(value.shopping) || !Array.isArray(value.shopping.items) || !value.shopping.items.every((i: unknown) => obj(i) && typeof i.id === 'string' && typeof i.recipe === 'string' && typeof i.text === 'string' && typeof i.pantry === 'boolean' && ['needed', 'have', 'bought'].includes(String(i.state))))) throw Error('Invalid shopping')
   if (obj(value.shopping) && value.shopping.sources !== undefined && (!Array.isArray(value.shopping.sources) || !value.shopping.sources.every(recipe) || new Set(value.shopping.sources.map(r => r.id)).size !== value.shopping.sources.length)) throw Error('Invalid shopping sources')
   if (value.cooking !== null && (!obj(value.cooking) || !recipe(value.cooking.recipe) || !Number.isInteger(value.cooking.step) || (value.cooking.step as number) < 0 || (value.cooking.step as number) >= Math.max(1, parseMarkdown(value.cooking.recipe.markdown).steps.length))) throw Error('Invalid cooking')
+  if (value.version === 1) return { version: 2, recipes: value.recipes, shopping: value.shopping, cooking: value.cooking, meta: {} } as RecipeData
+  if (!obj(value.meta) || !Object.values(value.meta).every(m => obj(m) && typeof m.idea === 'boolean' && typeof m.archived === 'boolean' && typeof m.rotation === 'boolean' && (m.lastPrepared === undefined || typeof m.lastPrepared === 'string'))) throw Error('Invalid recipe metadata')
   return value as RecipeData
 }

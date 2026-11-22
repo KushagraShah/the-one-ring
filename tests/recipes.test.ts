@@ -54,6 +54,17 @@ test('workspace validation keeps phase snapshots and rejects invalid data', () =
   assert.throws(() => parseRecipeData(JSON.stringify({ ...data, shopping: { items: [], sources: [recipe, recipe] } })))
 })
 
+test('legacy recipe workspaces upgrade without changing phase snapshots', () => {
+  const recipe = { id: '00000000-0000-4000-8000-000000000001', markdown: template }
+  const old = { version: 1, recipes: [recipe], shopping: { items: [], sources: [recipe] }, cooking: { recipe, step: 1 } }
+  const upgraded = parseRecipeData(JSON.stringify(old))
+  assert.equal(upgraded.version, 2)
+  assert.deepEqual(upgraded.shopping, old.shopping)
+  assert.deepEqual(upgraded.cooking, old.cooking)
+  assert.deepEqual(upgraded.meta, {})
+  assert.throws(() => parseRecipeData(JSON.stringify({ ...upgraded, meta: { [recipe.id]: { archived: 'yes' } } })))
+})
+
 test('recipe save retries the same operation and rejects conflicts', async () => {
   const requests: Record<string, unknown>[] = []; let mode = 'failure'
   const client = { rpc: async (name: string, args: Record<string, unknown>) => {

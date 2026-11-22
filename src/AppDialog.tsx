@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-type Request = { message: string; confirm: boolean; resolve: (accepted: boolean) => void }
+type Request = { message: string; confirm: boolean; confirmLabel?: string; resolve: (accepted: boolean) => void }
 const eventName = 'one-ring-app-dialog'
-function request(message: string, confirm: boolean): Promise<boolean> {
-  return new Promise(resolve => window.dispatchEvent(new CustomEvent<Request>(eventName, { detail: { message, confirm, resolve } })))
+function request(message: string, confirm: boolean, confirmLabel?: string): Promise<boolean> {
+  return new Promise(resolve => window.dispatchEvent(new CustomEvent<Request>(eventName, { detail: { message, confirm, confirmLabel, resolve } })))
 }
-export const confirmAction = (message: string) => request(message, true)
+export const confirmAction = (message: string, confirmLabel?: string) => request(message, true, confirmLabel)
 export const showMessage = (message: string) => request(message, false)
 
 export function AppDialogProvider({ children }: { children: ReactNode }) {
@@ -23,5 +23,5 @@ export function AppDialogProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (queue.length && dialog.current && !dialog.current.open) dialog.current.showModal(); else if (!queue.length && dialog.current?.open) dialog.current.close() }, [queue.length])
   const current = queue[0]
   const finish = (accepted: boolean) => { if (!current || settled.current.has(current)) return; settled.current.add(current); setQueue(items => items.slice(1)); current.resolve(accepted) }
-  return <>{children}{createPortal(<dialog ref={dialog} className="app-dialog app-message-dialog" aria-labelledby="app-message-title" onCancel={event => { event.preventDefault(); finish(false) }}><h2 id="app-message-title">{current?.confirm ? 'Please confirm' : 'Notice'}</h2><p>{current?.message}</p><div className="dialog-actions">{current?.confirm && <button type="button" className="outline-button" onClick={() => finish(false)} autoFocus><span aria-hidden="true">×</span> Cancel</button>}<button type="button" className="primary" onClick={() => finish(true)}>{current?.confirm ? 'Continue' : 'OK'}</button></div></dialog>, document.body)}</>
+  return <>{children}{createPortal(<dialog ref={dialog} className="app-dialog app-message-dialog" aria-labelledby="app-message-title" onCancel={event => { event.preventDefault(); finish(false) }}><h2 id="app-message-title">{current?.confirm ? 'Please confirm' : 'Notice'}</h2><p>{current?.message}</p><div className="dialog-actions">{current?.confirm && <button type="button" className="outline-button" onClick={() => finish(false)} autoFocus><span aria-hidden="true">×</span> Cancel</button>}<button type="button" className="primary" onClick={() => finish(true)}>{current?.confirm ? current.confirmLabel || 'Continue' : 'OK'}</button></div></dialog>, document.body)}</>
 }

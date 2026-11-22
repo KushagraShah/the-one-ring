@@ -116,8 +116,9 @@
 .shopping-add { display: flex; align-items: end; gap: 8px; }
 .shopping-add label { flex: 1; min-width: 0; }
 .recipe-review-summary { background: #30372a; border-radius: 10px; padding: 10px 12px; }
+.recipe-review-summary .recipe-macro-reminder { color: #f0c7af; font-size: 12px; margin-top: -.2rem; }
 .recipe-warning { padding: 10px 12px; border: 1px solid #ae805a; border-radius: 9px; background: #49382a; color: #ffe6ca; line-height: 1.45; }
-.recipe-warning li { margin-left: 1rem; }
+.recipe-warning ul { margin: 5px 0 0; padding-left: 1.2rem; }
 .recipe-recovery-dialog { max-height: min(90dvh, 650px); overflow-y: auto; border-color: #aa845d; background: #202b22; color: #f3eddc; }
 .recipe-recovery-dialog::backdrop { background: #000b; }
 .recipe-recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }

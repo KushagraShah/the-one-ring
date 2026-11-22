@@ -15,7 +15,7 @@ export function RecipeRecovery({ status, retry, exportRecipes, exportDrafts, exp
       {exportDrafts && <button className="outline-button" onClick={exportDrafts}>Export text drafts</button>}
       <button className="outline-button" onClick={exportWorkout}>Export workouts</button>
       <button className="outline-button" onClick={exportHabits}>Export habits</button>
-      <button className="outline-button" onClick={async () => { if (await confirmAction('Discard all unsaved changes across apps and reload? Export them first.')) window.location.reload() }}>Discard and reload</button>
+      <button className="outline-button" onClick={async () => { if (await confirmAction('Discard all unsaved changes across apps and reload? Export them first.', 'Discard and reload')) window.location.reload() }}>Discard and reload</button>
     </div>
   </dialog>
 }

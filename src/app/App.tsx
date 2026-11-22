@@ -59,7 +59,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
   }
   const navigate = async (next: View) => {
     if (next === view) { if (next === 'workout') workout.current?.open(); if (next === 'settings') { setBackupsOpen(false); setAvatarPickerOpen(false); setCreditsOpen(false) }; return }
-    if (view === 'settings' && (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?')))) return
+    if (view === 'settings' && (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?', 'Discard changes')))) return
     if (view === 'settings' && profileDirty) { setProfile(savedProfile); setProfileMessage('') }
     if (view === 'settings') { setAvatarPickerOpen(false); setBackupsOpen(false); setCreditsOpen(false) }
     const apply = () => { if (next === 'workout') workout.current?.open(); setView(next) }
@@ -69,7 +69,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
     else apply()
   }
   const exit = async () => {
-    if (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?'))) return
+    if (profileBusy || (profileDirty && !await confirmAction('Discard unsaved profile changes?', 'Discard changes'))) return
     if ((workout.current && !workout.current.canSignOut()) || (habits.current && !habits.current.canSignOut()) || (recipes.current && !recipes.current.canLeave())) { void showMessage('Finish your edits and wait for saves before signing out.'); return }
     signOut()
   }
@@ -116,7 +116,7 @@ export function App({ identity, signOut }: { identity: Identity; signOut: () => 
       if (value.scope !== 'full' || value.format !== 2) throw Error('Wrong scope')
       workoutData = w.validateBackup(value.workouts); habitData = parseHabits(JSON.stringify(value.habits)); recipeData = parseRecipeData(JSON.stringify(value.recipes))
     } catch { void showMessage('Invalid three-app backup. No app data was changed. Older workout and habit backups can be restored separately.'); return }
-    if (!await confirmAction('Replace workout, habit and recipe data, including active recipe phases? Each app saves separately; a failure may leave only some restored. Keep this page open and follow save errors.')) return
+    if (!await confirmAction('Replace workout, habit and recipe data, including active recipe phases? Each app saves separately; a failure may leave only some restored. Keep this page open and follow save errors.', 'Restore full backup')) return
     if (!w.canSignOut() || !h.canSignOut() || !r.canLeave()) { void showMessage('App data changed while confirming. Finish saving and try again.'); return }
     try { w.replace(workoutData); h.replace(habitData); r.replace(recipeData); void showMessage('Restore started. The three apps save separately; wait for all saving indicators and address any errors before leaving.') }
     catch { void showMessage('Restore could not finish. Some apps may have changed. Keep this page open, inspect each app and export its data before retrying.') }

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Check, ShoppingBag, House, Pencil, RotateCcw, Trash2 } from 'lucide-react'
-import { parseMarkdown, type Recipe, type ShoppingItem } from './model'
+import { nutritionText, recipeView, type Recipe, type ShoppingItem, type Side } from './model'
 import { RecipeMarkdown } from './RecipeMarkdown'
 import { CookingRecipeWindow } from './CookingRecipeWindow'
 
@@ -40,21 +40,22 @@ export function ShoppingList({ items, changeItem, manualItem, setManualItem, add
 
 export function CookingPicker({ recipes, start }: { recipes: Recipe[]; start: (recipe: Recipe) => void }) {
   return <section className="recipe-panel cooking-picker"><span className="recipe-kicker">COOKING</span><h2>Choose a recipe</h2><p>Start here, or come back to an in-progress recipe at any time.</p>
-    {recipes.length ? <div className="cooking-choices">{recipes.map(recipe => { const parsed = parseMarkdown(recipe.markdown); return <article key={recipe.id} className="cooking-choice"><div><h3>{parsed.title}</h3><p>{parsed.portions ? `${parsed.portions} portions` : 'Portions not specified'}</p></div><button className="recipe-primary" onClick={() => start(recipe)} aria-label={`Start cooking ${parsed.title}`}>Start cooking</button></article> })}</div> : <p>Add a recipe in Recipes before starting to cook.</p>}
+    {recipes.length ? <div className="cooking-choices">{recipes.map(recipe => { const parsed = recipeView(recipe); return <article key={recipe.id} className="cooking-choice"><div><h3>{parsed.title}</h3><p>{parsed.portions ? `${parsed.portions} portions` : 'Portions not specified'}</p></div><button className="recipe-primary" onClick={() => start(recipe)} aria-label={`Start cooking ${parsed.title}`}>Start cooking</button></article> })}</div> : <p>Add a recipe in Recipes before starting to cook.</p>}
   </section>
 }
 
-export function CookingPhase({ recipe, step, move, finish, sourceNotice, restart }: { recipe: Recipe; step: number; move: (step: number) => void; finish: () => void; sourceNotice: string; restart?: () => void }) {
+export function CookingPhase({ recipe, side, step, move, finish, cancel, sourceNotice, restart }: { recipe: Recipe; side?: Side; step: number; move: (step: number) => void; finish: () => void; cancel: () => void; sourceNotice: string; restart?: () => void }) {
   const [fullRecipe, setFullRecipe] = useState(false)
   const fullRecipeButton = useRef<HTMLButtonElement>(null)
-  const parsed = parseMarkdown(recipe.markdown)
+  const parsed = recipeView(recipe)
   const closeFullRecipe = () => { setFullRecipe(false); requestAnimationFrame(() => fullRecipeButton.current?.focus()) }
   return <section className="recipe-panel cooking-screen"><span className="recipe-kicker">COOKING · RECIPE SNAPSHOT</span><h2>{parsed.title}</h2><p className="recipe-macros">{parsed.portions && `Portions: ${parsed.portions} · `}{parsed.macros || 'Macros not specified'}</p>
+    {side && <div className="recipe-macros"><strong>Planned side: {side.name}</strong><p>{side.portion || 'Portion not specified'} · {nutritionText(side.nutrition) || 'Nutrition not added'}</p></div>}
     {sourceNotice && <div className="cooking-source-notice"><p className="recipe-warning" role="status">{sourceNotice}</p>{restart && <button onClick={restart}>Restart with saved recipe</button>}</div>}
     {parsed.warnings.some(warning => warning.toLowerCase().includes('instruction')) && <p className="recipe-warning">Some instructions may not appear as steps. Check the full recipe before cooking.</p>}
-    {parsed.steps.length ? <><div className="recipe-step"><small>STEP {step + 1} OF {parsed.steps.length}</small><p>{parsed.steps[step]}</p></div><div className="cooking-controls"><button disabled={step === 0} onClick={() => move(step - 1)}>← Previous</button><button className="recipe-primary" disabled={step >= parsed.steps.length - 1} onClick={() => move(step + 1)}>Next →</button></div></> : <p>Steps were not recognized; use the full recipe.</p>}
+    {parsed.steps.length ? <><div className="recipe-step"><small>STEP {step + 1} OF {parsed.steps.length}</small><RecipeMarkdown text={parsed.steps[step]}/></div><div className="cooking-controls"><button disabled={step === 0} onClick={() => move(step - 1)}>← Previous</button><button className="recipe-primary" disabled={step >= parsed.steps.length - 1} onClick={() => move(step + 1)}>Next →</button></div></> : <p>Steps were not recognized; use the full recipe.</p>}
     <div className="cooking-ingredients"><h3>Quick glance</h3>{parsed.quickGlance ? <RecipeMarkdown text={parsed.quickGlance}/> : <p>No quick glance was included in this recipe. Add a <code>## Quick glance</code> section when editing it.</p>}</div>
-    <div className="recipe-actions"><button ref={fullRecipeButton} onClick={() => setFullRecipe(true)}>View full recipe</button><button onClick={finish}>Finish cooking</button></div>
+    <div className="recipe-actions"><button ref={fullRecipeButton} onClick={() => setFullRecipe(true)}>View full recipe</button><button onClick={finish}>Finish cooking</button><button onClick={cancel}>Cancel cooking</button></div>
     {fullRecipe && <CookingRecipeWindow title={parsed.title} markdown={recipe.markdown} close={closeFullRecipe}/>}
   </section>
 }

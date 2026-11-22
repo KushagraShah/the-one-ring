@@ -8,7 +8,7 @@ export function RecipeRecovery({ status, retry, exportRecipes, exportDrafts, exp
   return <dialog ref={dialog} className="app-dialog recipe-recovery-dialog" aria-labelledby="recipe-recovery-title" onCancel={event => event.preventDefault()}>
     <h2 id="recipe-recovery-title">{status === 'conflict' ? 'Recipes changed elsewhere' : 'Could not save recipes'}</h2>
     <p>Recipe changes are not confirmed. Keep this page open and export them before reloading. Reloading can discard unsaved changes in other apps too.</p>
-    {exportDrafts && <p>Recipe and shopping text still being edited is not included in the recipe backup. Export the text drafts separately if needed.</p>}
+    {exportDrafts && <p>Recipe, side and shopping text still being edited is not included in the recipe backup. Export the text drafts separately if needed.</p>}
     <div className="recipe-recovery-actions">
       {status === 'error' && <button className="primary" onClick={retry}>Retry recipe save</button>}
       <button className="outline-button" onClick={exportRecipes}>Export unsaved recipes</button>

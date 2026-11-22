@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { PGlite } from '@electric-sql/pglite'
 
 const migration = await readFile(new URL('../supabase/migrations/202611120007_online_recipes.sql', import.meta.url), 'utf8')
+const formatGuard = await readFile(new URL('../supabase/migrations/202611220008_recipe_format_guard.sql', import.meta.url), 'utf8')
 const a = '00000000-0000-4000-8000-000000000001', b = '00000000-0000-4000-8000-000000000002'
 const op = '10000000-0000-4000-8000-000000000001', op2 = '10000000-0000-4000-8000-000000000002'
 test('recipe writes isolate accounts, reject stale edits and retry idempotently', async () => {
@@ -11,6 +12,7 @@ test('recipe writes isolate accounts, reject stale edits and retry idempotently'
   try {
     await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$; grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`)
     await db.exec(migration)
+    await db.exec(formatGuard)
     await db.query('insert into auth.users(id) values ($1),($2)', [a, b])
     await db.exec('set role authenticated')
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [a])
@@ -36,6 +38,10 @@ test('recipe writes isolate accounts, reject stale edits and retry idempotently'
     await assert.rejects(write(b, 1, op, []))
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [a])
     assert.deepEqual(await read(a), { revision: 1, data })
+    const expanded = { version: 3, recipes: [], meta: {}, plan: [], sides: [], shopping: null, cooking: null }
+    assert.deepEqual(await write(a, 1, op2, expanded), { status: 'ok', revision: 2 })
+    await assert.rejects(write(a, 2, op, data), /App update required/)
+    assert.deepEqual(await read(a), { revision: 2, data: expanded })
     await db.query("select set_config('request.jwt.claim.sub', '', false)")
     await assert.rejects(read(a))
     await assert.rejects(write(a, 1, op2, data))
@@ -44,4 +50,3 @@ test('recipe writes isolate accounts, reject stale edits and retry idempotently'
     await assert.rejects(write(a, 1, op2, data))
   } finally { await db.close() }
 })
-

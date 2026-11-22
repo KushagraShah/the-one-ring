@@ -11,7 +11,7 @@ import './recipes.css'
 
 type Props = { identity: { id: string; demo: boolean }; view: string; exportWorkout: () => void; exportHabits: () => void }
 export type RecipeHandle = { canLeave: () => boolean; leave: (done: () => void) => void; exportData: () => void }
-const example = `# 🍲 Tofu rice bowl\n\nPortions: 4\nMacros per portion: Example values only\n\n## Ingredients\n- 400 g tofu\n- 200 g rice\n- 300 g vegetables\n\n## Pantry\n- 10 g oil\n\n## Instructions\n1. Prepare the vegetables and tofu.\n2. Cook the rice and vegetables.\n3. Divide into four portions.\n\n## Notes\nFictional demo recipe.`
+const example = `# 🍲 Tofu rice bowl\n\nPortions: 4\nMacros per portion: Example values only\n\n## Quick glance\n- Prepare tofu and vegetables.\n- Cook the rice and vegetables.\n- Divide into four portions.\n\n## Ingredients\n- 400 g tofu\n- 200 g rice\n- 300 g vegetables\n\n## Pantry\n- 10 g oil\n\n## Instructions\n1. Prepare the vegetables and tofu.\n2. Cook the rice and vegetables.\n3. Divide into four portions.\n\n## Notes\nFictional demo recipe.`
 function download(data: RecipeData) {
   const blob = new Blob([JSON.stringify({ scope: 'recipes', format: 1, data }, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `one-ring-recipes-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url)

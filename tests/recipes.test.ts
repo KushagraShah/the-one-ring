@@ -11,7 +11,18 @@ test('template extraction preserves exact lines and handles absent fields', () =
   assert.equal(parsed.macros, '450 kcal · 30 g protein · 50 g carbs · 15 g fat')
   assert.deepEqual(parsed.ingredients.map(i => [i.text, i.pantry]), [['400 g tofu', false], ['200 g rice', false], ['10 g oil', true]])
   assert.equal(parsed.steps.length, 2)
+  assert.equal(parsed.quickGlance, '- Press tofu, then prepare rice and vegetables.\n- Cook everything and divide into 4 portions.')
   assert.equal(parseMarkdown('# Name\n\nOther content').steps.length, 0)
+  assert.equal(parseMarkdown('# Name\n\nOther content').quickGlance, '')
+})
+
+test('quick glance preserves authored Markdown and stops at the next section', () => {
+  const markdown = '# Bowl\n\n## Quick glance\n**Batch:** 4 portions\n\n| Step | Time |\n| --- | --- |\n| Bake | 20 min |\n\n### Oven\nUse 180°C.\n\n## Ingredients\n- 400 g tofu'
+  const parsed = parseMarkdown(markdown)
+  assert.match(parsed.quickGlance, /\*\*Batch:\*\* 4 portions/)
+  assert.match(parsed.quickGlance, /### Oven/)
+  assert.doesNotMatch(parsed.quickGlance, /400 g tofu/)
+  assert.equal(parsed.ingredients[0].text, '400 g tofu')
 })
 
 test('workspace validation keeps phase snapshots and rejects invalid data', () => {

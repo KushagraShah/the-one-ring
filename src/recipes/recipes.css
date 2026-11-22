@@ -159,6 +159,30 @@
 .recipe-step .recipe-document { background: transparent; border: 0; padding: 0; margin-top: 10px; }
 .recipe-step .recipe-markdown p { white-space: normal; font-size: 1.1rem; }
 .recipe-detail-body pre.recipe-document { white-space: pre-wrap; }
+.recipe-header-tools { display: flex; gap: 6px; align-items: center; }
+.recipe-detail-dialog .recipe-icon-button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; background: transparent; color: #e0d9c5; border: 1px solid transparent; border-radius: 10px; }
+.recipe-detail-dialog .recipe-icon-button:hover { background: #334135; border-color: #786c4b; }
+.recipe-status-line { display: flex; align-items: center; gap: 3px; margin: -4px 0 10px; color: #d1c9b4; font-size: 13px; }
+.recipe-info-heading { display: flex; align-items: center; gap: 5px; }
+.recipe-info-heading > p { min-width: 0; }
+.recipe-info-heading .workout-info, .recipe-status-line .workout-info { flex: none; }
+.recipe-app .workout-info-button { width: 44px; min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #c3c5b5; }
+.recipe-app .workout-info-button:hover, .recipe-app .workout-info-button[aria-expanded=true] { color: #efaa89; background: #374136; }
+.recipe-app .workout-info-popover { position: fixed; top: var(--tip-top); left: var(--tip-left); width: min(300px, calc(100vw - 24px)); color: #f3eddc; background: #28352b; border-color: #927657; text-transform: none; }
+.recipe-app .recipe-detail-macros .workout-info-popover { font-size: 12px; font-weight: 400; letter-spacing: normal; }
+.recipe-detail-macros .recipe-info-heading { margin: -8px 0; }
+.recipe-options-dialog { width: min(440px, calc(100% - 32px)); height: fit-content; max-height: calc(100dvh - 32px); }
+.recipe-options-dialog .recipe-detail-shell { height: auto; max-height: calc(100dvh - 32px); }
+.recipe-options-dialog .recipe-detail-body { padding-top: 8px; }
+.recipe-options-dialog h2 { margin-bottom: 4px; font-family: Georgia, serif; }
+.recipe-options-dialog h2:focus { outline: none; }
+.recipe-options-name { color: #d1c9b4; margin: 0 0 18px; overflow-wrap: anywhere; }
+.recipe-option-list { display: grid; }
+.recipe-option-list button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 12px 4px; text-align: left; background: transparent; color: #f3eddc; border: 0; border-bottom: 1px solid #485542; border-radius: 0; font: inherit; }
+.recipe-option-list button:hover { background: #29382c; }
+.recipe-option-list svg { flex: none; color: #cdb99b; }
+.recipe-option-list .recipe-option-delete { margin-top: 12px; color: #f4b6ae; border-bottom: 0; }
+.recipe-option-delete svg { color: inherit; }
 @media (max-width: 600px) {
   .recipe-toolbar { flex-wrap: wrap; }
   .recipe-toolbar label { flex-basis: 100%; }

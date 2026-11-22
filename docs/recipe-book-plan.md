@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-The approved redesign is implemented locally on `feature/recipe-book` for owner review. The pushed checkpoint is `b2c96f8` (package version 1.0.0); the redesign has not been pushed or deployed. No SQL has been applied. Signed-in recipe use requires migration 007 and the format guard in 008 after target/schema preflight and separate authorization. Demo is temporary and resets on refresh.
+The approved redesign and account integration are prepared on `feature/recipe-book`, version 1.1.0, for merge after the owner installs the Supabase migrations. The original preview checkpoint was `b2c96f8` (1.0.0). The owner has requested merge preparation; no merge/deployment or live SQL application is confirmed. Follow the [Recipe Book Supabase runbook](recipe-book-supabase.md) for the exact preflight, migrations 007/008 and verification. Demo is temporary and resets on refresh.
 
 The app supports a personal vegetarian meal-prep collection with authored portions and nutrition. It does not generate recipes or calculate nutrition from ingredients. No ingredient library, pantry inventory, automatic scaling, AI service, images, web scraping, offline sync or sharing is implemented.
 
@@ -43,6 +43,6 @@ Workspace version 3 adds structured content, metadata, sides and plan snapshots.
 
 Account saves keep the existing owner-scoped revision and retry protocol. Editor, side and shopping drafts are protected from unintended dismissal/sign-out/reload; they are not crash-durable or included in app backups until saved. Save failure recovery opens above dialogs and offers separate JSON text-draft export for manual recovery, alongside workspace export and retry. The recovery JSON is not a restorable app backup.
 
-Migration `202611220008_recipe_format_guard.sql` is prepared locally to reject version downgrades after an account adopts version 3 and check the main workspace containers. It does not fully validate recipe domain data. It is **not applied**; without it an old client can still deliberately restore over new data. Older clients reject version 3 during normal load. Do not use older clients to overwrite newer data.
+Migration `202611220008_recipe_format_guard.sql` rejects older-format writes over versions 2/3, checks numeric supported versions and the main workspace containers, and refreshes the API schema cache. It does not fully validate recipe domain data. Its live application is **unconfirmed**; without it an old client can still deliberately restore over newer data. Older clients reject version 3 during normal load. Do not use older clients to overwrite newer data.
 
-Automated checks use demo data, a fake Supabase endpoint and PGlite. They do not establish live Supabase isolation/recovery, physical-device behavior or offline support. See the agent log for the completed verification run.
+Automated checks use demo data, a fake Supabase endpoint and PGlite, including the actual Supabase client/store calling the real migration SQL through a simulated PostgREST transport. They do not establish live Supabase isolation/recovery, physical-device behavior or offline support. See the agent log for the completed verification run.

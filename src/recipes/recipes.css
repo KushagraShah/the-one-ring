@@ -77,7 +77,7 @@
 .recipe-detail-macros { padding: 12px; border: 1px solid #5c624b; border-radius: 10px; background: #30372a; }
 .recipe-detail-macros span { color: #efc5ae; font-size: 10px; font-weight: 800; letter-spacing: .09em; }
 .recipe-detail-macros p { margin: 6px 0 0; color: #f0e3c6; }
-.recipe-detail-actions { display: flex; gap: 8px; margin: 16px 0; }
+.recipe-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .recipe-detail-dialog .recipe-detail-actions button, .recipe-detail-dialog .recipe-detail-delete { min-height: 44px; padding: 9px 14px; border: 1px solid #786c4b; border-radius: 10px; background: #263228; color: #f3eddc; font-weight: 700; }
 .recipe-detail-dialog .recipe-detail-actions .recipe-detail-start { flex: 1; background: var(--recipe-accent); border-color: var(--recipe-accent); color: #30221c; }
 .recipe-detail-dialog .recipe-document { margin: 0 0 16px; }
@@ -141,3 +141,29 @@
 .cooking-controls button { flex: 1; }
 .cooking-ingredients { margin-top: 18px; padding-top: 1px; border-top: 1px solid #56604e; }
 @media (max-width: 360px) { .shopping-choice svg { flex: none; } .cooking-choice { flex-wrap: wrap; } }
+
+/* Meal prep and guided entry use separate screens, with consistent touch controls. */
+.recipe-library-views button { border: 1px solid #786c4b; border-radius: 10px; padding: 9px 12px; background: #263228; color: #f3eddc; font-weight: 700; }
+.recipe-library-views button[aria-current], .recipe-library-views button[aria-pressed="true"] { border-color: #efaa89; background: #593c31; color: #fff1e8; }
+.recipe-guided { padding: 0; border: 0; background: transparent; }
+.recipe-guided label { margin: 14px 0; }
+.recipe-guided h2:focus { outline: none; }
+.recipe-guided textarea { min-height: 90px; font-family: inherit; }
+.guided-step { border-bottom: 1px solid #56604e; padding-bottom: 12px; margin-bottom: 16px; }
+.meal-plan .plan-card { margin: 16px 0; padding: 14px; border: 1px solid #786c4b; border-left: 4px solid #bb7960; border-radius: 12px; background: #263228; }
+.plan-card h3 { margin: 0; overflow-wrap: anywhere; }
+.plan-suggestion { padding: 12px; border: 1px solid #786c4b; border-radius: 10px; background: #30372a; }
+.plan-option { padding: 12px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #56604e; }
+.plan-option > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.plan-option small { display: block; color: #d1c9b4; margin-top: 4px; }
+.recipe-step .recipe-document { background: transparent; border: 0; padding: 0; margin-top: 10px; }
+.recipe-step .recipe-markdown p { white-space: normal; font-size: 1.1rem; }
+.recipe-detail-body pre.recipe-document { white-space: pre-wrap; }
+@media (max-width: 600px) {
+  .recipe-toolbar { flex-wrap: wrap; }
+  .recipe-toolbar label { flex-basis: 100%; }
+  .recipe-toolbar button { flex: 1; }
+  .plan-option { flex-wrap: wrap; }
+  .plan-card .recipe-row { align-items: flex-start; }
+  .recipe-card > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }
+}

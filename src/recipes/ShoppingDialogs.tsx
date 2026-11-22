@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { parseMarkdown, type Recipe } from './model'
+import { recipeView, type Recipe } from './model'
 
 function ShoppingWindow({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -14,7 +14,7 @@ function ShoppingWindow({ title, close, children }: { title: string; close: () =
 
 export function ShoppingRecipePicker({ recipes, current, close, add }: { recipes: Recipe[]; current: string[]; close: () => void; add: (ids: string[]) => void }) {
   const [chosen, setChosen] = useState<string[]>([])
-  return <ShoppingWindow title="Add recipes to shopping" close={close}><p>New recipe items are added to the current checklist. Existing items and their states remain unchanged.</p>{recipes.map(recipe => <label className="recipe-select" key={recipe.id}><input type="checkbox" disabled={current.includes(recipe.id)} checked={current.includes(recipe.id) || chosen.includes(recipe.id)} onChange={event => setChosen(event.target.checked ? [...chosen, recipe.id] : chosen.filter(id => id !== recipe.id))}/><span>{parseMarkdown(recipe.markdown).title}{current.includes(recipe.id) ? ' · Already added' : ''}</span></label>)}<div className="recipe-actions"><button className="recipe-primary" disabled={!chosen.length} onClick={() => add(chosen)}>Add selected recipes</button><button onClick={close}>Cancel</button></div></ShoppingWindow>
+  return <ShoppingWindow title="Add recipes to shopping" close={close}><p>New recipe items are added to the current checklist. Existing items and their states remain unchanged.</p>{recipes.map(recipe => <label className="recipe-select" key={recipe.id}><input type="checkbox" disabled={current.includes(recipe.id)} checked={current.includes(recipe.id) || chosen.includes(recipe.id)} onChange={event => setChosen(event.target.checked ? [...chosen, recipe.id] : chosen.filter(id => id !== recipe.id))}/><span>{recipeView(recipe).title}{current.includes(recipe.id) ? ' · Already added' : ''}</span></label>)}<div className="recipe-actions"><button className="recipe-primary" disabled={!chosen.length} onClick={() => add(chosen)}>Add selected recipes</button><button onClick={close}>Cancel</button></div></ShoppingWindow>
 }
 
 export function ShoppingItemEditor({ text, change, save, close }: { text: string; change: (text: string) => void; save: () => void; close: () => void }) {

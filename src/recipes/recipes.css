@@ -44,3 +44,41 @@
 .recipe-step { margin: 1rem 0; background: #30372a; border-radius: 14px; padding: 1.2rem; }
 .recipe-step small { color: #efc5ae; font-weight: 800; letter-spacing: .08em; }
 .recipe-step p { white-space: pre-wrap; font-size: 1.2rem; line-height: 1.55; margin: .5rem 0; }
+
+/* Shopping keeps every item in place; color, labels and icons communicate status. */
+.shopping-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.shopping-summary { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0; }
+.shopping-summary span { border: 1px solid; border-radius: 20px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+.summary-needed { background: #533c2d; border-color: #a87353 !important; color: #ffdfbe; }
+.summary-have { background: #253e4a; border-color: #658b9a !important; color: #d1ecf2; }
+.summary-bought { background: #294637; border-color: #628f72 !important; color: #d0f2d9; }
+.shopping-items { display: grid; gap: 9px; margin: 12px 0 18px; }
+.shopping-item { padding: 12px; border: 1px solid; border-left-width: 4px; border-radius: 10px; }
+.shopping-item.is-needed { background: #302a22; border-color: #9f7354; }
+.shopping-item.is-have { background: #202f35; border-color: #638593; }
+.shopping-item.is-bought { background: #22342a; border-color: #668a70; }
+.shopping-item-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.shopping-item-heading strong { display: block; overflow-wrap: anywhere; }
+.shopping-item-heading small { margin-top: 4px; }
+.shopping-state { flex: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+.is-needed .shopping-state { background: #70503a; color: #fff0de; }
+.is-have .shopping-state { background: #3a5c6a; color: #e1f5fa; }
+.is-bought .shopping-state { background: #3d654b; color: #e5f8e9; }
+.shopping-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.recipe-panel .shopping-choice { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 8px 3px; border-color: #6d7267; background: #1c2922; color: #e0e3d6; font-size: 12px; }
+.recipe-panel .choice-needed[aria-pressed=true] { background: #70503a; border-color: #e5ad81; color: #fff4e4; }
+.recipe-panel .choice-have[aria-pressed=true] { background: #3a5c6a; border-color: #9cc9da; color: #e9f8fc; }
+.recipe-panel .choice-bought[aria-pressed=true] { background: #3d654b; border-color: #a5d5b1; color: #effff2; }
+.shopping-add { display: flex; align-items: end; gap: 8px; }
+.shopping-add label { flex: 1; min-width: 0; }
+.recipe-review-summary { background: #30372a; border-radius: 10px; padding: 10px 12px; }
+.recipe-review-screen li { white-space: pre-wrap; margin: 6px 0; }
+.cooking-choices { display: grid; gap: 9px; margin-top: 16px; }
+.cooking-choice { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; background: #29362c; border: 1px solid #70634a; border-left: 4px solid #bb7960; border-radius: 10px; }
+.cooking-choice h3 { margin: 0; font-family: Georgia, serif; overflow-wrap: anywhere; }
+.cooking-choice p { margin: 4px 0 0; color: #d1c9b4; font-size: 12px; }
+.cooking-choice button { flex: none; }
+.cooking-controls { display: flex; gap: 8px; }
+.cooking-controls button { flex: 1; }
+.cooking-ingredients { margin-top: 18px; padding-top: 1px; border-top: 1px solid #56604e; }
+@media (max-width: 360px) { .shopping-choice svg { display: none; } .cooking-choice { flex-wrap: wrap; } }

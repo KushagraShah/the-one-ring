@@ -10,7 +10,7 @@ The local preview uses the shared dark forest and aged-gold surfaces with a fixe
 
 ## Markdown and fidelity
 
-The first template uses a `#` title, optional `Portions:` and `Macros per portion:` lines, `## Ingredients`, `## Pantry`, and `## Instructions` sections. Ingredient bullets and numbered instruction lines are extracted. Other text remains in the original Markdown and is visible in the recipe. Parsing is deliberately conservative: review extracted data and warnings on a separate screen before saving, with a return to the retained draft; never infer quantities, macros or units. Markdown is authoritative; editing re-parses the whole document. Phase snapshots do not change on edits. This is a first template, not a claim that arbitrary Markdown imports correctly.
+The first template uses a `#` title, optional `Portions:` and `Macros per portion:` lines, `## Ingredients`, `## Pantry`, and `## Instructions` sections. Ingredient bullets and numbered instruction lines are extracted. Other text remains in the original Markdown and is visible in the recipe. Add/edit opens its own styled window, full-screen on phones, with review as a separate view in that window; × and Escape retain the discard confirmation. Parsing is deliberately conservative: review extracted data and warnings before saving, with a return to the retained draft; never infer quantities, macros or units. Markdown is authoritative; editing re-parses the whole document. Phase snapshots do not change on edits. This is a first template, not a claim that arbitrary Markdown imports correctly.
 
 ## Implementation and safety plan
 

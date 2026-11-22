@@ -4,6 +4,9 @@ test('recipe views use readable ring-themed colors', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await page.getByRole('button', { name: 'Go to recipes' }).click()
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-theme', 'recipes')
+  await expect(page.locator('.app-shell')).toHaveCSS('--accent', '#efaa89')
+  await expect(page.locator('.app-strip-button.active .app-strip-icon').last()).toHaveCSS('border-color', 'rgb(239, 170, 137)')
   const contrast = async (selector: string) => page.locator(selector).first().evaluate(element => {
     const styles = getComputedStyle(element)
     const lum = (value: string) => {
@@ -15,6 +18,7 @@ test('recipe views use readable ring-themed colors', async ({ page }) => {
   })
   expect(await contrast('.recipe-card')).toBeGreaterThan(4.5)
   expect(await contrast('.recipe-primary')).toBeGreaterThan(4.5)
+  expect(await contrast('.recipe-tabs button[aria-current]')).toBeGreaterThan(4.5)
   await page.getByRole('button', { name: /Tofu rice bowl/ }).click()
   await page.getByRole('button', { name: 'Start cooking' }).click()
   expect(await contrast('.recipe-document')).toBeGreaterThan(4.5)

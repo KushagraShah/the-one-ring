@@ -6,7 +6,7 @@ The owner creates precise vegetarian, macro-aware meal-prep recipes outside the 
 
 Recipe, Shopping and Cooking are separate, freely accessible views. Shopping uses per-recipe ingredient snapshots, not guessed combined quantities; each item cycles explicitly between needed, already have and bought. No persistent pantry inventory. Cooking snapshots the recipe and saves a current step; it does not require completing steps or change the saved recipe. Both phases can be resumed after closing once online saves are confirmed. One active phase of each kind is supported initially. Ending a phase is explicit and confirmed.
 
-The local preview uses the shared dark forest and aged-gold surfaces, with a warm terracotta recipe accent and its own cookbook layout. The color revision is for owner review; it does not change the established workout or habit palettes.
+The local preview uses the shared dark forest and aged-gold surfaces with a fixed warm terracotta (`#efaa89`) recipe accent throughout the shell and cookbook views. The book-spine heading, selected page tabs and recipe cards retain a distinct cookbook character. The color revision is for owner review; it does not change the established workout or habit palettes.
 
 ## Markdown and fidelity
 

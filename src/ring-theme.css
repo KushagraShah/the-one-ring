@@ -108,7 +108,7 @@
 .app-ring-empty { background: #1a231d; border-color: #414c3c; }
 .ring-workouts .app-ring-art svg { color: #a9c8e8; }
 .ring-habits .app-ring-art svg { color: #d1b6e9; }
-.ring-recipes .app-ring-art svg { color: #e7b39b; }
+.ring-recipes .app-ring-art svg { color: #efaa89; }
 .other-rings-link { width: 100%; min-height: 86px; margin-top: 30px; padding: 15px; display: flex; gap: 14px; align-items: center; text-align: left; color: #f3eddc; border: 1px solid #807044; border-radius: 10px; background: linear-gradient(115deg, #2c3829, #26291f); }
 .other-rings-link:hover, .ring-back:hover { border-color: #e1c684; background-color: #364331; }
 .other-rings-link > span:nth-child(2) { flex: 1; display: grid; gap: 5px; }
@@ -178,12 +178,12 @@
 }
 
 /* A shared Middle-earth setting, with blue and violet reserved for each app. */
-.app-shell[data-theme="workout"], .app-shell[data-theme="habits"] { background: #151c19; color: #f1ecdf; }
-.app-shell[data-theme="workout"] .sidebar, .app-shell[data-theme="habits"] .sidebar,
-.app-shell[data-theme="workout"] .mobile-nav, .app-shell[data-theme="habits"] .mobile-nav { background: #1c2922; border-color: #665b40; }
-.app-shell[data-theme="workout"] .topbar, .app-shell[data-theme="habits"] .topbar { border-color: #514d38; }
-.app-shell[data-theme="workout"] .brand-mark, .app-shell[data-theme="habits"] .brand-mark { border-color: #d0b674; }
-.app-shell[data-theme="workout"] .brand-mark span, .app-shell[data-theme="habits"] .brand-mark span { border-color: #a89462; }
+.app-shell[data-theme="workout"], .app-shell[data-theme="habits"], .app-shell[data-theme="recipes"] { background: #151c19; color: #f1ecdf; }
+.app-shell[data-theme="workout"] .sidebar, .app-shell[data-theme="habits"] .sidebar, .app-shell[data-theme="recipes"] .sidebar,
+.app-shell[data-theme="workout"] .mobile-nav, .app-shell[data-theme="habits"] .mobile-nav, .app-shell[data-theme="recipes"] .mobile-nav { background: #1c2922; border-color: #665b40; }
+.app-shell[data-theme="workout"] .topbar, .app-shell[data-theme="habits"] .topbar, .app-shell[data-theme="recipes"] .topbar { border-color: #514d38; }
+.app-shell[data-theme="workout"] .brand-mark, .app-shell[data-theme="habits"] .brand-mark, .app-shell[data-theme="recipes"] .brand-mark { border-color: #d0b674; }
+.app-shell[data-theme="workout"] .brand-mark span, .app-shell[data-theme="habits"] .brand-mark span, .app-shell[data-theme="recipes"] .brand-mark span { border-color: #a89462; }
 .app-shell[data-theme="workout"] .workout-home-heading, .app-shell[data-theme="habits"] .habit-heading { padding: 16px 18px; border: 1px solid #796b49; border-radius: 10px; background: linear-gradient(90deg, #223529ec, #223529b8), url('./assets/brand/mountains.svg') center/cover, #223529; }
 .app-shell[data-theme="workout"] .workout-home-heading h1, .app-shell[data-theme="habits"] .habit-heading h1 { color: #f5efdf; font-family: Georgia, serif; font-weight: 400; }
 .app-shell[data-theme="workout"] .workout-subnav, .app-shell[data-theme="habits"] .habit-nav { border-color: #665d43; }

@@ -1,25 +1,23 @@
 # Recipe Book: Supabase installation
 
-The Recipe Book client uses the existing Supabase project and email/password sign-in. Recipes, plans, sides, shopping states and cooking progress live in one recipe-only workspace per account. Saves use owner checks, revisions and repeatable operation IDs. Demo stays temporary. No new credentials, Edge Function, bucket, Auth setting or GitHub variable is required.
+Recipe Book uses the shared Supabase project and email/password sign-in. Its independent workspace holds recipes, plans, sides, shopping and cooking state; [architecture](architecture.md#active-persistence) describes the active persistence and recovery protocol. No additional credentials, Edge Function, bucket, Auth setting or GitHub variable is required.
 
-On 2026-11-22 the owner reported that the supplied SQL queries ran successfully and authorized merging Recipe Book into `main` for deployment as version 1.1.1. Migrations 007/008 are owner-confirmed installed on the existing project; do not rerun them. Signed-in save/reload and broader live isolation/recovery tests have not been separately reported.
+**Migrations 007/008 are owner-confirmed installed on the existing project. Do not rerun them.** Reported SQL success does not establish signed-in save/reload, account isolation or recovery. Broader installation state and migration precautions are in the [migration runbook](supabase-migrations.md).
 
-The steps below are retained for a fresh project or installation troubleshooting. These scripts create only recipe objects and do not rewrite workout/habit records or import demo data. Migrations 001–006 must not be rerun.
+## Installation on another verified project
 
-Before installation, a read-only check on 2026-11-22 confirmed the locally configured project URL matched the deployed frontend bundle. Its recipe read RPC then returned HTTP 404 / `PGRST202`. That was a pre-installation observation, superseded by the owner's SQL success report.
+These steps apply to a target with the existing Auth/workout/habit dependencies and no recipe objects. For an installed project, use the verification query rather than the absence preflight. The scripts create recipe-only objects and do not rewrite workout/habit records or import demo data. Do not rerun earlier migrations to satisfy an unexpected preflight result.
 
-## Run in Supabase SQL Editor
+Confirm the dashboard project URL matches the app's configured project. Open **SQL Editor → New query** for each step. Copy the complete linked migration, retaining `begin;` and `commit;`.
 
-Confirm the dashboard project URL matches the app's configured project. Open **SQL Editor → New query** for each step. Copy the whole linked file; keep each migration's `begin;` and `commit;`.
-
-1. Run [the read-only preflight](../supabase/checks/recipe-book-preflight.sql). **Every `ok` value must be `true`.** It checks existing Auth/workout/habit dependencies and that recipe objects do not already exist. If any check is false, stop and share the check names/results; do not drop objects or rerun earlier migrations. No personal records or credentials are needed.
-2. Run [migration 007](../supabase/migrations/202611120007_online_recipes.sql) once. This creates the recipe table and read/write RPCs, enables RLS, revokes direct client table access, and grants only authenticated RPC access. The RPCs also verify the caller owns the requested workspace.
-3. Run [migration 008](../supabase/migrations/202611220008_recipe_format_guard.sql) once. This rejects malformed main containers and older-format writes over a newer workspace, and requests a PostgREST schema-cache refresh. It does not validate every recipe field; the client validates the domain model.
+1. Run [the read-only preflight](../supabase/checks/recipe-book-preflight.sql). **Every `ok` value must be `true`.** It checks Auth/workout/habit dependencies and absence of recipe objects. Stop on any false result and investigate metadata; do not drop existing objects or rerun earlier files.
+2. Run [migration 007](../supabase/migrations/202611120007_online_recipes.sql) once. It creates the recipe table and read/write RPCs, enables RLS, revokes direct client table access and grants authenticated RPC access. The functions check caller ownership.
+3. Run [migration 008](../supabase/migrations/202611220008_recipe_format_guard.sql) once. It checks supported numeric workspace versions and main containers, blocks older-format writes over a newer workspace and requests a PostgREST schema-cache refresh. It does not fully validate recipe domain data; the client performs domain validation.
 4. Run [the read-only installation verification](../supabase/checks/recipe-book-verify.sql). **Every `ok` value must be `true`.** It checks RLS, direct table privileges, authenticated-only RPC grants, fixed function search paths and the active format trigger.
 
-If a migration fails or the result is uncertain, keep the error and stop rather than rerun it. If 007 succeeded and 008 failed, the table/RPCs already exist: do not rerun 007. The verification query can identify partial installation; resolve the actual cause before proceeding with 008. Manual SQL Editor execution does not necessarily update Supabase migration history; no history repair is needed for this rollout.
+If execution fails or its result is uncertain, preserve the error and stop. If 007 succeeded and 008 failed, the table and RPCs already exist: do not rerun 007. Use metadata verification to identify the partial state and resolve the cause before proceeding. Manual SQL Editor execution may not update migration history; it does not require an assumed history repair.
 
-If the API temporarily says it cannot find a recipe function after all checks pass, rerun only this cache notification (it does not change app data):
+If the API cannot find a recipe function after all installation checks pass, this notification refreshes its schema cache without changing app data:
 
 ```sql
 notify pgrst, 'reload schema';
@@ -27,12 +25,12 @@ notify pgrst, 'reload schema';
 
 ## Signed-in verification
 
-With the existing test account, save a clearly disposable recipe, add it to a plan, and reload after saving completes. The recipe and plan should return. Shopping and cooking persistence are also covered by automated tests with a fake service; a real signed-in check remains useful after installation. Do not import demo data or restore a full backup just to verify installation.
+With disposable records in a suitable test account, save a recipe and add it to a plan. Wait for saving to complete, reload and confirm both return. Separately check shopping states and cooking resume. Do not import demo data or restore a full backup merely to verify installation. Use the [real-account verification outline](supabase-migrations.md#real-account-verification-outline) for API isolation, stale edits and uncertain-response recovery.
 
-The owner authorized the merge after confirming SQL success. The existing Pages workflow tests and deploys the frontend; SQL is applied separately from Pages. No tags or GitHub Release are required. Record specific signed-in checks when performed; SQL success alone does not establish them.
+The Pages workflow deploys the frontend separately from SQL. A successful SQL query or frontend deployment is not a persistence test. Record the specific target, app version and observed signed-in scenarios when performed. [Setup](setup.md#preview-limitations) is the authoritative summary of outstanding verification limits.
 
-## Verification and limits
+## Compatibility checks
 
-Local tests execute migrations 007/008 in PGlite and exercise the actual Supabase JavaScript client/store through a simulated PostgREST transport. They cover full workspace reload, account boundaries, stale writes, response loss after commit, stable retries, queued changes, format downgrades, malformed containers and privileges. Browser checks cover the UI's save failure/conflict recovery and exports. These checks do not prove live Supabase account isolation, real network failure recovery or physical-device behavior.
+Local schema tests execute migrations and the linked preflight/verification queries in PGlite. Store tests exercise the Supabase client through simulated PostgREST transport, including stale writes, response loss, stable retries and malformed containers. These checks provide local evidence without replacing live authenticated verification.
 
-Each app stores and restores separately; a full three-app restore is not atomic. Unsaved text drafts are not included in workspace backups. Older clients cannot downgrade a newer recipe workspace once migration 008 is installed; this is intentional and should not be bypassed during a rollback.
+The client reads formats 1/2 into format 3 while retaining active phase snapshots. Once 008 is installed, an older client cannot downgrade a newer workspace; do not bypass that guard for rollback or restore. [App behavior](app-behavior.md#recipes) explains legacy parsing/conversion, and [architecture](architecture.md#backups-and-compatibility) defines backup scopes, draft exclusions and partial full-restore behavior.

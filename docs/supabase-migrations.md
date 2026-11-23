@@ -1,35 +1,32 @@
-# Supabase migrations and sync testing
+# Supabase migrations
 
-## Mini-app ownership inventory
+## Current installation and ownership
 
-- **Shared:** Supabase Auth owns accounts and the user-editable username and preset avatar in Auth user metadata; there is no separate shared profile table. Metadata is not included in workout, habit or full app-data backups and does not use the workout/habit revision protocol.
-- **Active Workout Tracker:** `tor_online_workout_heads` and `tor_online_workout_records`, accessed through `tor_online_workout_read` and `tor_online_workout_write`. Migration 005 replaces the write function with the history-format client guard. These are workout-only, even though records include workout settings.
-- **Older Workout Tracker experiments:** migration 001's 16 normalized workout tables and migration 002's `tor_sync_records`, `tor_sync_batches` and `tor_apply_sync_batch` are not the active online workspace. The old client code is under `src/workout/legacy-sync/`; retained does not mean these tables are safe to delete or rerun.
-- **Habit Tracker:** migration `202611080006_online_habits.sql` adds the separate `tor_online_habit_workspaces` table and `tor_online_habit_read`/`tor_online_habit_write` RPCs. On 2026-11-08 the owner reported applying migration 006 successfully and that checks were good. Do not rerun it on that project. It stores an independently revision-checked whole habit workspace (10 MB limit), not incremental log records; each write replaces only that habit workspace. It does not touch workout tables. Client validation covers domain structure; JSON is not fully domain-validated by SQL. PGlite tests are not a substitute for real Supabase isolation or retry tests.
-- **Recipe Book:** migration 007 creates `tor_online_recipe_workspaces` and owner-scoped revision-checked read/write RPCs; migration 008 validates main workspace containers and rejects older-format writes over versions 2/3. On 2026-11-22 the owner reported that the supplied SQL ran successfully and authorized merge/deployment. Treat 007/008 as owner-confirmed applied; do not rerun them. The [Recipe Book runbook](recipe-book-supabase.md) retains fresh-installation and read-only verification queries. Neither migration changes workout/habit storage or Auth settings. PGlite covers account boundaries, retry, stale writes, downgrade rejection and the runbook queries; this does not establish live account behavior. The guard does not fully validate recipe domain content.
+The existing project has **owner-reported installation of 001/002, 004/005, 006 and 007/008**. Do not rerun these migrations there. This is reported installation state, not an independent live schema inspection or proof of signed-in behavior. Recipe-specific installation and verification live in the [Recipe Book runbook](recipe-book-supabase.md).
 
-This inventory is based on repository migrations and owner reports, not a live schema inspection. All objects currently use the existing Supabase project; conceptual ownership does not imply separate physical schemas. See the safety instructions below before any migration.
+| Migrations | Responsibility |
+| --- | --- |
+| [001](../supabase/migrations/202611060001_workout_schema.sql), [002](../supabase/migrations/202611060002_sync_protocol.sql) | Legacy normalized workout tables and experimental manual-sync objects; not the mounted client's storage |
+| [004](../supabase/migrations/202611070004_online_workouts.sql) | Active workout JSON records, revision head and authenticated read/write RPCs |
+| [005](../supabase/migrations/202611070005_history_client_guard.sql) | Workout history client guard; prevents older writes after adoption of newer history |
+| [006](../supabase/migrations/202611080006_online_habits.sql) | Independent habit workspace and authenticated read/write RPCs |
+| [007](../supabase/migrations/202611120007_online_recipes.sql), [008](../supabase/migrations/202611220008_recipe_format_guard.sql) | Independent recipe workspace and format downgrade guard |
 
-## Real-account verification outline
+The [architecture](architecture.md#active-persistence) describes active objects, app boundaries and retry guarantees. Retained legacy tables are not permission to delete them or reactivate the old client.
 
-This is a future test outline, not a claim that it has been performed. Coordinate with the owner and use a verified disposable project and two disposable accounts where feasible; do not create accounts, change Auth settings, reset data or run migrations without appropriate authorization. If using an existing project, agree on the exact test scope and protect any existing data. Never put credentials, tokens, personal records or backup contents in chat or logs.
+## Target and schema preflight
 
-1. Confirm the target project and deployed app version without exposing credentials. Prepare clearly identifiable, disposable workout and habit entries for each account; keep demo separate. Confirm each save completes before reloading.
-2. Check each account can read and change its own entries but not the other's, including direct cross-owner read/write attempts using the real authenticated API. A missing item in the UI alone does not prove server isolation. Test both mini-apps and record actual outcomes without recording private data.
-3. Open the same account in two independent sessions. For each mini-app, save a change in one session and then attempt an edit from the stale session. Verify the stale change is not silently accepted and the app offers the expected recovery path; preserve the test draft until the result is understood.
-4. With disposable data, simulate an interrupted or rejected save and check that the app reports the failure and provides the applicable retry/export/reload options. Test retry after an uncertain response where safely possible; verify it does not duplicate or silently overwrite changes.
-5. Separately check signup, email confirmation and redirect behavior if suitable test accounts and email access are available. Record the date, target environment, app version, scenarios, observed outcomes and limitations. Do not treat a subset of checks as proof of complete security.
+Before new SQL, verify the intended dashboard project against the app's configured project URL and inspect actual objects. A GitHub configuration name does not prove its value. Keep credentials, tokens, private records and backup contents out of messages and logs. Protect existing data before a replacement or recovery operation.
 
-The owner reports migration 006 was applied manually to the existing project; real-account isolation, conflict and failure/retry checks remain unverified. Testing in a disposable Supabase project and accounts first was not reported. Do not rerun migrations or reset any database. Never send credentials in chat. SQL Editor execution does not necessarily record migration history.
+SQL Editor execution may not populate Supabase migration history. The separate Supabase GitHub integration is removed; Pages deploys only the frontend. Do not enable automatic database application, reset a database, repair history or mask mismatches with `IF NOT EXISTS` by assumption. Resolve actual schema state first. On a failed or uncertain migration result, preserve the error and inspect metadata before attempting another action; never rerun fragments blindly.
+
+For a new project, test the active migrations with disposable accounts first. Migration 004 establishes workout storage; 005 follows 004; 006 establishes habit storage; recipe preflight expects workout/habit RPCs before 007/008. Legacy 001/002 are not prerequisites for active online storage. Apply only the reviewed files missing from the verified target, once each, preserving the entire transaction. No reset or implicit data import is needed.
 
 ## Migration 006: manual preflight and application
 
-**The owner reports this was already applied to the existing project. Do not run it there again.** The following procedure is retained for another verified project or investigation.
+**Already reported applied on the existing project.** This procedure is for a verified target with 004/005 present and no habit objects. It checks metadata rather than private records. Migration 006 creates one habit table and two functions without modifying workouts or Auth settings.
 
-The migration creates one habit table and two habit functions in a transaction. It does not import old habits or demo data, change workout tables, delete accounts, or require a reset. Signed-in habits require it; workouts do not. Do not paste credentials, access tokens, personal records or backup contents into chat.
-
-1. In the Supabase dashboard, choose the intended existing project. Compare its project URL in **Connect / API settings** with the URL configured locally. Check that it is the project intended for Pages; GitHub does not reveal an existing secret's value, and its name alone does not prove its value. Do not post the values. The owner has confirmed there is no real workout data to back up. If the target is uncertain, stop.
-2. In **SQL Editor → New query**, run the following **read-only preflight**. It reads object metadata, not workout or habit records:
+1. Run this read-only preflight in SQL Editor:
 
    ```sql
    select
@@ -44,9 +41,9 @@ The migration creates one habit table and two habit functions in a transaction. 
        where n.nspname = 'public' and p.proname in ('tor_online_habit_read', 'tor_online_habit_write')) as habit_function_count;
    ```
 
-   Expected: the first five values are `true`, `habit_table_exists` is `false`, and `habit_function_count` is `0`. The guard marker is a useful check, not a full proof that migration 005 or live guard behavior is correct. **Stop** if any result differs; do not rerun 004/005 or drop existing habit objects. Migration history alone is not authoritative for manually run SQL.
-3. Open `supabase/migrations/202611080006_online_habits.sql` from this checkout. In a **new** SQL Editor query, copy and run the **entire file**, including `begin;` and `commit;`, exactly once. If it fails or its result is uncertain, stop and report the error; do not rerun fragments or the whole migration until the actual schema state has been checked.
-4. Run this **read-only verification** in a new query:
+   Expected before installation: the first five values are `true`, `habit_table_exists` is `false`, and `habit_function_count` is `0`. Existing habit objects mean this is not an uninstalled target. Stop on any mismatch; do not rerun 004/005 or drop objects. The history marker does not prove the complete function body or live guard behavior.
+2. Run the entire [migration 006](../supabase/migrations/202611080006_online_habits.sql), including `begin;` and `commit;`, once in a new query. If execution fails or is uncertain, inspect the actual state before proceeding.
+3. In another query, run this read-only verification:
 
    ```sql
    select
@@ -60,67 +57,17 @@ The migration creates one habit table and two habit functions in a transaction. 
        from pg_proc p where p.oid in (to_regprocedure('public.tor_online_habit_read(uuid)'), to_regprocedure('public.tor_online_habit_write(uuid,bigint,uuid,jsonb)'))) as habit_function_grants_expected;
    ```
 
-   All five values should be `true`. The anonymous privilege check includes inherited `PUBLIC` privileges. These checks do not prove owner isolation or validate function bodies; SQL Editor runs with elevated privileges. Report success or any unexpected result before deploying.
-5. After the migration, use the local feature-branch app with the existing account: create a clearly disposable habit, wait until saving completes, reload and check it persists. Confirm workout data is unchanged. Review backup/restore, stale edits, failed saves and real two-account isolation separately before relying on the new app. A full restore is not atomic across the two apps. Demo remains temporary and is not imported automatically. Then merge and verify Pages and the owner's phone as separately authorized.
+   All five values should be `true`. The anonymous check includes inherited `PUBLIC` privileges. These metadata checks do not establish owner isolation: SQL Editor uses elevated privileges.
+4. With disposable signed-in data, save a habit, wait for acknowledgement and reload. Confirm workout data remains intact. Record specific results separately from installation success; use the verification outline below for account boundaries and recovery.
 
-Record the date, project (without credentials), observed results and any outstanding tests in the project handoff. SQL Editor execution does not necessarily update migration history; do not repair it based on an assumption.
+These fenced queries are also executed by `tests/habit-schema.test.mjs`; keep both marker aliases and valid executable SQL when maintaining this runbook.
 
-## Online-only development migration
+## Real-account verification outline
 
-**Activity/history client guard:** `supabase/migrations/202611070005_history_client_guard.sql` replaces the existing online-write function to reject older clients after an account adopts history format 2. The owner reported applying it on 2026-11-07. It is tested with PGlite, but live guard behavior has not been independently tested. For other projects, verify the target and that migration 004 is present before applying 005. SQL Editor execution does not necessarily update migration history. Do not rerun migrations or reset the database.
+This is an uncompleted verification outline, not a record of passing live checks. Use an agreed disposable project and two disposable accounts where practical. On an existing project, agree on exact scope and preserve existing data before any test changes.
 
-The online client requires `supabase/migrations/202611070004_online_workouts.sql`. It creates separate owner-scoped JSON workout records and a revision head, plus transactional authenticated read/write functions. Each write replaces the account's record set atomically and rejects stale revisions; a repeated operation can recover a lost response. This is independent of the old normalized and manual-sync tables and does not import or delete their data. The owner reported applying it on 2026-11-07; the target and live behavior have not been independently verified.
-
-For another project, first test with a disposable Supabase project and accounts. Verify the project and schema in the dashboard, then run the entire file once in SQL Editor. Do not rerun it or the older migrations; SQL Editor execution may not update migration history. No reset is required. Test two real accounts, failed/retried saves, stale writes, restore, and a phone before relying on it. SQL tests use PGlite and do not prove real Supabase behavior. Do not paste credentials in chat.
-
-The rest of this document describes the **previous release's** manual-sync migrations and tests, not the new online client.
-
-## Status and safety
-
-Two SQL files in `supabase/migrations/` implement an initial schema and an experimental per-record sync protocol. They have been tested locally with PGlite, including two-user read isolation, cross-owner references, retry idempotency, optimistic concurrency and a simulated two-device conflict. The owner reports applying both to the `the-one-ring` Supabase project and that an initial authenticated sync appeared to work. Anonymous requests to the live sync table and RPC returned permission denied. Real two-device sync, two-user isolation and conflict behavior **have not yet been verified end to end**.
-
-The previous release's sync UI was experimental; it is not mounted in the current online-only app. For historical validation, use a disposable Supabase project and disposable test accounts. The owner's existing project may already contain authentication users; the migration does not intentionally modify or delete them, but always verify the target project before running SQL.
-
-The relational tables from migration 001 are a read-only domain foundation. The older experimental sync client used `tor_sync_records` and `tor_apply_sync_batch` from migration 002; **it did not populate the relational tables**. Sync records are per exercise, routine, workout, current session and settings, with JSON bodies, not one whole-account JSON blob. RLS scopes reads to the authenticated user and direct client writes are revoked; the RPC derives ownership from the session and checks revisions. Domain-level relational constraints do not validate the JSON bodies. A later migration is required if we move to the normalized tables.
-
-## Run the migrations in a disposable project
-
-1. In the Supabase dashboard, verify the project name and open **SQL Editor → New query**. Back up any existing data first.
-2. Copy the **entire contents** of `supabase/migrations/202611060001_workout_schema.sql` and run it once. It runs in a transaction. If it fails, record the error and stop; do not run fragments or continue to migration 002.
-3. In a new query, copy the **entire contents** of `supabase/migrations/202611060002_sync_protocol.sql` and run it once. If it fails, stop and share the error. Migration 001 is then already applied; do not rerun it.
-4. Verify the tables and RLS:
-
-   ```sql
-   select tablename, rowsecurity
-   from pg_tables
-   where schemaname = 'public' and tablename like 'tor\_%' escape '\'
-   order by tablename;
-   ```
-
-   There should be 18 `tor_` tables and `rowsecurity` should be `true` for each.
-5. Verify policies and grants:
-
-   ```sql
-   select tablename, policyname, cmd, roles, qual
-   from pg_policies
-   where schemaname = 'public' and tablename like 'tor\_%' escape '\'
-   order by tablename, policyname;
-
-   select table_name, grantee, privilege_type
-   from information_schema.role_table_grants
-   where table_schema = 'public'
-     and table_name like 'tor\_%' escape '\'
-     and grantee in ('anon', 'authenticated')
-   order by table_name, grantee, privilege_type;
-
-   select routine_name, grantee, privilege_type
-   from information_schema.routine_privileges
-   where specific_schema = 'public' and routine_name = 'tor_apply_sync_batch'
-   order by grantee;
-   ```
-
-   The 16 domain tables and `tor_sync_records` should have an authenticated `owner_read` policy and authenticated `SELECT` only. `tor_sync_batches` has no client grant or policy. The `tor_apply_sync_batch` function should be executable by `authenticated`, not `anon` or `PUBLIC`. Dashboard query results can also show owner/administrative grants; check the client roles specifically.
-6. Configure this test project's URL and publishable key in `.env.local`, restart the dev server, and use disposable test accounts. The project's Auth redirect URLs must allow the local preview URL. In **Settings → Cloud sync**, choose **Set up sync**. A first device can upload its local data; another device must explicitly confirm before replacing its local data with the cloud copy.
-7. Test offline changes, restart, reconnect, a deliberately conflicting edit on two devices, and different accounts. Confirm that pending changes remain visible and that a conflicting update is not silently overwritten. Do not assume SQL Editor tests prove real-user isolation: the editor uses an administrative role and bypasses RLS.
-
-These migrations are not designed to be rerun on top of themselves. The SQL Editor does not automatically track them as Supabase CLI migrations: record which files were applied to which project. The owner removed Supabase's GitHub integration after a deployment attempted to create an existing table (`tor_exercises`); manually applied schema and migration history may be out of sync. Before enabling automated database migrations or repairing history, verify the target database, its actual schema, and migration history. Do not assume a history repair is safe, mask mismatches with `IF NOT EXISTS`, or reset a branch without explicit approval. Never paste a service-role key, database password, or access token into the app, Git, or a support message.
+1. Confirm the target and app version. Create identifiable disposable records in each app, wait for save completion and reload. Demo results do not count as account persistence.
+2. Check both accounts' own reads/writes, then attempt cross-owner API reads/writes with real authenticated sessions. Missing UI items alone do not establish server isolation. Cover workouts, habits and recipes independently.
+3. Open one account in two independent sessions. Save in one, then attempt a stale edit in the other. Confirm rejection and the export/reload path without losing the test draft.
+4. Exercise a rejected/interrupted save and retry after an uncertain response where practical. Confirm stable retries avoid duplicate operations and that recovery retains unsaved work. Check restore separately, including partial full-app completion described in [architecture](architecture.md#backups-and-compatibility).
+5. Record date, environment, version, scenarios and observed results without private data. Distinguish SQL installation, metadata checks, local automated tests and real authenticated behavior. Current evidence limits are maintained in [setup](setup.md#preview-limitations).

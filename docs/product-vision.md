@@ -1,56 +1,25 @@
-# Product vision and future direction
+# Product vision
 
-This document records the owner's long-term ideas and working principles discussed on 2026-11-11. It is a direction for future design, **not** a commitment to build these features, a finished security design, or a description of what the app currently does. Decisions about scope, design, providers and priorities remain open and need the owner's input.
+The One Ring aims to be a personal, mobile-first home for small tools that make everyday life easier. Workout Tracker, Habit Tracker and Recipe Book are the current apps; [app behavior](app-behavior.md) describes them. This page describes future intent, not approved implementation work or a promised roadmap.
 
-## A personal digital home
+## Useful tools with clear boundaries
 
-The One Ring is intended to grow over time into a mobile-first home for tools tailored to the owner's life. The aim is to make useful things for personal needs and reduce reliance on inconvenient, paid or advertising-driven services where practical. Workout Tracker and Habit Tracker are the first mini-apps, not the identity or limit of the platform.
+The priority is a useful workflow tailored to real needs, with less dependence on inconvenient, advertising-driven or paid services where practical. Possible later tools include a work portfolio, finance tracking and photo organization. No next app is selected. Investigating the workflow should precede choosing features or infrastructure.
 
-The owner is considering moving some uses away from Notion and other apps. Possible future tools include a recipe book, work portfolio, finance tracking and photo organization or cleanup. These are examples, not approved feature specifications or a promised roadmap.
+Each mini-app should own its data and domain rules. Shared navigation, identity and controls should make the collection coherent without making every tool depend on every other. Inter-app data movement should be visible and intentional. Shared capabilities can emerge from actual workflows; a speculative plugin platform or provider abstraction is not a current goal.
 
-## The rings as a theme
+The ring theme provides a recognizable home rather than a technical app limit. Nine human rings represent app slots; Dwarf and Elven rings suggest possible future capabilities whose roles remain undecided. Labels and navigation should stay explicit. Artwork provenance and third-party terms remain separate from the code license, and wider distribution would require considering character and likeness rights as well.
 
-The name and envisioned overhaul draw inspiration from *The Lord of the Rings*. The owner's initial idea is:
+## Privacy and deliberate connections
 
-- **Nine human rings:** mini-apps that the owner uses.
-- **Seven dwarf rings, four eaten by dragons:** potentially services or background capabilities.
-- **Three elven rings:** potentially integrations or monitors.
+Partner/family access, sharing and social features are possibilities for later design. Current accounts do not imply permission to share records or connect services. Future designs should default to private data and explain ownership, access, revocation and deletion clearly.
 
-The owner clarified that the nine Rings of Men are the nine mini-app slots: Home shows the two existing apps and seven unassigned placeholders. This visual choice does not impose a technical app limit. The roles of the dwarf and elven rings remain undecided and should follow actual needs; a separate view presents them as concepts. The deployed dragon-ring interaction is playful and non-persistent, with four randomly selected Dwarf rings; it does not implement services. The ring theme preserves workout and habit accents and workflows. Keep labels and navigation explicit. Consider intellectual-property implications if the project is ever distributed or marketed beyond personal use.
+Potential integrations include Samsung Health, financial account access, Google Photos and email masking. Each needs its own provider/API investigation, permission model and failure/recovery design. Read-only access can expose sensitive information. Agree on accessed data, retention and deletion before implementation; keep privileged credentials and operations on trusted infrastructure rather than browser-delivered code.
 
-## Privacy, sharing and integrations
+Consequential actions should communicate what changes, how completion is confirmed, and what happens on retries or partial failure. Export, recovery and portability should be considered when adding dependencies, without promising guarantees that have not been implemented and verified. A concise product/security charter could help settle these boundaries before a sensitive app or integration is chosen.
 
-The owner may eventually onboard a partner or family members, add carefully scoped social features, or connect mini-apps. These are future possibilities, not current functionality or authorization to share data. Data movement, permissions, transactions and exceptions must be understandable and deliberately controlled.
+## Infrastructure and priorities
 
-Possible integrations include read-only financial account access, Samsung Health, Google Photos and email masking. Each has different data, permissions, provider constraints and risks. Before implementing one, investigate its actual API and access model, assess threats and failure modes, and agree on what data is accessed, retained, shared and deleted. Read-only access is still sensitive; never infer that a service or account grants permission to connect.
+GitHub Pages and Supabase currently support the project. A custom domain, paid hosting, workers, AWS or self-hosting may become useful, but none is selected. Choose based on a concrete requirement, cost, operational burden, security and portability. A custom hostname alone does not require replacing the backend.
 
-Working principles for future design—not claims about current implementation:
-
-- Default to private data and explicit, narrowly scoped sharing; make ownership, access and revocation understandable.
-- Give each mini-app clear responsibility for its own data and rules. Inter-app access and data movement should be intentional and visible, not implicit.
-- Distinguish read access from write authority and use least privilege. Protect credentials and privileged operations on trusted infrastructure, never in browser-delivered code.
-- Make consequential actions, transactions, background jobs, failures and recovery clear. Design confirmation, retry and idempotency appropriate to each operation; do not silently overwrite or duplicate work.
-- Consider export, deletion, retention, recovery and provider portability when introducing data or dependencies. Portability is a goal, not a guarantee.
-- Verify security against the actual deployment and users; automated tests and demo behavior alone do not establish live isolation or privacy.
-
-## Infrastructure can evolve
-
-The current app targets GitHub Pages, an installable web app and Supabase's free tier. Account data is currently online-only and revision-checked; see [setup and current limitations](setup.md) for what exists and what remains unverified. Static Pages hosting cannot keep backend secrets. The owner may eventually choose a custom hostname, paid hosting, AWS with workers and a database, a self-hosted server, or another arrangement. None has been selected or authorized.
-
-Choose infrastructure in response to concrete needs, security, operational burden, portability and cost. A custom domain does not by itself require a backend migration. Avoid building a speculative plugin platform or provider abstraction before it solves a real problem; equally, avoid unnecessary coupling when a simple boundary is practical.
-
-## AI agents and human judgment
-
-The owner intends AI agents to build the project, with human judgment retained for product direction and consequential engineering decisions. Agents should follow the repository handoff, preserve existing work and data, and surface meaningful uncertainty rather than silently choosing privacy, security or sharing policy.
-
-For consequential work, document the relevant decision and alternatives, affected data and permission boundaries, verification and limitations, and any necessary owner approval. Tests, deployment and review are evidence, not a substitute for evaluating real-world security and operations. No agent should infer authorization to access accounts, connect services or perform destructive changes from this vision.
-
-## Possible sequence, not a commitment
-
-1. Develop a concise product/security charter with the owner, including trust and sharing boundaries.
-2. Verify real-account isolation, conflicts and recovery; decide signup availability when onboarding is complete.
-3. Continue evolving the deployed ring-inspired visual direction without forcing a speculative platform structure.
-4. Build the next useful tool and extract shared capabilities only as actual workflows justify them.
-5. Design each sensitive integration and any infrastructure migration separately, with an explicit security and operational review.
-
-The owner can change this order, defer items or choose a different direction. See [next steps](next-steps.md) for nearer-term follow-ups.
+Account data is currently online-only. Offline sync, automatic cloud/email backups, integrations and sharing need separate scope and design; installing the web app does not supply these capabilities. Near-term priorities are making existing workflows dependable, resolving the specific evidence gaps in [next steps](next-steps.md), and choosing another tool only when its need is understood. Human judgment remains central to product direction and consequential engineering decisions, even when agents help build the software.

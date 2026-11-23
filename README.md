@@ -1,26 +1,20 @@
 # The One Ring
 
-The One Ring is a personal, mobile-first home for small apps that make everyday life easier. It includes Workout Tracker, Habit Tracker and Recipe Book for meal prep.
-
-This is an early preview. The online-only version uses Supabase storage and still needs live-device and security verification. Demo data is temporary. Export backups and don't rely on the preview as your only copy of important records.
+A personal, mobile-first home for Workout Tracker, Habit Tracker and Recipe Book. Account data lives in Supabase; demo mode uses temporary examples.
 
 ## Run locally
 
-Requires Node.js 24 or newer:
+Use Node.js 24 or newer, then run `npm ci`. Copy `.env.example` to `.env.local` if it is missing, set the public Supabase configuration, and run `npm run dev`.
 
-```sh
-cp .env.example .env.local
-# Add your Supabase project URL and publishable key to .env.local
-npm install
-npm run dev
-```
+See [setup and verification limits](docs/setup.md) before relying on the preview for important data.
 
-Open the URL printed in the terminal. Run `npm run build` to check the production build.
+## Documentation
 
-See the [product vision](docs/product-vision.md), [setup and current limitations](docs/setup.md), and [next steps](docs/next-steps.md).
-
-Recipe Book account storage uses the [Supabase setup documented here](docs/recipe-book-supabase.md); the owner confirmed its installation on the existing project.
+- [Architecture and persistence](docs/architecture.md)
+- [Current app behavior](docs/app-behavior.md)
+- [Product vision](docs/product-vision.md) and [next steps](docs/next-steps.md)
+- [Supabase migrations](docs/supabase-migrations.md) and [Recipe Book installation](docs/recipe-book-supabase.md)
 
 ## License
 
-[MIT](LICENSE) · Copyright © 2026 Kushagra Shah.
+[MIT](LICENSE) · Copyright © 2026 Kushagra Shah. Artwork has [separate provenance and licensing notes](src/assets/README.md).

@@ -26,3 +26,7 @@ Plans stay in chat unless requested as files. Manager may create `.agents/plans/
 At completion, create `.agents/logs/<date-time>-<task>.md` using the [template](templates/task-log.md), usually 150–250 words. The directory is ignored by Git and may be created on first use. Write a new file rather than appending project history. Historical logs are not startup context; read one only for a specific investigation or user request. Reviewer may inspect the current task's log to check its claims. Local logs are absent from fresh clones: lasting knowledge must be in maintained docs. Never stage ignored logs.
 
 Skills and templates define procedures, not new authority. Do not add automatic instruction globs, duplicate agent-role definitions or a documentation archive.
+
+## Local artifact homes
+
+Keep the working tree readable. `supabase/migrations/` contains committed migrations only. Private exports and conversion inputs stay in the ignored root `backups/`; disposable reviews, scratch files, browser profiles and temporary SQL belong in ignored `.local/` subdirectories. `.agents/logs/` contains one fresh ignored task log per completed task. Remove disposable artifacts after use and do not create new root dot-directories or `*.local` folders.

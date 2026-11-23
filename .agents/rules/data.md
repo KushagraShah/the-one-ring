@@ -6,7 +6,7 @@ Each app saves atomically within its own workspace. Full restore spans separate 
 
 The service worker caches the shell, not account data. Update activation and reload are user-controlled and both guarded against drafts, pending saves and demo loss. Preserve these guards.
 
-Before SQL work, read `docs/supabase-migrations.md`; recipe installation also needs `docs/recipe-book-supabase.md`. Verify the target and actual schema. Existing-project migration status and installation evidence live in those runbooks. Do not infer missing SQL from migration history, reset databases, repair history or enable automatic migration application by assumption. Pages deploys frontend only.
+Before SQL work, read `docs/supabase-migrations.md`; recipe installation also needs `docs/recipe-book-supabase.md`. Verify the target and actual schema. Existing-project migration status and installation evidence live in those runbooks. Only timestamped migrations are committed under `supabase/migrations/`; one-off checks belong in the target SQL editor or in the test that owns a local fixture. Do not create standalone `supabase/checks/` scripts. Do not infer missing SQL from migration history, reset databases, repair history or enable automatic migration application by assumption. Pages deploys frontend only.
 
 Keep format downgrade guards. Inspect domain validators and current app behavior before compatibility changes. SQL installation, PGlite, simulated transport and browser mocks establish different evidence from live signed-in persistence, isolation or recovery; record specific outcomes accurately.
 

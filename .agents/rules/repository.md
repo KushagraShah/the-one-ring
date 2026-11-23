@@ -10,6 +10,8 @@ Update ordinary docs when behavior or setup changes. Keep `docs/setup.md` operat
 
 Write one fresh short ignored task log at completion. Do not read old logs by default. Plans stay in chat unless requested. Protected paths and ownership are listed in `.agents/README.md`; report stale rules to the user instead of editing them as Developer, Manager or Reviewer.
 
-Keep private backups, screenshots, conversion outputs and browser profiles out of Git. Never stage `habit-tracker-copy-ref-donotpushtogit/`; it is a private read-only reference, not publishable code. Use ignored `*.local` directories for temporary project artifacts.
+Keep private backups, screenshots, conversion outputs and browser profiles out of Git. The named root `backups/` directory is the local home for private exports and conversion inputs; do not add those files to Git. Never stage `habit-tracker-copy-ref-donotpushtogit/`; it is a private read-only reference, not publishable code. Use the ignored `.local/` directory for temporary reviews, scratch work, browser profiles and disposable SQL. Do not create ad hoc hidden or `*.local` directories at the repository root. Delete disposable artifacts after use.
+
+Only migration files belong under `supabase/migrations/`, using the timestamped naming convention. Do not add standalone SQL check, preflight or verification scripts under `supabase/` or another repository directory. Run one-off SQL in the target SQL editor, or keep a test-only query inside the test that owns it; delete temporary SQL after use. Existing migrations and the SQL examples embedded in maintained runbooks are the authoritative database references.
 
 Authorization is task-specific. Do not infer permission to publish, rewrite history, change live systems or access private accounts from an old document. Keep package/lock versions consistent if an approved task changes them. No tags or GitHub Releases without explicit authorization.

@@ -4,7 +4,9 @@ dist/
 test-results/
 playwright-report/
 .npm-cache/
-*.local
+.local/
+.browser-test.local/
+.chromium-test.local/
 .env
 .env.*
 !.env.example

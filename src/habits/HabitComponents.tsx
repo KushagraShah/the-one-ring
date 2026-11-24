@@ -1,9 +1,10 @@
 import { DetailView } from '../DetailView'
 import { ChoiceSelect } from '../ChoiceSelect'
 import { useEffect, useRef, useState } from 'react'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { localDate, outcomeLabel, paused, shiftDate, versionAt, type Criteria, type Habit, type Outcome, type Schedule } from './model'
 import { InfoTip } from '../InfoTip'
+import { useDraftCapture } from '../app/DraftCapture'
 
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const cap = (text: string) => text[0].toUpperCase() + text.slice(1)
@@ -37,6 +38,7 @@ export function PauseControls({ habit, onChange }: { habit: Habit; onChange: (ha
 }
 
 export function HabitForm({ initial, onSave, onCancel }: { initial: Habit | null; onSave: (habit: Habit) => void; onCancel: () => void }) {
+  const confirmAction = useScopedConfirm()
   const today = localDate()
   const [title, setTitle] = useState(initial?.title || '')
   const [icon, setIcon] = useState(initial?.icon || '')
@@ -53,6 +55,7 @@ export function HabitForm({ initial, onSave, onCancel }: { initial: Habit | null
   const [partial, setPartial] = useState(oldCriteria?.partial || '')
   const [missed, setMissed] = useState(oldCriteria?.missed || '')
   const [error, setError] = useState('')
+  useDraftCapture('habit-form', { initialId: initial?.id || null, title, icon, description, start, end, effective, kind, days, target, done, partial, missed }, true)
   const previousEffective = useRef(effective)
   useEffect(() => {
     if (!initial || !effective || effective === previousEffective.current) return

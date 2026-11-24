@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { InfoTip } from '../InfoTip'
 import { importRecipe } from './importRecipe'
 import { contentMarkdown, emptyContent, type Nutrition, type RecipeContent } from './model'
@@ -9,6 +9,7 @@ export type GuidedDraft = { id: string | null; content: RecipeContent; source: s
 type Props = { draft: GuidedDraft; change: (next: GuidedDraft) => void; close: () => void; save: (asIdea?: boolean) => void }
 type Page = 'basics' | 'nutrition' | 'ingredients' | 'instructions' | 'notes' | 'import' | 'review'
 export function GuidedEditor({ draft, change, close, save }: Props) {
+  const confirmAction = useScopedConfirm()
   const [page, setPage] = useState<Page>('basics')
   const [warnings, setWarnings] = useState<string[]>(draft.importWarnings || [])
   const [error, setError] = useState('')

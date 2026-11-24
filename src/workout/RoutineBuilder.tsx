@@ -1,6 +1,6 @@
 import { DetailView } from '../DetailView'
 import { ChoiceSelect } from '../ChoiceSelect'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { useEffect, useState } from 'react'
 import { ConfirmDialog } from '../ConfirmDialog'
 import type { Exercise } from './ExerciseLibrary'
@@ -8,6 +8,7 @@ import { rotationDays, type Rotation } from './rotations'
 import { describeCycleDay, moveItem } from './routineDraft'
 import { InfoTip } from '../InfoTip'
 import { Sheet } from './Sheet'
+import { useDraftCapture } from '../app/DraftCapture'
 
 export type RoutineDay = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
 type DraftDay = RoutineDay & { originalName: string | null }
@@ -20,6 +21,7 @@ type Props = {
 }
 
 export function RoutineBuilder({ days, library, rotations, routines, activeRoutine, hasSession, onDirty, onSave, onLibrary, onNew, onSwitch }: Props) {
+  const confirmAction = useScopedConfirm()
   const [baseline, setBaseline] = useState(() => JSON.stringify({ days, rotations }))
   const [draft, setDraft] = useState<DraftDay[]>(() => days.map(day => ({ ...day, originalName: day.name })))
   const [groups, setGroups] = useState(rotations)
@@ -34,6 +36,7 @@ export function RoutineBuilder({ days, library, rotations, routines, activeRouti
   const [newName, setNewName] = useState('')
   const [error, setError] = useState('')
   const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; action: () => void } | null>(null)
+  useDraftCapture('workout-routine', { activeRoutine, baseline, days: draft, rotations: groups, openDay, selected, addDayIndex, cycleSlot, options, cycleName, cycleDays, newName }, dirty || !!cycleSlot || !!newName || !!selected)
   const dayEffect = (day: DraftDay, group: Rotation | undefined, firstId?: string) => {
     const selectedDay = cycleDays.includes(day.name)
     const wasLinked = group && rotationDays(group).includes(day.name)

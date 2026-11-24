@@ -1,4 +1,4 @@
-import { confirmAction, showMessage } from '../AppDialog'
+import { useScopedConfirm, showMessage } from '../AppDialog'
 import { DetailView } from '../DetailView'
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDownToLine, CircleCheck, CircleX, NotebookPen, RotateCcw, X } from 'lucide-react'
@@ -13,21 +13,24 @@ import { HabitWeek } from './HabitWeek'
 import { InfoTip } from '../InfoTip'
 import { HabitPanel } from './HabitPanel'
 import { fixedScore } from './insights'
+import { BACKUP_FILE_LIMIT } from '../backupLimits'
+import { useDraftCapture } from '../app/DraftCapture'
 import './habits.css'
 
 type Identity = { id: string; demo: boolean }
-type Props = { identity: Identity; view: string; exportWorkout: () => void; exportRecipes: () => void }
-export type HabitHandle = { canSignOut: () => boolean; leave: (done: () => void) => void; snapshot: () => HabitData | null; exportData: () => void; replace: (data: HabitData) => void }
+type Props = { identity: Identity; view: string; onStatus: (status: SaveStatus) => void }
+export type HabitHandle = { canSignOut: () => boolean; isRecoveryBlocked: () => boolean; leave: (done: () => void) => void; snapshot: () => HabitData | null; exportData: () => void; replace: (data: HabitData) => void; retry: () => void }
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const combineNotes = (recorded: string, retained: string) => recorded && retained && recorded !== retained ? `${recorded}\n\n${retained}` : recorded || retained
 const scheduleSummary = (habit: Habit) => { const today = localDate(); const day = habit.end && habit.end < today ? habit.end : today < habit.start ? habit.start : today; const schedule = versionAt(habit.schedules, day); if (!schedule) return 'No schedule'; const weekdays = schedule.weekdays.length === 7 ? 'Every day' : schedule.weekdays.map(index => labels[index]).join(', '); return schedule.kind === 'flexible' ? `${schedule.target} / week · ${weekdays}` : weekdays }
 function download(data: unknown, scope: string) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
   const link = document.createElement('a'); link.href = url; link.download = `one-ring-${scope}-${stamp}.json`; link.click(); URL.revokeObjectURL(url)
 }
 
-export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ identity, view, exportWorkout, exportRecipes }, ref) {
+export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ identity, view, onStatus }, ref) {
+  const confirmAction = useScopedConfirm()
   const [data, setData] = useState<HabitData | null>(() => identity.demo ? demoHabitData() : null)
   const dataRef = useRef(data)
   const [store, setStore] = useState<OnlineHabitStore | null>(null)
@@ -44,11 +47,12 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const draftRef = useRef<HabitDraft | null>(null)
   const setEntryDraft = (next: HabitDraft | null) => { draftRef.current = next; setDraft(next) }
   const draftDirty = Boolean(draft && (draft.outcome !== draft.originalOutcome || draft.note !== draft.originalNote))
+  useDraftCapture('habit-entry', draft, draftDirty)
   const [managed, setManaged] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [message, setMessage] = useState('')
   const entryIndex = useMemo(() => indexEntries(data?.entries || []), [data?.entries])
-  const discardDraft = () => { const current = draftRef.current; if (current && current.note !== current.originalNote) saveNote(current.note); setEntryDraft(null); setExpanded(null); return true }
+  const discardDraft = () => { const current = draftRef.current; if (current && current.note !== current.originalNote && !saveNote(current.note)) return false; setEntryDraft(null); setExpanded(null); return true }
   const changeDate = (next: string) => { if (next !== date && discardDraft()) setDate(next) }
   const switchTab = async (next: typeof tab) => { if (next === tab) return; if (editing && !await confirmAction('Discard unsaved habit changes?')) return; if (!discardDraft()) return; setReturnToInsights(false); setTab(next); setEditing(null) }
 
@@ -62,22 +66,35 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     return () => { active = false }
   }, [identity.id, identity.demo, attempt])
   useLayoutEffect(() => { if (!store) return; store.onStatus = setStatus; return () => { store.onStatus = () => {} } }, [store])
+  useLayoutEffect(() => { onStatus(status) }, [status, onStatus])
   useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (status !== 'saved' || draftDirty || editing) event.preventDefault() }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn) }, [status, draftDirty, editing])
   const update = (next: HabitData) => {
+    if (store && (store.getStatus() === 'error' || store.getStatus() === 'conflict')) return false
     const validated = parseHabits(JSON.stringify(next))
     dataRef.current = validated; setData(validated); store?.update(validated)
+    return true
   }
-  useImperativeHandle(ref, () => ({ canSignOut: () => status === 'saved' && !editing && !draftDirty, leave: async done => { if (editing && !await confirmAction('Discard unsaved habit changes?')) return; if (!discardDraft()) return; setEditing(null); done() }, snapshot: () => data, exportData, replace: next => update(next) }))
+  const readyRef = useRef<() => boolean>(() => false)
+  readyRef.current = () => !!dataRef.current && status === 'saved' && (!store || store.getStatus() === 'saved') && !editing && !draftDirty
+  const recoveryBlocked = () => status === 'error' || status === 'conflict' || store?.getStatus() === 'error' || store?.getStatus() === 'conflict'
+  useImperativeHandle(ref, () => ({ canSignOut: () => readyRef.current(), isRecoveryBlocked: recoveryBlocked, leave: async done => { if (recoveryBlocked()) { done(); return } if (editing && !await confirmAction('Discard unsaved habit changes?')) return; if (!discardDraft()) return; setEditing(null); done() }, snapshot: () => dataRef.current, exportData, replace: next => update(next), retry: () => store?.retry() }))
   const exportData = () => { if (data) download({ scope: 'habits', format: 1, exportedAt: new Date().toISOString(), data }, 'habits') }
   const restore = async (file?: File) => {
     if (!file) return
+    if (!readyRef.current()) { void showMessage('Finish habit edits and wait for saving before restoring.'); return }
+    const baseline = JSON.stringify(dataRef.current)
+    const unchanged = () => readyRef.current() && JSON.stringify(dataRef.current) === baseline
     try {
-      if (file.size > 10_000_000) throw new Error('Too large')
+      if (file.size > BACKUP_FILE_LIMIT) throw new Error('Too large')
       const value = JSON.parse(await file.text())
       if (value.scope !== 'habits' || value.format !== 1) throw new Error('Wrong scope')
       const next = parseHabits(JSON.stringify(value.data))
-      if (await confirmAction('Replace all habit data with this backup? Workout data will not change. Export current habits first.')) { update(next); setMessage('Habit backup loaded. Wait for saving to finish.') }
-    } catch { void showMessage('Unable to restore this habit backup. No habit data was replaced.') }
+      if (!unchanged()) { void showMessage('Habit data or edits changed while reading. Finish saving and try again.'); return }
+      if (await confirmAction('Replace all habit data with this backup? Workout data will not change. Export current habits first.')) {
+        if (!unchanged()) { void showMessage('Habit data or edits changed while confirming. Finish saving and try again.'); return }
+        update(next); setMessage('Habit backup loaded. Wait for saving to finish.')
+      }
+    } catch { void showMessage('Unable to restore this habit backup. The file may be invalid or exceed the 200 MB file or 50 MB workspace limit. No habit data was replaced.') }
   }
   const entry = (habitId: string, day: string) => entryIndex.byHabitDate.get(habitId)?.get(day)
   const openEntry = (habitId: string, day: string) => {
@@ -90,13 +107,14 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   }
   const saveNote = (note: string) => {
     const current = draftRef.current; const workspace = dataRef.current
-    if (!current || !workspace || current.date > localDate()) return
+    if (!current || !workspace || current.date > localDate()) return false
     const previous = workspace.entries.find(item => item.habitId === current.habitId && item.date === current.date)
-    if (current.originalNote === note) return
+    if (current.originalNote === note) return true
     const unloggedNotes = (workspace.unloggedNotes || []).filter(item => item.habitId !== current.habitId || item.date !== current.date)
     if (!previous && note) unloggedNotes.push({ habitId: current.habitId, date: current.date, note })
-    update({ ...workspace, entries: previous ? workspace.entries.map(item => item === previous ? { ...item, note } : item) : workspace.entries, unloggedNotes })
+    if (!update({ ...workspace, entries: previous ? workspace.entries.map(item => item === previous ? { ...item, note } : item) : workspace.entries, unloggedNotes })) return false
     setEntryDraft({ ...current, note, originalNote: note })
+    return true
   }
   const saveOutcome = (habitId: string, day: string, outcome: Outcome | null) => {
     const workspace = dataRef.current; const current = draftRef.current
@@ -110,7 +128,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     const unloggedNotes = (workspace.unloggedNotes || []).filter(item => item.habitId !== habitId || item.date !== day)
     if (outcome) entries.push({ habitId, date: day, outcome, note })
     else if (note) unloggedNotes.push({ habitId, date: day, note })
-    update({ ...workspace, entries, unloggedNotes }); setEntryDraft(null); setExpanded(null)
+    if (update({ ...workspace, entries, unloggedNotes })) { setEntryDraft(null); setExpanded(null) }
   }
   const bulkOutcome = async (outcome: 'done' | 'missed') => {
     if (!discardDraft()) return
@@ -126,8 +144,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const saveHabit = (habit: Habit) => {
     if (!data) return
     const exists = data.habits.some(item => item.id === habit.id)
-    update({ ...data, habits: exists ? data.habits.map(item => item.id === habit.id ? habit : item) : [...data.habits, habit] })
-    setEditing(null)
+    if (update({ ...data, habits: exists ? data.habits.map(item => item.id === habit.id ? habit : item) : [...data.habits, habit] })) setEditing(null)
   }
   const changeHabit = (habit: Habit) => { if (data) update({ ...data, habits: data.habits.map(item => item.id === habit.id ? habit : item) }) }
   const move = (index: number, direction: number) => {
@@ -136,7 +153,6 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   }
   const loading = loadError ? <div className="settings-card"><h2>Could not load habits</h2><p>Check your connection and that the habit database migration is installed. No local account data was loaded.</p><button className="outline-button" onClick={() => setAttempt(n => n + 1)}>Retry</button></div> : <p>Loading habits…</p>
   return <>
-    {(status === 'error' || status === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{status === 'conflict' ? 'Habits changed elsewhere' : 'Could not save habits'}</h2><p>Your edits are not confirmed. Keep this page open and export them before reloading. A reload can also discard unsaved workout and recipe changes.</p>{status === 'error' && <button className="primary" onClick={() => store?.retry()}>Retry habit save</button>} <button className="outline-button" onClick={exportData}>Export unsaved habits</button> <button className="outline-button" onClick={exportWorkout}>Export workouts</button> <button className="outline-button" onClick={exportRecipes}>Export recipes</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved habit, workout and recipe changes and reload? Export them first.')) window.location.reload() }}>Discard and reload</button></div></div>}
     {status === 'saving' && <div role="status" className="habit-saving">Saving habits…</div>}
     <div hidden={view !== 'habits'} className="habit-app">
       {identity.demo && <p className="demo-example-note">Demo mode · Fictional sample habits. Changes reset when you refresh.</p>}

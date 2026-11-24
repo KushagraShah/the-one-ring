@@ -1,6 +1,8 @@
 import { DetailView } from '../DetailView'
 import { ChoiceSelect } from '../ChoiceSelect'
-import { useMemo, useRef, useState } from 'react'
+import { useContext, useMemo, useRef, useState } from 'react'
+import { DraftContext, useDraftCapture } from '../app/DraftCapture'
+import { useScopedConfirm } from '../AppDialog'
 import type { Workout, WorkoutExercise } from './WorkoutSession'
 import type { Exercise } from './ExerciseLibrary'
 import { WorkoutReview } from './WorkoutReview'
@@ -17,6 +19,8 @@ const localDay = (date: string) => {
 }
 
 export function Activity({ workouts, library, cycleHistory, openLatest, onSave, onSaveWorkout }: { workouts: Workout[]; library: Exercise[]; cycleHistory: { routine: string; event: CycleEvent }[]; openLatest: boolean; onSave: (workoutIndex: number, exerciseIndex: number, exercise: WorkoutExercise) => void; onSaveWorkout: (workoutIndex: number, workout: Workout) => void }) {
+  const drafts = useContext(DraftContext)
+  const confirmAction = useScopedConfirm()
   const returnScroll = useRef(0)
   const [highlightId, setHighlightId] = useState('')
   const openWorkout = (index: number, exerciseId = '') => { setHighlightId(exerciseId); returnScroll.current = window.scrollY; setSelectedWorkout(index); window.scrollTo(0, 0); if (exerciseId) requestAnimationFrame(() => document.querySelector('.review-exercise.is-highlighted')?.scrollIntoView({ block: 'center' })) }
@@ -28,7 +32,16 @@ export function Activity({ workouts, library, cycleHistory, openLatest, onSave, 
   const [cycleVisible, setCycleVisible] = useState(PAGE_SIZE)
   const [editingDate, setEditingDate] = useState(false)
   const [dateDraft, setDateDraft] = useState('')
+  useDraftCapture('workout-date-correction', { workout: selectedWorkout === null ? null : workouts[selectedWorkout], date: dateDraft }, editingDate)
   const workout = selectedWorkout === null ? null : workouts[selectedWorkout]
+  const closeReview = async () => {
+    if ((drafts?.has('workout-date-correction') || drafts?.has('workout-result-correction')) && !await confirmAction('Discard unsaved workout date or result corrections?', 'Discard corrections')) return
+    setSelectedWorkout(null); setEditingDate(false); requestAnimationFrame(() => window.scrollTo(0, returnScroll.current))
+  }
+  const cancelDate = async () => {
+    if (workout && dateDraft !== localDay(workout.date) && !await confirmAction('Discard the unsaved workout date correction?', 'Discard correction')) return
+    setEditingDate(false)
+  }
   const options = useMemo(() => {
     const found = new Map<string, string>()
     for (const item of library) if (item.id) found.set(`id:${item.id}`, `${item.name}${item.equipment ? ` · ${item.equipment}` : ''}${item.archived ? ' (archived)' : ''}`)
@@ -51,7 +64,7 @@ export function Activity({ workouts, library, cycleHistory, openLatest, onSave, 
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
   const recent = workouts.filter(item => { const time = new Date(item.date).getTime(); return time >= cutoff && time < end && item.exercises.some(exercise => !exercise.skipped && (exercise.sets.length > 0 || exercise.cardio?.done)) }).length
 
-  const review = workout && selectedWorkout !== null ? <section className="latest-review"><button className="back-link" onClick={() => { setSelectedWorkout(null); setEditingDate(false); requestAnimationFrame(() => window.scrollTo(0, returnScroll.current)) }}>← Back</button><h1>{workout.day}</h1><p>{new Date(workout.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{workout.routineName ? ` · ${workout.routineName}` : ''}</p>{editingDate ? <div className="workout-date-editor"><label>Workout date <input type="date" value={dateDraft} onChange={event => setDateDraft(event.target.value)}/></label> <button className="outline-button" disabled={!dateDraft} onClick={() => { const [year, month, day] = dateDraft.split('-').map(Number); const date = new Date(workout.date); date.setFullYear(year, month - 1, day); if (Number.isNaN(date.getTime())) return; onSaveWorkout(selectedWorkout, { ...workout, date: date.toISOString() }); setEditingDate(false) }}>Save date</button> <button className="text-button" onClick={() => setEditingDate(false)}><span aria-hidden="true">×</span> Cancel</button><p>Changes the date for this workout and all its results. Cycle history is not changed.</p></div> : <button className="text-button" onClick={() => { setDateDraft(localDay(workout.date)); setEditingDate(true) }}>Edit workout date</button>}{workout.plan && workout.plan.length > 0 && <DetailView className="workout-plan" title="Original plan"><ol>{workout.plan.map(item => <li key={item.slotId}>{item.cycleName ? `${item.cycleName}: ` : ''}{item.name}{item.equipment ? ` · ${item.equipment}` : ''}</li>)}</ol></DetailView>}{workout.exercises.length ? workout.exercises.map((exercise, index) => <WorkoutReview key={`${workout.id || workout.date}-${index}`} highlighted={Boolean(highlightId && exercise.exerciseId === highlightId)} exercise={exercise} library={library} workouts={workouts} onSave={next => onSave(selectedWorkout, index, next)}/>) : <p>No exercises recorded.</p>}</section> : null
+  const review = workout && selectedWorkout !== null ? <section className="latest-review"><button className="back-link" onClick={() => void closeReview()}>← Back</button><h1>{workout.day}</h1><p>{new Date(workout.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{workout.routineName ? ` · ${workout.routineName}` : ''}</p>{editingDate ? <div className="workout-date-editor"><label>Workout date <input type="date" value={dateDraft} onChange={event => setDateDraft(event.target.value)}/></label> <button className="outline-button" disabled={!dateDraft} onClick={() => { const [year, month, day] = dateDraft.split('-').map(Number); const date = new Date(workout.date); date.setFullYear(year, month - 1, day); if (Number.isNaN(date.getTime())) return; onSaveWorkout(selectedWorkout, { ...workout, date: date.toISOString() }); setEditingDate(false) }}>Save date</button> <button className="text-button" onClick={() => void cancelDate()}><span aria-hidden="true">×</span> Cancel</button><p>Changes the date for this workout and all its results. Cycle history is not changed.</p></div> : <button className="text-button" onClick={() => { setDateDraft(localDay(workout.date)); setEditingDate(true) }}>Edit workout date</button>}{workout.plan && workout.plan.length > 0 && <DetailView className="workout-plan" title="Original plan"><ol>{workout.plan.map(item => <li key={item.slotId}>{item.cycleName ? `${item.cycleName}: ` : ''}{item.name}{item.equipment ? ` · ${item.equipment}` : ''}</li>)}</ol></DetailView>}{workout.exercises.length ? workout.exercises.map((exercise, index) => <WorkoutReview key={`${workout.id || workout.date}-${index}`} highlighted={Boolean(highlightId && exercise.exerciseId === highlightId)} exercise={exercise} library={library} workouts={workouts} onSave={next => onSave(selectedWorkout, index, next)}/>) : <p>No exercises recorded.</p>}</section> : null
 
   return <>{review}<div hidden={Boolean(review)}><div className="page-heading"><div><div className="eyebrow">YOUR JOURNEY</div><h1>Activity<span className="accent">.</span></h1><p>Browse your workouts and exercise progress.</p></div></div>
     <Insights workouts={workouts}/>

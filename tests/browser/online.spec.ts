@@ -1,16 +1,19 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
+import { demoWorkoutBackup } from '../../src/workout/demo'
+import { sampleDays } from '../../src/workout/sampleDays'
+import { workspaceDocuments } from '../../src/workout/workspace'
 
 const owner = '10000000-0000-4000-8000-000000000001'
 type Document = { kind: string; id: string; body: Record<string, unknown> }
 
-async function openApp(page: Page, name: 'Workouts' | 'Habits') {
+async function openApp(page: Page, name: 'Workouts' | 'Habits' | 'Recipes') {
   await page.locator('.app-strip:visible').getByRole('button', { name, exact: true }).click()
 }
 
-async function fakeBackend(page: Page, initialAvatar?: string) {
-  let documents: Document[] = []
-  let revision = 0
+async function fakeBackend(page: Page, initialAvatar?: string, initial?: { documents: Document[]; revision: number }) {
+  let documents: Document[] = initial?.documents || []
+  let revision = initial?.revision || 0
   let habitData: unknown = null
   let habitRevision = 0
   let lastHabitOperation = ''
@@ -63,6 +66,28 @@ test('signup requires username and shows email verification instructions', async
   expect(requestBody?.data).toMatchObject({ username: 'My name', avatar: 'lotr-sauron' })
   await page.getByRole('button', { name: 'Back to sign in' }).click()
   await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+})
+
+for (const width of [390, 1280]) test(`failed sign out reports the active session and can be retried at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 844 })
+  await fakeBackend(page)
+  let attempts = 0
+  await page.route('https://mock.invalid/auth/v1/logout**', async route => {
+    if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }); return }
+    attempts++
+    await route.fulfill({ status: attempts === 1 ? 503 : 204, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: attempts === 1 ? JSON.stringify({ message: 'Unavailable' }) : undefined })
+  })
+  await page.goto('/')
+  if (width > 760) await page.locator('.top-profile').click()
+  else await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await expect(page.getByRole('heading', { name: 'Settings.' })).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page.getByText(/Could not sign out/)).toBeVisible()
+  await page.getByRole('button', { name: 'OK', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+  expect(attempts).toBe(2)
 })
 
 test('profile saves account metadata, handles failures and groups backups', async ({ page }) => {
@@ -202,7 +227,7 @@ test('account writes are server-confirmed, retry after failure, and reload from 
   await expect(page.getByText('Workout data changed elsewhere')).toBeVisible()
   await page.getByRole('button', { name: 'Discard and reload' }).click()
   const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
-  await expect(confirmation).toContainText('Discard ALL unsaved workout, habit and recipe changes')
+  await expect(confirmation).toContainText('Discard ALL unsaved changes and drafts across apps')
   await confirmation.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('button', { name: 'Export unsaved data' })).toBeVisible()
 })
@@ -587,6 +612,810 @@ test('failed habit save can be retried without changing workouts', async ({ page
   await openApp(page, 'Habits')
   await expect(page.getByRole('button', { name: 'Done · Reading' })).toBeVisible()
 })
+
+test('a pending confirmation remains operable when a save fails, including discard confirmation', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let pending = false
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    pending = true; await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Pending')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => pending).toBe(true)
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByLabel('Username').fill('Unfinished profile')
+  await page.getByRole('button', { name: 'Home', exact: true }).last().click()
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+  await expect(confirmation).toBeVisible()
+  release()
+  await expect(confirmation).toBeVisible()
+  await confirmation.getByRole('button', { name: 'Cancel' }).click()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery).toBeVisible()
+  await recovery.getByRole('button', { name: 'Discard and reload' }).click()
+  await expect(confirmation).toContainText('Discard ALL unsaved')
+  await confirmation.getByRole('button', { name: 'Cancel' }).click()
+  await expect(recovery).toBeVisible()
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  await expect(page.getByLabel('Username')).toHaveValue('Unfinished profile')
+})
+
+test('a pending confirmation cannot edit a workspace after that workspace fails', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('First habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Second habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] }).habits.length).toBe(2)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let pending = false
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    pending = true; await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  await page.getByRole('button', { name: 'Done · First habit' }).click()
+  await expect.poll(() => pending).toBe(true)
+  await page.getByRole('button', { name: 'Mark done Fixed + flexible' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+  await expect(confirmation).toBeVisible()
+  release()
+  await expect.poll(() => page.locator('[data-recovery-blocked="true"]').count()).toBe(1)
+  await confirmation.getByRole('button', { name: 'Continue' }).click()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export unsaved habits' }).click()
+  const saved = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(saved.data.entries).toHaveLength(1)
+  expect(saved.data.entries[0].habitId).toBe((backend.habits() as { habits: { id: string }[] }).habits[0].id)
+})
+
+for (const failure of ['error', 'conflict'] as const) {
+  test(`detached cycle-choice confirmation cannot alter workout drafts after ${failure}`, async ({ page }) => {
+    const backup = demoWorkoutBackup(sampleDays)
+    const day = backup.days![0]
+    const original = day.exercises[0]
+    const replacement = backup.library!.find(item => !day.exercises.some(existing => existing.id === item.id))!
+    backup.data.completed = []
+    backup.routines!.routines[0].completed = []
+    backup.routines!.routines[0].rotations = [{ id: 'test-cycle', name: 'Test cycle', primaryDay: day.name, complementDay: '', days: [day.name], options: [original.id!, replacement.id!] }]
+    const documents = workspaceDocuments(backup).map(item => ({ kind: item.kind, id: item.id, body: item.body! }))
+    const backend = await fakeBackend(page, undefined, { documents, revision: 1 })
+    await page.goto('/')
+    await openApp(page, 'Workouts')
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let writes = 0; let failing = true
+    const requests: string[] = []
+    await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+      writes++; requests.push(route.request().postData()!)
+      if (!failing) { await route.fallback(); return }
+      await gate
+      if (failure === 'error') await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+      else await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+    })
+    await page.getByRole('button', { name: 'Start workout', exact: true }).click()
+    await expect.poll(() => writes).toBe(1)
+    await page.getByLabel('Weight in kilograms', { exact: true }).fill('42')
+    await page.getByRole('button', { name: 'Exercise cycle · Test cycle' }).click()
+    const choice = page.getByRole('dialog', { name: 'Exercise cycle · Test cycle' }).getByRole('button', { name: replacement.name, exact: true })
+    const origin = await choice.elementHandle()
+    await choice.click()
+    const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+    await expect(confirmation).toContainText('Replacing this exercise removes')
+    expect(await origin!.evaluate(element => element.isConnected)).toBe(false)
+    release()
+    await expect.poll(() => page.locator('[data-recovery-blocked="true"]').count()).toBe(1)
+    await confirmation.getByRole('button', { name: 'Continue' }).click()
+    const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+    await expect(recovery.getByText(failure === 'error' ? 'Could not save workout data' : 'Workout data changed elsewhere')).toBeVisible()
+    const draftDownload = page.waitForEvent('download')
+    await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+    const drafts = JSON.parse(readFileSync((await (await draftDownload).path())!, 'utf8'))
+    expect(JSON.stringify(drafts.drafts)).toContain('"weight":"42"')
+    expect(JSON.stringify(drafts.drafts)).toContain(original.name)
+    const workspaceDownload = page.waitForEvent('download')
+    await recovery.getByRole('button', { name: 'Export unsaved data' }).click()
+    const workspace = JSON.parse(readFileSync((await (await workspaceDownload).path())!, 'utf8'))
+    expect(workspace.data.session.exercises[0].name).toBe(original.name)
+    expect(writes).toBe(1)
+    if (failure === 'error') {
+      failing = false
+      await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
+      await expect(recovery).toBeHidden()
+      await expect.poll(() => backend.records().find(item => item.kind === 'session')).toBeTruthy()
+      expect(writes).toBe(2)
+      expect(requests[1]).toBe(requests[0])
+      expect((backend.records().find(item => item.kind === 'session')!.body.session as { exercises: { name: string }[] }).exercises[0].name).toBe(original.name)
+      await expect(page.getByLabel('Weight in kilograms', { exact: true })).toHaveValue('42')
+    }
+  })
+}
+
+test('navigation-originated habit confirmation retains its workspace guard after conflict', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Pending')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Keep navigation draft')
+  await openApp(page, 'Workouts')
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+  await expect(confirmation).toContainText('Discard unsaved habit changes')
+  release()
+  await expect.poll(() => page.locator('[data-recovery-blocked="true"]').count()).toBe(1)
+  await confirmation.getByRole('button', { name: 'Continue' }).click()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'habit-form', data: expect.objectContaining({ title: 'Keep navigation draft' }) }))
+  expect(writes).toBe(1)
+})
+
+test('workout history date draft guards back, navigation and individual restore', async ({ page }) => {
+  const backup = demoWorkoutBackup(sampleDays)
+  const documents = workspaceDocuments(backup).map(item => ({ kind: item.kind, id: item.id, body: item.body! }))
+  await fakeBackend(page, undefined, { documents, revision: 1 })
+  await page.goto('/')
+  await openApp(page, 'Workouts')
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  await page.locator('.history-button').first().click()
+  await page.getByRole('button', { name: 'Edit workout date' }).click()
+  await page.getByLabel('Workout date').fill('2025-10-15')
+  expect(await page.evaluate(() => { const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); return event.defaultPrevented })).toBe(true)
+  await page.getByRole('button', { name: 'Workout', exact: true }).click()
+  const leave = page.getByRole('dialog', { name: 'Discard history corrections?' })
+  await expect(leave).toBeVisible()
+  await leave.getByRole('button', { name: 'Go back' }).click()
+  await page.locator('.latest-review').getByRole('button', { name: 'Back' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+  await expect(confirmation).toContainText('Discard unsaved workout date or result corrections')
+  await confirmation.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByLabel('Workout date')).toHaveValue('2025-10-15')
+  await page.getByLabel('Restore backup', { exact: true }).setInputFiles({ name: 'ignored.json', mimeType: 'application/json', buffer: Buffer.from('{}') })
+  await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('Finish workout edits')
+  await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
+  await expect(page.getByLabel('Workout date')).toHaveValue('2025-10-15')
+})
+
+test('workout date draft survives failure, navigation and retry and blocks individual and full restore', async ({ page }) => {
+  const backup = demoWorkoutBackup(sampleDays)
+  const documents = workspaceDocuments(backup).map(item => ({ kind: item.kind, id: item.id, body: item.body! }))
+  const backend = await fakeBackend(page, undefined, { documents, revision: 1 })
+  await page.goto('/')
+  await openApp(page, 'Workouts')
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let fail = true; let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+    writes++
+    if (!fail) { await route.fallback(); return }
+    await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  await page.locator('.history-button').first().click()
+  await page.getByRole('button', { name: 'Edit workout date' }).click()
+  await page.getByLabel('Workout date').fill('2025-09-14')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Could not save workout data')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'workout-date-correction', data: expect.objectContaining({ date: '2025-09-14' }) }))
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Return to save recovery' }).click()
+  fail = false
+  await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
+  await expect(recovery).toBeHidden()
+  expect(writes).toBe(2)
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
+  const invalid = { name: 'ignored.json', mimeType: 'application/json', buffer: Buffer.from('{}') }
+  await page.getByLabel('Restore backup', { exact: true }).setInputFiles(invalid)
+  await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('Finish workout edits')
+  await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
+  await page.getByLabel('Restore full backup', { exact: true }).setInputFiles(invalid)
+  await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('All three apps must be loaded and saved')
+  await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
+  await openApp(page, 'Workouts')
+  await expect(page.getByLabel('Workout date')).toHaveValue('2025-09-14')
+  expect(backend.records().some(item => item.kind === 'workout')).toBe(true)
+})
+
+test('a history-discard confirmation cannot clear its date draft after workout conflict', async ({ page }) => {
+  const backup = demoWorkoutBackup(sampleDays)
+  const documents = workspaceDocuments(backup).map(item => ({ kind: item.kind, id: item.id, body: item.body! }))
+  await fakeBackend(page, undefined, { documents, revision: 1 })
+  await page.goto('/')
+  await openApp(page, 'Workouts')
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  await page.locator('.history-button').first().click()
+  await page.getByRole('button', { name: 'Edit workout date' }).click()
+  await page.getByLabel('Workout date').fill('2025-08-12')
+  await page.locator('.latest-review').getByRole('button', { name: 'Back' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+  await expect(confirmation).toBeVisible()
+  release()
+  await expect.poll(() => page.locator('[data-recovery-blocked="true"]').count()).toBe(1)
+  await confirmation.getByRole('button', { name: 'Discard corrections' }).click()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Workout data changed elsewhere')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'workout-date-correction', data: expect.objectContaining({ date: '2025-08-12' }) }))
+  expect(writes).toBe(1)
+})
+
+for (const failure of ['error', 'conflict'] as const) {
+  test(`workout result correction survives ${failure} and cross-app recovery`, async ({ page }) => {
+    const backup = demoWorkoutBackup(sampleDays)
+    const documents = workspaceDocuments(backup).map(item => ({ kind: item.kind, id: item.id, body: item.body! }))
+    await fakeBackend(page, undefined, { documents, revision: 1 })
+    await page.goto('/')
+    await openApp(page, 'Workouts')
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let fail = true; let writes = 0
+    await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+      writes++
+      if (!fail) { await route.fallback(); return }
+      await gate
+      if (failure === 'error') await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+      else await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+    })
+    await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+    await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+    await expect.poll(() => writes).toBe(1)
+    await page.getByRole('button', { name: 'Activity', exact: true }).click()
+    await page.locator('.history-button').first().click()
+    await page.locator('.review-exercise').first().getByRole('button', { name: 'Edit', exact: true }).click()
+    const editor = page.getByRole('dialog', { name: /^Edit / })
+    await editor.getByLabel('Notes').fill('Keep correction during recovery')
+    release()
+    const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+    await expect(recovery.getByText(failure === 'error' ? 'Could not save workout data' : 'Workout data changed elsewhere')).toBeVisible()
+    const download = page.waitForEvent('download')
+    await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+    const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+    expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'workout-result-correction', data: expect.objectContaining({ note: 'Keep correction during recovery' }) }))
+    await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+    await openApp(page, 'Habits')
+    await page.getByRole('button', { name: 'Return to save recovery' }).click()
+    if (failure === 'error') {
+      fail = false
+      await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
+      await expect(recovery).toBeHidden()
+      await expect(editor).toBeHidden()
+      await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+      await page.getByRole('button', { name: /Backups/ }).click()
+      await page.getByLabel('Restore full backup', { exact: true }).setInputFiles({ name: 'ignored.json', mimeType: 'application/json', buffer: Buffer.from('{}') })
+      await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('All three apps must be loaded and saved')
+      await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
+      await openApp(page, 'Workouts')
+      await expect(editor.getByLabel('Notes')).toHaveValue('Keep correction during recovery')
+      expect(writes).toBe(2)
+    } else {
+      const second = page.waitForEvent('download')
+      await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+      const retained = JSON.parse(readFileSync((await (await second).path())!, 'utf8'))
+      expect(JSON.stringify(retained)).toContain('Keep correction during recovery')
+      expect(writes).toBe(1)
+    }
+  })
+}
+
+test('a workout conflict permits finishing an unrelated habit draft without unlocking workouts', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let pending = false
+  await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+    pending = true; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await openApp(page, 'Workouts')
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => pending).toBe(true)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Protected draft')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Workout data changed elsewhere')).toBeVisible()
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  await expect(page.getByLabel('Title')).toHaveValue('Protected draft')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: { title: string }[] } | null)?.habits[0]?.title).toBe('Protected draft')
+  await openApp(page, 'Workouts')
+  await expect(page.locator('[inert]').filter({ has: page.locator('.workout-subnav') })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Return to save recovery' }).click()
+  await expect(recovery.getByText('Workout data changed elsewhere')).toBeVisible()
+})
+
+test('a habit conflict permits finishing an unrelated workout routine draft', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let pending = false
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    pending = true; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Conflicting habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => pending).toBe(true)
+  await openApp(page, 'Workouts')
+  await page.getByRole('button', { name: 'Build routine', exact: true }).click()
+  await page.getByLabel('Day name').fill('Protected workout draft')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  await expect(page.getByLabel('Day name')).toHaveValue('Protected workout draft')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect.poll(() => JSON.stringify(backend.records())).toContain('Protected workout draft')
+  await page.getByRole('button', { name: 'Return to save recovery' }).click()
+  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+})
+
+test('same-app habit conflict preserves an open habit form in a manual draft export', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Earlier habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Unsaved same-app habit')
+  await page.getByLabel('Description').fill('Keep this description')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'habit-form', data: expect.objectContaining({ title: 'Unsaved same-app habit', description: 'Keep this description' }) }))
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  await expect(page.locator('[data-recovery-blocked="true"]')).toHaveCount(1)
+  await openApp(page, 'Workouts')
+  await expect(page.getByRole('navigation', { name: 'Workout Tracker' })).toBeVisible()
+  await page.getByRole('button', { name: 'Return to save recovery' }).click()
+  const again = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const retained = JSON.parse(readFileSync((await (await again).path())!, 'utf8'))
+  expect(JSON.stringify(retained)).toContain('Unsaved same-app habit')
+  expect(writes).toBe(1)
+})
+
+test('a failed recipe workspace can be set aside without losing its editor draft', async ({ page }) => {
+  await fakeBackend(page)
+  await page.goto('/')
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_recipe_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await openApp(page, 'Recipes')
+  await page.getByRole('button', { name: 'Paste Markdown' }).click()
+  await page.getByLabel('Recipe Markdown').fill('# Pending recipe')
+  await page.getByRole('button', { name: 'Review recipe' }).click()
+  await page.getByRole('button', { name: 'Save recipe' }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Close recipe' }).click()
+  await page.getByRole('button', { name: 'Paste Markdown' }).click()
+  await page.getByLabel('Recipe Markdown').fill('# Keep recipe draft')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Recipes changed elsewhere')).toBeVisible()
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  await openApp(page, 'Workouts')
+  await expect(page.getByRole('navigation', { name: 'Workout Tracker' })).toBeVisible()
+  await page.getByRole('button', { name: 'Return to save recovery' }).click()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export text drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.recipeMarkdown).toContain('Keep recipe draft')
+  expect(writes).toBe(1)
+})
+
+test('a failed habit save preserves an unblurred note draft without another write', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('First')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+  await page.getByRole('button', { name: 'Create habit' }).click()
+  await page.getByLabel('Title').fill('Second')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] }).habits.length).toBe(2)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  await page.getByRole('button', { name: 'Done · First' }).click()
+  await expect.poll(() => writes).toBe(1)
+  const second = page.locator('.habit-daily-card').filter({ hasText: 'Second' })
+  await second.getByRole('button', { name: 'Add note' }).click()
+  await second.getByLabel('Note').fill('Unconfirmed note survives')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Could not save habits')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'habit-entry', data: expect.objectContaining({ note: 'Unconfirmed note survives' }) }))
+  expect(writes).toBe(1)
+})
+
+test('same-app workout save failure exports unconfirmed session sets without another write', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await openApp(page, 'Workouts')
+  await page.getByRole('button', { name: 'Start workout', exact: true }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByLabel('Weight in kilograms', { exact: true }).fill('42')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Could not save workout data')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(JSON.stringify(file.drafts)).toContain('"weight":"42"')
+  expect(file.drafts.some((item: { kind: string }) => item.kind === 'workout-session')).toBe(true)
+  expect(writes).toBe(1)
+})
+
+test('same-app workout conflict exports a routine draft', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await openApp(page, 'Workouts')
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Build routine', exact: true }).click()
+  await page.getByLabel('Day name').fill('Routine draft name')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Workout data changed elsewhere')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const file = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(file.drafts).toContainEqual(expect.objectContaining({ kind: 'workout-routine', data: expect.objectContaining({ days: expect.arrayContaining([expect.objectContaining({ name: 'Routine draft name' })]) }) }))
+  expect(writes).toBe(1)
+})
+
+test('a recovered workout draft dialog is available while habit conflict remains', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let habitWrites = 0; let workoutWrites = 0; let failWorkout = true
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    habitWrites++; await gate
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
+  })
+  await page.route(/\/rest\/v1\/rpc\/tor_online_workout_write$/, async route => {
+    workoutWrites++
+    if (!failWorkout) { await route.fallback(); return }
+    await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Conflicting habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => habitWrites).toBe(1)
+  await openApp(page, 'Workouts')
+  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+  await expect.poll(() => workoutWrites).toBe(1)
+  await page.getByRole('button', { name: 'Library', exact: true }).click()
+  await page.getByRole('button', { name: 'New exercise' }).click()
+  await page.getByLabel('Exercise / variant name').fill('Preserved exercise draft')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery.getByText('Could not save workout data')).toBeVisible()
+  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+  failWorkout = false
+  await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
+  await expect(recovery.getByText('Could not save workout data')).toBeHidden()
+  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+  const exercise = page.getByRole('dialog', { name: 'New exercise' })
+  await expect(exercise).toBeVisible()
+  await expect(exercise.getByLabel('Exercise / variant name')).toHaveValue('Preserved exercise draft')
+  await exercise.getByRole('button', { name: 'Return to save recovery' }).click()
+  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+  expect(habitWrites).toBe(1)
+})
+
+test('individual and full restore file-size boundaries reject oversized files before reading', async ({ page }) => {
+  await page.addInitScript(() => {
+    const size = Object.getOwnPropertyDescriptor(Blob.prototype, 'size')!.get!
+    Object.defineProperty(File.prototype, 'size', { configurable: true, get() {
+      return (window as unknown as { testFileSize?: number }).testFileSize ?? size.call(this)
+    } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
+  for (const [scope, limit] of [['habit', 200_000_000], ['full', 600_000_000]] as const) {
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: scope === 'habit' ? 'Export habits' : 'Export full backup', exact: true }).click()
+    const stream = await (await downloadPromise).createReadStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+    const input = page.getByLabel(scope === 'habit' ? 'Restore habits' : 'Restore full backup', { exact: true })
+    const file = { name: 'backup.json', mimeType: 'application/json', buffer: Buffer.concat(chunks) }
+    // Override only the File API's reported size to exercise large boundaries without allocating 600 MB in Chromium.
+    await page.evaluate(value => { (window as unknown as { testFileSize: number }).testFileSize = value }, limit + 1)
+    await input.setInputFiles(file)
+    const notice = page.getByRole('dialog', { name: 'Notice' })
+    await expect(notice).toContainText(`${limit / 1_000_000} MB`)
+    await notice.getByRole('button', { name: 'OK' }).click()
+    await page.evaluate(value => { (window as unknown as { testFileSize: number }).testFileSize = value }, limit)
+    await input.setInputFiles(file)
+    const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+    await expect(confirmation).toBeVisible()
+    await confirmation.getByRole('button', { name: 'Cancel' }).click()
+    await page.evaluate(() => { delete (window as unknown as { testFileSize?: number }).testFileSize })
+  }
+})
+
+test('valid near-limit Unicode habit data exports and restores individually and in a full backup', async ({ page }) => {
+  test.setTimeout(120_000)
+  await fakeBackend(page)
+  const habit = { id: '00000000-0000-4000-8000-000000000001', title: 'Large habit', description: 'é'.repeat(24_900_000), start: '2026-01-01', end: null, archived: false, schedules: [{ effective: '2026-01-01', kind: 'fixed', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }], criteria: [{ effective: '2026-01-01', done: '', partial: '', missed: '' }], pauses: [] }
+  const response = JSON.stringify({ revision: 1, data: { version: 1, habits: [habit], entries: [] } })
+  await page.route('**/rest/v1/rpc/tor_online_habit_read', async route => {
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: response })
+  })
+  let revision = 1
+  let rejectOversize = false
+  await page.route('**/rest/v1/rpc/tor_online_habit_write', async route => {
+    if (rejectOversize) { await route.fulfill({ status: 413, headers: { 'access-control-allow-origin': '*' }, body: 'request too large' }); return }
+    revision++
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'ok', revision }) })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
+  const download = async (name: string) => {
+    const next = page.waitForEvent('download')
+    await page.getByRole('button', { name, exact: true }).click()
+    const path = await (await next).path()
+    expect(path).not.toBeNull()
+    expect(statSync(path!).size).toBeGreaterThan(49_800_000)
+    return path!
+  }
+  const individual = await download('Export habits')
+  const full = await download('Export full backup')
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Done · Large habit' }).click()
+  await expect.poll(() => revision, { timeout: 45_000 }).toBe(2)
+  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+  await page.getByRole('button', { name: /Backups/ }).click()
+  await page.getByLabel('Restore habits', { exact: true }).setInputFiles(individual)
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
+  await expect.poll(() => revision, { timeout: 45_000 }).toBe(3)
+  await page.getByLabel('Restore full backup', { exact: true }).setInputFiles(full)
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Restore full backup' }).click()
+  await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('save separately')
+  // The full restore contains the same habit data, so it need not issue another write.
+  await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
+  rejectOversize = true
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Done · Large habit' }).click()
+  await expect(page.getByRole('dialog', { name: 'Save recovery' })).toContainText("server's 10 MB request limit")
+})
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+  for (const scope of ['habit', 'full'] as const) {
+    test(`${scope} backup restores at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      const backend = await fakeBackend(page)
+      await page.goto('/')
+      await openApp(page, 'Habits')
+      await page.getByRole('button', { name: 'Create your first habit' }).click()
+      await page.getByLabel('Title').fill('Restore test')
+      await page.getByRole('button', { name: 'Save habit' }).click()
+      await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+      if (viewport.width > 760) await page.locator('.top-profile').click()
+      else await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+      await page.getByRole('button', { name: /Backups/ }).click()
+      const downloadPromise = page.waitForEvent('download')
+      await page.getByRole('button', { name: scope === 'habit' ? 'Export habits' : 'Export full backup', exact: true }).click()
+      const stream = await (await downloadPromise).createReadStream()
+      const chunks: Buffer[] = []
+      for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+      await openApp(page, 'Habits')
+      await page.getByRole('button', { name: 'Daily', exact: true }).click()
+      await page.getByRole('button', { name: 'Done · Restore test' }).click()
+      await expect.poll(() => (backend.habits() as { entries: unknown[] }).entries.length).toBe(1)
+      if (viewport.width > 760) await page.locator('.top-profile').click()
+      else await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+      await page.getByRole('button', { name: /Backups/ }).click()
+      await page.getByLabel(scope === 'habit' ? 'Restore habits' : 'Restore full backup', { exact: true }).setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.concat(chunks) })
+      await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: scope === 'habit' ? 'Continue' : 'Restore full backup' }).click()
+      await expect.poll(() => (backend.habits() as { entries: unknown[] }).entries.length).toBe(0)
+      if (scope === 'full') await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('save separately')
+    })
+    for (const stage of ['reading', 'confirmation'] as const) {
+      test(`${scope} restore rejects changes during ${stage} at ${viewport.width}px`, async ({ page }) => {
+        await page.setViewportSize(viewport)
+        const backend = await fakeBackend(page)
+        if (stage === 'reading') await page.addInitScript(() => {
+          const original = File.prototype.text
+          File.prototype.text = function () {
+            return new Promise(resolve => {
+              ;(window as unknown as { releaseBackupRead: () => void }).releaseBackupRead = () => { void original.call(this).then(resolve) }
+            })
+          }
+        })
+        await page.goto('/')
+        await openApp(page, 'Habits')
+        await page.getByRole('button', { name: 'Create your first habit' }).click()
+        await page.getByLabel('Title').fill('Race test')
+        await page.getByRole('button', { name: 'Save habit' }).click()
+        await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+        await page.getByRole('button', { name: 'Daily', exact: true }).click()
+        if (viewport.width > 760) await page.locator('.top-profile').click()
+        else await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+        await page.getByRole('button', { name: /Backups/ }).click()
+        const downloadPromise = page.waitForEvent('download')
+        await page.getByRole('button', { name: scope === 'habit' ? 'Export habits' : 'Export full backup', exact: true }).click()
+        const stream = await (await downloadPromise).createReadStream()
+        const chunks: Buffer[] = []
+        for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+        await page.getByLabel(scope === 'habit' ? 'Restore habits' : 'Restore full backup', { exact: true }).setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.concat(chunks) })
+        if (stage === 'reading') {
+          await expect.poll(() => page.evaluate(() => typeof (window as unknown as { releaseBackupRead?: unknown }).releaseBackupRead)).toBe('function')
+          await openApp(page, 'Habits')
+          await page.getByRole('button', { name: 'Done · Race test' }).click()
+          await expect.poll(() => (backend.habits() as { entries: unknown[] }).entries.length).toBe(1)
+          await page.evaluate(() => (window as unknown as { releaseBackupRead: () => void }).releaseBackupRead())
+        } else {
+          await expect(page.getByRole('dialog', { name: 'Please confirm' })).toBeVisible()
+          // Simulate an asynchronous app change while the confirmation is open.
+          await page.locator('button[aria-label="Done · Race test"]').evaluate((button: HTMLElement) => button.click())
+          await expect.poll(() => (backend.habits() as { entries: unknown[] }).entries.length).toBe(1)
+          await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: scope === 'habit' ? 'Continue' : 'Restore full backup' }).click()
+        }
+        await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText(`changed while ${stage === 'reading' ? 'reading' : 'confirming'}`)
+        expect((backend.habits() as { entries: unknown[] }).entries).toHaveLength(1)
+      })
+    }
+  }
+
+  test(`simultaneous workout and habit failures share keyboard recovery at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    const backend = await fakeBackend(page)
+    await page.goto('/')
+    await openApp(page, 'Habits')
+    await page.getByRole('button', { name: 'Create your first habit' }).click()
+    await page.getByLabel('Title').fill('Recovery test')
+    await page.getByRole('button', { name: 'Save habit' }).click()
+    await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let fail = true
+    let requests = 0
+    await page.route(/\/rest\/v1\/rpc\/tor_online_(workout|habit)_write$/, async route => {
+      if (!fail) { await route.fallback(); return }
+      requests++
+      await gate
+      await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+    })
+    await openApp(page, 'Workouts')
+    await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+    await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+    await openApp(page, 'Habits')
+    await page.getByRole('button', { name: 'Daily', exact: true }).click()
+    await page.getByRole('button', { name: 'Done · Recovery test' }).click()
+    await expect.poll(() => requests).toBe(2)
+    release()
+    const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+    await expect(recovery.getByText('Could not save workout data')).toBeVisible()
+    await expect(recovery.getByText('Could not save habits')).toBeVisible()
+    expect(await recovery.evaluate(element => element.contains(document.activeElement))).toBe(true)
+    await page.keyboard.press('Tab')
+    expect(await recovery.evaluate(element => element.contains(document.activeElement))).toBe(true)
+    const download = page.waitForEvent('download')
+    await recovery.getByRole('button', { name: 'Export unsaved habits' }).click()
+    expect((await download).suggestedFilename()).toContain('habits')
+    fail = false
+    await recovery.getByRole('button', { name: 'Retry habit save' }).click()
+    await expect(recovery.getByText('Could not save habits')).toBeHidden()
+    await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
+    await expect(recovery).toBeHidden()
+    await expect.poll(() => (backend.habits() as { entries: unknown[] }).entries.length).toBe(1)
+  })
+}
 
 test('one-tap habit entry persists, supports icons and recovers a failed outcome save', async ({ page }) => {
   const backend = await fakeBackend(page)

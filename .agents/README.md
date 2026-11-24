@@ -10,14 +10,14 @@ The root entry point and `rules/repository.md` are the small common reading set.
 | Local setup or deployment | [Setup](../docs/setup.md) |
 | Choosing verification | Load `one-ring-verify-change` |
 | Completing a task | Load `one-ring-task-closeout` |
-| Product direction | [Product vision](../docs/product-vision.md), [next steps](../docs/next-steps.md) |
+| Product direction | [Product vision](../docs/product-vision.md); optional local `docs/next-steps.md` when present |
 | Explicit governance maintenance | Instructor reads the affected governance and native agent definitions |
 
 ## Ownership
 
 Protected governance comprises `AGENTS.md`/`CLAUDE.md` at any level, this index, `.agents/rules/`, `.agents/skills/`, `.agents/templates/`, project OpenCode configuration, and global OpenCode configuration and agent definitions. Manager, Developer and Reviewer may inspect it as needed and flag mismatches, but cannot edit it or bypass permissions through shell, alternate files, symlinks or configuration. Instructor maintains it only when the user explicitly requests this work. The user selects Instructor directly; it is not a fourth stage in ordinary tasks.
 
-Developer can update ordinary human documentation with implementation. Reviewer checks documentation accuracy and unnecessary growth as part of independent review. Governance tool restrictions supplement instructions; approval-controlled shell is not an absolute filesystem sandbox.
+Developer can update ordinary human documentation with implementation. Reviewer checks documentation accuracy and unnecessary growth as part of independent review. Edit-tool restrictions and role instructions do not sandbox shell commands.
 
 ## Plans and local logs
 
@@ -29,4 +29,4 @@ Skills and templates define procedures, not new authority. Do not add automatic 
 
 ## Local artifact homes
 
-Keep the working tree readable. `supabase/migrations/` contains committed migrations only. Private exports and conversion inputs stay in the ignored root `backups/`; disposable reviews, scratch files, browser profiles and temporary SQL belong in ignored `.local/` subdirectories. `.agents/logs/` contains one fresh ignored task log per completed task. Remove disposable artifacts after use and do not create new root dot-directories or `*.local` folders.
+Keep the working tree readable. `supabase/migrations/` contains committed migrations only. Private exports, temporary work and local logs use the homes specified in [repository rules](rules/repository.md).

@@ -2,8 +2,49 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseBackup } from '../src/workout/backup'
 import { prepareRestore } from '../src/workout/restore'
+import { parseHabits } from '../src/habits/model'
+import { emptyRecipes, parseRecipeData } from '../src/recipes/model'
+import { WORKSPACE_LIMIT, utf8Bytes } from '../src/backupLimits'
 
 const valid = { version: 1, data: { completed: [], workouts: [], session: null }, warmupItems: [], days: [{ name: 'Push', subtitle: '', exercises: [] }], library: [] }
+
+test('all workspace parsers enforce the same UTF-8 byte boundary', () => {
+  for (const [data, parse] of [[valid, parseBackup], [{ version: 1, habits: [], entries: [] }, parseHabits], [emptyRecipes(), parseRecipeData]] as const) {
+    const base = JSON.stringify(data)
+    const atLimit = base + ' '.repeat(WORKSPACE_LIMIT - utf8Bytes(base))
+    assert.doesNotThrow(() => parse(atLimit))
+    assert.throws(() => parse(atLimit + ' '), /too large/i)
+  }
+  assert.equal(utf8Bytes('é'), 2)
+  const compact = JSON.stringify({ version: 1, habits: [], entries: [], note: 'é'.repeat(5_000_000) })
+  const wrapped = JSON.stringify({ scope: 'habits', format: 1, data: JSON.parse(compact) }, null, 2)
+  assert.ok(utf8Bytes(wrapped) > 10_000_000)
+  assert.equal(parseHabits(JSON.stringify(JSON.parse(wrapped).data)).version, 1)
+})
+
+test('valid Unicode workspace contents round-trip through individual and full backup envelopes at the byte limit', () => {
+  const habit = { id: '00000000-0000-4000-8000-000000000001', title: 'Read', description: '', start: '2026-01-01', end: null, archived: false, schedules: [{ effective: '2026-01-01', kind: 'fixed', weekdays: [0], target: 1 }], criteria: [{ effective: '2026-01-01', done: '', partial: '', missed: '' }], pauses: [] }
+  const fixtures = [
+    { scope: 'workouts', make: (text: string) => ({ ...valid, warmupItems: [text] }), parse: parseBackup },
+    { scope: 'habits', make: (text: string) => ({ version: 1, habits: [{ ...habit, description: text }], entries: [] }), parse: parseHabits },
+    { scope: 'recipes', make: (text: string) => ({ ...emptyRecipes(), recipes: [{ id: '00000000-0000-4000-8000-000000000002', markdown: `# Food\n\n${text}` }] }), parse: parseRecipeData },
+  ]
+  for (const fixture of fixtures) {
+    const overhead = utf8Bytes(JSON.stringify(fixture.make('')))
+    const remaining = WORKSPACE_LIMIT - overhead
+    const text = 'é'.repeat(Math.floor(remaining / 2)) + 'x'.repeat(remaining % 2)
+    const serialized = JSON.stringify(fixture.make(text))
+    assert.equal(utf8Bytes(serialized), WORKSPACE_LIMIT)
+    const data = JSON.parse(serialized)
+    const individual = fixture.scope === 'workouts' ? { ...data, scope: 'workouts', exportedAt: '2026-01-01T00:00:00.000Z' } : { scope: fixture.scope, format: 1, data }
+    const individualRead = JSON.parse(JSON.stringify(individual))
+    if (fixture.scope === 'workouts') { delete individualRead.scope; delete individualRead.exportedAt }
+    assert.doesNotThrow(() => fixture.parse(JSON.stringify(fixture.scope === 'workouts' ? individualRead : individualRead.data)))
+    const fullRead = JSON.parse(JSON.stringify({ scope: 'full', format: 2, [fixture.scope]: data }))
+    assert.doesNotThrow(() => fixture.parse(JSON.stringify(fullRead[fixture.scope])))
+    assert.throws(() => fixture.parse(JSON.stringify(fixture.make(text + 'é'))), /too large/i)
+  }
+})
 
 test('valid older backup is accepted', () => { assert.deepEqual(parseBackup(JSON.stringify(valid)), valid) })
 test('invalid nested workout data is rejected', () => { assert.throws(() => parseBackup(JSON.stringify({ ...valid, data: { ...valid.data, workouts: [{ day: 'Push', date: 'bad', exercises: [] }] } }))) })

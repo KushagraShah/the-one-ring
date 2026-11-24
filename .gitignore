@@ -5,10 +5,12 @@ test-results/
 playwright-report/
 .npm-cache/
 .local/
+.tmp/
 .browser-test.local/
 .chromium-test.local/
 .env
 .env.*
 !.env.example
 .agents/logs/
+docs/next-steps.md
 habit-tracker-copy-ref-donotpushtogit/

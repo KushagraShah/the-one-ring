@@ -1,3 +1,5 @@
+import { WORKSPACE_LIMIT, utf8Bytes } from '../backupLimits'
+
 export type Nutrition = { scope: string; calories: string; protein: string; carbs: string; fat: string }
 export type RecipeContent = { title: string; description: string; portions: string; nutrition: Nutrition; quickGlance: string; fresh: string[]; pantry: string[]; steps: string[]; notes: string }
 export type Recipe = { id: string; markdown: string; content?: RecipeContent; source?: string; importWarnings?: string[] }
@@ -76,7 +78,7 @@ export function parseMarkdown(markdown: string) {
 }
 
 export function parseRecipeData(input: string): RecipeData {
-  if (new TextEncoder().encode(input).length > 10_000_000) throw Error('Recipe data is too large')
+  if (utf8Bytes(input) > WORKSPACE_LIMIT) throw Error('Recipe data is too large')
   const value: unknown = JSON.parse(input)
   const obj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)
   const nutrition = (x: unknown): x is Nutrition => obj(x) && ['scope', 'calories', 'protein', 'carbs', 'fat'].every(k => typeof x[k] === 'string')

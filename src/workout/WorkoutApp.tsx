@@ -1,6 +1,6 @@
 import { ChoiceSelect } from '../ChoiceSelect'
-import { confirmAction, showMessage } from '../AppDialog'
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useState } from 'react'
+import { useScopedConfirm, showMessage } from '../AppDialog'
+import { forwardRef, useContext, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, ArrowRight, Check, ChevronRight, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../auth'
 import { ExerciseLibrary, type Exercise } from './ExerciseLibrary'
@@ -15,6 +15,8 @@ import { mapCycleDays } from './routineDraft'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { seedDemoWorkouts } from './demo'
 import { sampleDays } from './sampleDays'
+import { BACKUP_FILE_LIMIT } from '../backupLimits'
+import { DraftContext } from '../app/DraftCapture'
 import './workout-redesign.css'
 
 type Day = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
@@ -27,8 +29,8 @@ const key = 'one-ring-demo-v1'
 function load(storage: Storage, storageKey: string): Data { try { const data = JSON.parse(storage.getItem(storageKey) || 'null'); return data && Array.isArray(data.completed) && Array.isArray(data.workouts) ? data : initial } catch { return initial } }
 type Identity = { id: string; email: string; demo: boolean }
 type View = 'home' | 'workout' | 'habits' | 'recipes' | 'settings'
-export type WorkoutHandle = { leave: (done: () => void) => void; open: () => void; canSignOut: () => boolean; canUpdate: () => boolean; snapshot: () => Backup; exportData: () => void; validateBackup: (value: unknown) => Backup; replace: (value: Backup) => void }
-export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void; exportRecipes: () => void }>(function WorkspaceGate({ identity, view, exportHabits, exportRecipes }, ref) {
+export type WorkoutHandle = { leave: (done: () => void) => void; open: () => void; canSignOut: () => boolean; canUpdate: () => boolean; isRecoveryBlocked: () => boolean; snapshot: () => Backup; exportData: () => void; validateBackup: (value: unknown) => Backup; replace: (value: Backup) => void; retry: () => void }
+export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; view: View; onStatus: (status: SaveStatus) => void }>(function WorkspaceGate({ identity, view, onStatus }, ref) {
   const [state, setState] = useState<{ storage: Storage; online: OnlineWorkoutStore | null } | null>(null)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -48,9 +50,11 @@ export const WorkspaceGate = forwardRef<WorkoutHandle, { identity: Identity; vie
   }, [identity.id, identity.demo, attempt])
   if (error) return <div hidden={view !== 'workout' && view !== 'settings'} className="auth-card"><h1>Could not load workouts</h1><p>Check your connection and that the online workout database migration has been applied. No local workout data was loaded.</p><button className="primary" onClick={() => setAttempt(value => value + 1)}>Retry</button></div>
   if (!state) return <p hidden={view !== 'workout' && view !== 'settings'}>Loading workouts…</p>
-  return <WorkoutApp ref={ref} identity={identity} view={view} exportHabits={exportHabits} exportRecipes={exportRecipes} storage={state.storage} online={state.online}/>
+  return <WorkoutApp ref={ref} identity={identity} view={view} onStatus={onStatus} storage={state.storage} online={state.online}/>
 })
-const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; exportHabits: () => void; exportRecipes: () => void; storage: Storage; online: OnlineWorkoutStore | null }>(function WorkoutApp({ identity, view, exportHabits, exportRecipes, storage: localStorage, online }, ref) {
+const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; onStatus: (status: SaveStatus) => void; storage: Storage; online: OnlineWorkoutStore | null }>(function WorkoutApp({ identity, view, onStatus, storage: localStorage, online }, ref) {
+  const confirmAction = useScopedConfirm()
+  const drafts = useContext(DraftContext)
   const storageKey = identity.demo ? key : `one-ring-user-${identity.id}`
   const warmupKey = `${storageKey}-warmups`
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -107,17 +111,25 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   const [sessionDirty, setSessionDirty] = useState(false)
   const [libraryDirty, setLibraryDirty] = useState(false)
   const [confirmation, setConfirmation] = useState<{ title: string; message: string; label: string; action: () => void } | null>(null)
+  const hasDraft = () => builderDirty || sessionDirty || libraryDirty || !!drafts?.has('workout-')
+  const recoveryBlocked = () => saveStatus === 'error' || saveStatus === 'conflict' || online?.getStatus() === 'error' || online?.getStatus() === 'conflict'
   const setPage = (next: typeof page, after?: () => void) => {
     if (page === 'builder' && next !== 'builder' && builderDirty) {
       setConfirmation({ title: 'Discard routine draft?', message: 'Your unsaved routine changes will be lost.', label: 'Discard and leave', action: () => { setBuilderDirty(false); setPageState(next); after?.() } }); return
     }
     if (page === 'session' && next !== 'session' && sessionDirty) { setConfirmation({ title: 'Leave workout?', message: 'Unconfirmed log and setup edits will be discarded. Confirmed entries remain in the workout.', label: 'Leave workout', action: () => { setPageState(next); after?.() } }); return }
     if (page === 'library' && next !== 'library' && libraryDirty) { setConfirmation({ title: 'Discard exercise edits?', message: 'Your unsaved exercise changes will be lost.', label: 'Discard and leave', action: () => { setLibraryDirty(false); setPageState(next); after?.() } }); return }
+    if (page === 'activity' && next !== 'activity' && drafts?.has('workout-')) { setConfirmation({ title: 'Discard history corrections?', message: 'Your unsaved workout date or result corrections will be lost.', label: 'Discard and leave', action: () => { setPageState(next); after?.() } }); return }
+    if (next !== page && drafts?.has('workout-')) { setConfirmation({ title: 'Discard workout draft?', message: 'Your unsaved workout changes will be lost.', label: 'Discard and leave', action: () => { setPageState(next); after?.() } }); return }
     if (next === 'activity') setReviewLatest(false)
     setPageState(next)
     after?.()
   }
-  useImperativeHandle(ref, () => ({ leave: done => setPage('home', done), open: () => setPage('routine'), canSignOut: () => saveStatus === 'saved' && !libraryDirty && !builderDirty && !sessionDirty, canUpdate: () => saveStatus === 'saved' && !builderDirty && !sessionDirty && !libraryDirty && (page === 'home' || page === 'routine'), snapshot, exportData, validateBackup: value => prepareRestore(parseBackup(JSON.stringify(value)), days), replace: applyBackup }))
+  const readyRef = useRef<() => boolean>(() => false)
+  const snapshotRef = useRef(() => snapshot())
+  readyRef.current = () => saveStatus === 'saved' && (!online || online.getStatus() === 'saved') && !hasDraft()
+  snapshotRef.current = () => snapshot()
+  useImperativeHandle(ref, () => ({ leave: done => { if (recoveryBlocked()) done(); else setPage('home', done) }, open: () => { if (!recoveryBlocked() && !hasDraft()) setPage('routine') }, canSignOut: () => readyRef.current(), canUpdate: () => saveStatus === 'saved' && (!online || online.getStatus() === 'saved') && !hasDraft() && (page === 'home' || page === 'routine'), isRecoveryBlocked: recoveryBlocked, snapshot, exportData, validateBackup: value => prepareRestore(parseBackup(JSON.stringify(value)), days), replace: applyBackup, retry: () => online?.retry() }))
   const [selectedDay, setSelectedDay] = useState('')
   const [warmupItems, setWarmupItems] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(warmupKey) || (identity.demo ? localStorage.getItem('one-ring-warmups') : null) || 'null') || ['A little movement', 'Get the joints moving'] } catch { return ['A little movement', 'Get the joints moving'] } })
   const [notice, setNotice] = useState('')
@@ -198,7 +210,7 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   }
   const skipDay = (day: string) => setConfirmation({ title: `Skip ${day}?`, message: 'This day will be skipped for the current routine cycle.', label: 'Skip day', action: () => { let completed = [...data.completed, day]; let skippedDays = [...(data.skippedDays || []), day]; const events: Omit<CycleEvent, 'id' | 'at'>[] = [{ type: 'skipped', day }]; if (completed.length >= days.length) { events.push({ type: 'rollover' }); completed = []; skippedDays = [] } recordCycle(events); save({ ...data, completed, skippedDays }); setNotice(`${day} skipped for this cycle.`) } })
   const snapshot = (): Backup => ({ version: 1, data, warmupItems, days, library, routines: currentBook() })
-  const exportData = () => { const exportedAt = new Date().toISOString(); const blob = new Blob([JSON.stringify({ ...snapshot(), scope: 'workouts', exportedAt }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `one-ring-workouts-${exportedAt.replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url) }
+  const exportData = () => { const exportedAt = new Date().toISOString(); const blob = new Blob([JSON.stringify({ ...snapshot(), scope: 'workouts', exportedAt })], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `one-ring-workouts-${exportedAt.replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url) }
   const applyBackup = (parsed: Backup) => {
     const prepared = prepareRestore(parsed, days)
     const restoredDays = identifyDays(prepared.days!)
@@ -213,13 +225,20 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
   }
   const restore = async (file?: File) => {
     if (!file) return
+    if (!readyRef.current()) { void showMessage('Finish workout edits and wait for saving before restoring.'); return }
+    const baseline = JSON.stringify(snapshotRef.current())
+    const unchanged = () => readyRef.current() && JSON.stringify(snapshotRef.current()) === baseline
     try {
-      if (file.size > 10_000_000) throw new Error('Backup is too large.')
-      const parsed = parseBackup(await file.text())
+      if (file.size > BACKUP_FILE_LIMIT) throw new Error('Backup is too large.')
+      const value = JSON.parse(await file.text())
+      if (value && typeof value === 'object') { delete value.scope; delete value.exportedAt }
+      const parsed = parseBackup(JSON.stringify(value))
       const prepared = prepareRestore(parsed, days)
+      if (!unchanged()) { void showMessage('Workout data or edits changed while reading. Finish saving and try again.'); return }
       if (!await confirmAction('Replace current workout data with this backup? Export your current data first.')) return
+      if (!unchanged()) { void showMessage('Workout data or edits changed while confirming. Finish saving and try again.'); return }
       applyBackup(prepared); setNotice(identity.demo ? 'Backup restored for this demo.' : 'Backup loaded. Wait for saving to finish before leaving.'); setPage('home')
-    } catch { void showMessage('Unable to restore this backup. The file may be invalid, incompatible, or too large. Your current workout data was not replaced.') }
+    } catch { void showMessage('Unable to restore this backup. The file may be invalid, incompatible, or exceed the 200 MB file or 50 MB workspace limit. Your current workout data was not replaced.') }
   }
 
   useLayoutEffect(() => {
@@ -227,18 +246,18 @@ const WorkoutApp = forwardRef<WorkoutHandle, { identity: Identity; view: View; e
     online.onStatus = setSaveStatus
     return () => { online.onStatus = () => {} }
   }, [online])
+  useLayoutEffect(() => { onStatus(saveStatus) }, [saveStatus, onStatus])
   useLayoutEffect(() => {
     if (!online) return
     try { online.update(snapshot()) } catch { setSaveStatus('error') }
   }, [online, data, days, book, library, warmupItems])
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => { if (saveStatus !== 'saved') event.preventDefault() }
+    const warn = (event: BeforeUnloadEvent) => { if (saveStatus !== 'saved' || hasDraft()) event.preventDefault() }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [saveStatus])
+  }, [saveStatus, builderDirty, sessionDirty, libraryDirty, drafts])
 
   return <>
-    {online && (saveStatus === 'error' || saveStatus === 'conflict') && <div role="alert" className="save-recovery-overlay"><div className="save-recovery-card"><h2>{saveStatus === 'conflict' ? 'Workout data changed elsewhere' : 'Could not save workout data'}</h2><p>{saveStatus === 'conflict' ? 'This device has unsaved changes. Export them before reloading the latest server data.' : 'Your changes have not been confirmed. Check your connection and retry. Keep this page open.'} Reloading can also discard unsaved habit and recipe changes.</p>{saveStatus === 'error' && <button className="primary" onClick={() => online.retry()}>Retry save</button>}<button className="outline-button" onClick={exportData}>Export unsaved data</button> <button className="outline-button" onClick={exportHabits}>Export habits</button> <button className="outline-button" onClick={exportRecipes}>Export recipes</button> <button className="outline-button" onClick={async () => { if (await confirmAction('Discard ALL unsaved workout, habit and recipe changes and reload? Export them first.')) window.location.reload() }}>Discard and reload</button></div></div>}
     {online && saveStatus === 'saving' && <div role="status" style={{ position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#171717', color: '#fff', padding: '8px 16px', borderRadius: 8 }}>Saving workouts…</div>}
     {confirmation && <ConfirmDialog title={confirmation.title} message={confirmation.message} confirmLabel={confirmation.label} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation.action; setConfirmation(null); action() }}/> }
     <div hidden={view !== 'workout'}>

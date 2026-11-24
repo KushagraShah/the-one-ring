@@ -1,4 +1,4 @@
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { useEffect, useState } from 'react'
 import type { WorkoutExercise } from './WorkoutSession'
 import { isCardio } from './WorkoutSession'
@@ -7,8 +7,10 @@ import type { Exercise } from './ExerciseLibrary'
 import type { Workout } from './WorkoutSession'
 import { ExercisePicker } from './ExercisePicker'
 import { Sheet } from './Sheet'
+import { useDraftCapture } from '../app/DraftCapture'
 
-export function WorkoutReview({ exercise, library, onSave, highlighted = false }: { exercise: WorkoutExercise; library: Exercise[]; workouts: Workout[]; onSave: (next: WorkoutExercise) => void; highlighted?: boolean }) {
+export function WorkoutReview({ exercise, library, workouts, onSave, highlighted = false }: { exercise: WorkoutExercise; library: Exercise[]; workouts: Workout[]; onSave: (next: WorkoutExercise) => void; highlighted?: boolean }) {
+  const confirmAction = useScopedConfirm()
   const [editing, setEditing] = useState(false)
   const [sets, setSets] = useState(exercise.sets)
   const [note, setNote] = useState(exercise.note || '')
@@ -16,6 +18,7 @@ export function WorkoutReview({ exercise, library, onSave, highlighted = false }
   const [cardio, setCardio] = useState(exercise.cardio)
   const [correcting, setCorrecting] = useState(false)
   const dirty = editing && (JSON.stringify(sets) !== JSON.stringify(exercise.sets) || note !== (exercise.note || '') || JSON.stringify(cardio) !== JSON.stringify(exercise.cardio))
+  useDraftCapture('workout-result-correction', { workout: workouts.find(item => item.exercises.includes(exercise)), exercise, sets, note, cardio }, dirty)
   useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (dirty) event.preventDefault() }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn) }, [dirty])
   const close = async () => { if (dirty && !await confirmAction('Discard unsaved result changes?')) return; setSets(exercise.sets); setCardio(exercise.cardio); setNote(exercise.note || ''); setEditing(false); setError('') }
   if (!exercise.sets.length && !exercise.cardio?.done) return <div className="review-exercise"><strong>{exercise.name}</strong><span>{exercise.skipped ? 'Skipped' : 'Not completed'}</span></div>

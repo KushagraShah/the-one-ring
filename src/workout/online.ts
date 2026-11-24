@@ -27,6 +27,7 @@ export class OnlineWorkoutStore {
   private busy = false
   private status: SaveStatus = 'saved'
   onStatus: (status: SaveStatus) => void = () => {}
+  getStatus() { return this.status }
 
   constructor(private client: SupabaseClient, private owner: string) {}
 

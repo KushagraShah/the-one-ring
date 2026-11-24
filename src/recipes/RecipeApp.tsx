@@ -1,24 +1,24 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, RotateCcw } from 'lucide-react'
-import { confirmAction, showMessage } from '../AppDialog'
+import { useScopedConfirm, showMessage } from '../AppDialog'
 import { supabase } from '../auth'
 import { contentMarkdown, emptyContent, emptyRecipes, parseMarkdown, parseRecipeData, recipeView, template, type Recipe, type RecipeData, type ShoppingItem, type Side } from './model'
 import { OnlineRecipeStore, type SaveStatus } from './online'
 import { CookingPhase, CookingPicker, ShoppingList } from './RecipePhases'
 import { RecipeDetail } from './RecipeDetail'
 import { RecipeEditor } from './RecipeEditor'
-import { RecipeRecovery } from './RecipeRecovery'
+import { BACKUP_FILE_LIMIT } from '../backupLimits'
 import { ShoppingItemEditor, ShoppingRecipePicker } from './ShoppingDialogs'
 import { GuidedEditor, type GuidedDraft } from './GuidedEditor'
 import { MealPlan } from './MealPlan'
 import { importRecipe } from './importRecipe'
 import './recipes.css'
 
-type Props = { identity: { id: string; demo: boolean }; view: string; exportWorkout: () => void; exportHabits: () => void }
-export type RecipeHandle = { canLeave: () => boolean; leave: (done: () => void) => void; exportData: () => void; snapshot: () => RecipeData | null; replace: (data: RecipeData) => void }
+type Props = { identity: { id: string; demo: boolean }; view: string; onStatus: (status: SaveStatus) => void }
+export type RecipeHandle = { canLeave: () => boolean; isRecoveryBlocked: () => boolean; leave: (done: () => void) => void; exportData: () => void; snapshot: () => RecipeData | null; replace: (data: RecipeData) => void; retry: () => void; hasDrafts: () => boolean; exportDrafts: () => void }
 const example = `# 🍲 Tofu rice bowl\n\nPortions: 4\nMacros per portion: Example values only\n\n## Quick glance\n- Prepare tofu and vegetables.\n- Cook the rice and vegetables.\n- Divide into four portions.\n\n## Ingredients\n- 400 g tofu\n- 200 g rice\n- 300 g vegetables\n\n## Pantry\n- 10 g oil\n\n## Instructions\n1. Prepare the vegetables and tofu.\n2. Cook the rice and vegetables.\n3. Divide into four portions.\n\n## Notes\nFictional demo recipe.`
 function download(data: RecipeData) {
-  const blob = new Blob([JSON.stringify({ scope: 'recipes', format: 1, data }, null, 2)], { type: 'application/json' })
+  const blob = new Blob([JSON.stringify({ scope: 'recipes', format: 1, data })], { type: 'application/json' })
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `one-ring-recipes-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url)
 }
 function downloadDrafts(drafts: { recipeMarkdown?: string; guidedRecipe?: unknown; side?: Side; shoppingItem?: string; editedShoppingItem?: string }) {
@@ -26,7 +26,8 @@ function downloadDrafts(drafts: { recipeMarkdown?: string; guidedRecipe?: unknow
   const a = document.createElement('a'); a.href = url; a.download = `one-ring-recipe-drafts-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url)
 }
 
-export const RecipeApp = forwardRef<RecipeHandle, Props>(function RecipeApp({ identity, view, exportWorkout, exportHabits }, ref) {
+export const RecipeApp = forwardRef<RecipeHandle, Props>(function RecipeApp({ identity, view, onStatus }, ref) {
+  const confirmAction = useScopedConfirm()
   const [data, setData] = useState<RecipeData | null>(() => {
     if (!identity.demo) return null
     const id = crypto.randomUUID()
@@ -62,11 +63,15 @@ export const RecipeApp = forwardRef<RecipeHandle, Props>(function RecipeApp({ id
     return () => { active = false }
   }, [identity.id, identity.demo, attempt])
   useLayoutEffect(() => { if (!store) return; store.onStatus = setStatus; return () => { store.onStatus = () => {} } }, [store])
+  useLayoutEffect(() => { onStatus(status) }, [status, onStatus])
   useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (dirty || guidedDirty || planDirty || itemDirty || hasPendingItem || status !== 'saved') event.preventDefault() }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn) }, [dirty, guidedDirty, planDirty, itemDirty, hasPendingItem, status])
   const closeEditor = async (restoreFocus = false) => { if (dirty && !await confirmAction('Discard unsaved recipe edits?', 'Discard changes')) return false; setEditor(null); setReview(false); if (restoreFocus && !selected) requestAnimationFrame(() => editorTrigger.current?.focus()); return true }
   const closeItemEditor = async () => { if (itemDirty && !await confirmAction('Discard unsaved shopping item changes?', 'Discard changes')) return false; setItemEdit(null); return true }
   const closeGuided = async () => { if (guidedDirty && !await confirmAction('Discard unsaved recipe changes?', 'Discard changes')) return false; setGuided(null); if (!selected) requestAnimationFrame(() => editorTrigger.current?.focus()); return true }
-  useImperativeHandle(ref, () => ({ canLeave: () => !dirty && !guidedDirty && !planDirty && !itemDirty && !hasPendingItem && status === 'saved', leave: async done => { if (!planDirty && await closeEditor() && await closeGuided() && await closeItemEditor()) done() }, exportData: () => { if (dataRef.current) download(dataRef.current) }, snapshot: () => dataRef.current, replace: next => update(next) }))
+  const readyRef = useRef<() => boolean>(() => false)
+  readyRef.current = () => !!dataRef.current && !dirty && !guidedDirty && !planDirty && !itemDirty && !hasPendingItem && status === 'saved' && (!store || store.getStatus() === 'saved')
+  const recoveryBlocked = () => status === 'error' || status === 'conflict' || store?.getStatus() === 'error' || store?.getStatus() === 'conflict'
+  useImperativeHandle(ref, () => ({ canLeave: () => readyRef.current(), isRecoveryBlocked: recoveryBlocked, leave: async done => { if (recoveryBlocked()) { done(); return } if (!planDirty && await closeEditor() && await closeGuided() && await closeItemEditor()) done() }, exportData: () => { if (dataRef.current) download(dataRef.current) }, snapshot: () => dataRef.current, replace: next => update(next), retry: () => store?.retry(), hasDrafts: () => dirty || guidedDirty || planDirty || itemDirty || hasPendingItem, exportDrafts: () => downloadDrafts({ ...(dirty ? { recipeMarkdown: editor!.markdown } : {}), ...(guidedDirty ? { guidedRecipe: guided } : {}), ...(planDraft ? { side: planDraft } : {}), ...(hasPendingItem ? { shoppingItem: manualItem } : {}), ...(itemDirty ? { editedShoppingItem: itemEdit!.text } : {}) }) }))
   const update = (next: RecipeData) => { const validated = parseRecipeData(JSON.stringify(next)); dataRef.current = validated; setData(validated); store?.update(validated) }
   const switchTab = async (next: typeof tab) => { if (editor && !await closeEditor()) return; if (guided && !await closeGuided()) return; if (planDirty) return; setSelected(null); setTab(next) }
   const openGuided = (recipe?: Recipe) => {
@@ -145,12 +150,19 @@ export const RecipeApp = forwardRef<RecipeHandle, Props>(function RecipeApp({ id
   const changeItem = (id: string, state: ShoppingItem['state']) => { const current = dataRef.current; if (current?.shopping) update({ ...current, shopping: { ...current.shopping, items: current.shopping.items.map(item => item.id === id ? { ...item, state } : item) } }) }
   const restore = async (file?: File) => {
     if (!file || !data) return
+    if (!readyRef.current()) { void showMessage('Finish recipe edits and wait for saving before restoring.'); return }
+    const baseline = JSON.stringify(dataRef.current)
+    const unchanged = () => readyRef.current() && JSON.stringify(dataRef.current) === baseline
     try {
-      if (file.size > 10_000_000) throw Error('Too large')
+      if (file.size > BACKUP_FILE_LIMIT) throw Error('Too large')
       const value = JSON.parse(await file.text()); if (value.scope !== 'recipes' || value.format !== 1) throw Error('Wrong scope')
       const next = parseRecipeData(JSON.stringify(value.data))
-      if (await confirmAction('Replace all recipe data and active recipe phases with this backup? Workouts and habits will not change.', 'Restore recipes')) { update(next); setEditor(null); setSelected(null) }
-    } catch { void showMessage('Invalid recipe backup. No recipe data was replaced.') }
+      if (!unchanged()) { void showMessage('Recipe data or edits changed while reading. Finish saving and try again.'); return }
+      if (await confirmAction('Replace all recipe data and active recipe phases with this backup? Workouts and habits will not change.', 'Restore recipes')) {
+        if (!unchanged()) { void showMessage('Recipe data or edits changed while confirming. Finish saving and try again.'); return }
+        update(next); setEditor(null); setSelected(null)
+      }
+    } catch { void showMessage('Invalid recipe backup or backup exceeds the 200 MB file or 50 MB workspace limit. No recipe data was replaced.') }
   }
   const active = data?.recipes.find(r => r.id === selected)
   const metadata = (id: string) => data?.meta[id] || { idea: false, archived: false, rotation: false }
@@ -193,6 +205,5 @@ export const RecipeApp = forwardRef<RecipeHandle, Props>(function RecipeApp({ id
       </>}
     </div>
     <div hidden={view !== 'settings'}>{data && <div className="settings-card backup-card"><h3>Recipe backup</h3><p>Recipes, rotation, side presets, meal-prep plan and active phases. Unsaved editor text is excluded.</p><div className="settings-actions"><button className="outline-button" onClick={() => download(data)}><ArrowDownToLine size={16} aria-hidden="true"/> Export recipes</button><label className="outline-button file-button"><RotateCcw size={16} aria-hidden="true"/> Restore recipes<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }}/></label></div></div>}</div>
-    {(status === 'error' || status === 'conflict') && <RecipeRecovery status={status} retry={() => store?.retry()} exportRecipes={() => { if (dataRef.current) download(dataRef.current) }} exportDrafts={dirty || guidedDirty || planDirty || itemDirty || hasPendingItem ? () => downloadDrafts({ ...(dirty ? { recipeMarkdown: editor!.markdown } : {}), ...(guidedDirty ? { guidedRecipe: guided } : {}), ...(planDraft ? { side: planDraft } : {}), ...(hasPendingItem ? { shoppingItem: manualItem } : {}), ...(itemDirty ? { editedShoppingItem: itemEdit!.text } : {}) }) : undefined} exportWorkout={exportWorkout} exportHabits={exportHabits}/>}
   </>
 })

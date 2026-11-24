@@ -1,6 +1,6 @@
 import { ChoiceSelect } from '../ChoiceSelect'
 import { DetailView } from '../DetailView'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { useState } from 'react'
 import type { Exercise } from './ExerciseLibrary'
 import type { Rotation } from './rotations'
@@ -9,6 +9,7 @@ type Day = { name: string; exercises: Exercise[] }
 type Props = { days: Day[]; library: Exercise[]; rotations: Rotation[]; onChange: (rotations: Rotation[]) => void }
 
 export function RotationManager({ days, library, rotations, onChange }: Props) {
+  const confirmAction = useScopedConfirm()
   const [name, setName] = useState('')
   const [primaryDay, setPrimaryDay] = useState('')
   const [complementDay, setComplementDay] = useState('')

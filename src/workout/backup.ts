@@ -1,6 +1,7 @@
 import type { Exercise } from './ExerciseLibrary'
 import type { Session, Workout } from './WorkoutSession'
 import type { Rotation } from './rotations'
+import { WORKSPACE_LIMIT, utf8Bytes } from '../backupLimits'
 
 type Day = { id?: string; name: string; subtitle: string; exercises: Exercise[] }
 export type CycleEvent = { id: string; at: string; type: 'completed' | 'skipped' | 'reset' | 'rollover'; day?: string; workoutId?: string; routineName?: string; daysSnapshot?: { id?: string; name: string }[]; completedBefore?: string[]; skippedBefore?: string[] }
@@ -28,7 +29,7 @@ const cycleEvent = (v: unknown) => obj(v) && text(v.id) && text(v.at) && !Number
 const routine = (v: unknown) => obj(v) && text(v.id) && text(v.name) && arrayOf(v.days, day) && Array.isArray(v.days) && v.days.length > 0 && strings(v.completed) && (v.skippedDays === undefined || strings(v.skippedDays)) && (v.rotations === undefined || arrayOf(v.rotations, rotation)) && (v.cycleHistory === undefined || arrayOf(v.cycleHistory, cycleEvent))
 
 export function parseBackup(input: string): Backup {
-  if (input.length > 10_000_000) throw new Error('Backup is too large.')
+  if (utf8Bytes(input) > WORKSPACE_LIMIT) throw new Error('Backup is too large.')
   const value: unknown = JSON.parse(input)
   if (!obj(value) || value.version !== 1 || !obj(value.data) || !strings(value.data.completed) || (value.data.skippedDays !== undefined && !strings(value.data.skippedDays)) || !arrayOf(value.data.workouts, workout) || !session(value.data.session) || !strings(value.warmupItems) || (value.days !== undefined && (!arrayOf(value.days, day) || (value.days as unknown[]).length === 0)) || (value.library !== undefined && !arrayOf(value.library, exercise))) throw new Error('Invalid backup data.')
   if (value.routines !== undefined) {

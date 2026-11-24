@@ -1,3 +1,5 @@
+import { WORKSPACE_LIMIT, utf8Bytes } from '../backupLimits'
+
 export type Outcome = 'done' | 'partial' | 'missed' | 'skipped'
 export type Schedule = { effective: string; kind: 'fixed' | 'flexible'; weekdays: number[]; target: number }
 export type Criteria = { effective: string; done: string; partial: string; missed: string }
@@ -73,7 +75,7 @@ const object = (value: unknown): value is Record<string, unknown> => !!value && 
 const isText = (value: unknown): value is string => typeof value === 'string'
 const optionalDate = (value: unknown) => value === null || dateValid(value)
 export function parseHabits(input: string): HabitData {
-  if (new TextEncoder().encode(input).length > 10_000_000) throw new Error('Habit backup is too large.')
+  if (utf8Bytes(input) > WORKSPACE_LIMIT) throw new Error('Habit backup is too large.')
   const data: unknown = JSON.parse(input)
   if (!object(data) || data.version !== 1 || !Array.isArray(data.habits) || !Array.isArray(data.entries)) throw new Error('Invalid habit data.')
   const ids = new Set<string>()

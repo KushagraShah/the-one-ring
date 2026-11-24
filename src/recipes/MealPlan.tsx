@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { InfoTip } from '../InfoTip'
 import { emptyNutrition, nutritionText, recipeView, type Nutrition, type PlannedMeal, type Recipe, type RecipeData, type Side } from './model'
 import { importRecipe, sumNutrition } from './importRecipe'
@@ -13,6 +13,7 @@ function Window({ title, close, children }: { title: string; close: () => void; 
 }
 type Props = { data: RecipeData; update: (next: RecipeData) => void; startCooking: (recipe: Recipe, side?: Side) => void; shop: () => void; draftDirty: (dirty: boolean) => void; draftData: (side: Side | null) => void }
 export function MealPlan({ data, update, startCooking, shop, draftDirty, draftData }: Props) {
+  const confirmAction = useScopedConfirm()
   const [window, setWindow] = useState<'recipes' | 'sides' | 'side-edit' | null>(null)
   const [target, setTarget] = useState('')
   const [sideDraft, setSideDraft] = useState<Side | null>(null)

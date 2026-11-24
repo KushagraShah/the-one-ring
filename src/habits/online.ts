@@ -11,6 +11,7 @@ export class OnlineHabitStore {
   private busy = false
   private status: SaveStatus = 'saved'
   onStatus: (status: SaveStatus) => void = () => {}
+  getStatus() { return this.status }
   constructor(private client: SupabaseClient, private owner: string) {}
   async load(): Promise<HabitData> {
     const { data, error } = await this.client.rpc('tor_online_habit_read', { p_owner: this.owner })

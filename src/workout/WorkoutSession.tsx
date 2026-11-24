@@ -1,6 +1,6 @@
 import { DetailView } from '../DetailView'
 import { ChoiceSelect } from '../ChoiceSelect'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, List, Plus, X } from 'lucide-react'
 import type { Exercise } from './ExerciseLibrary'
@@ -12,6 +12,7 @@ import { InfoTip } from '../InfoTip'
 import { SetupText } from './SetupText'
 import { Sheet } from './Sheet'
 import { ExercisePicker } from './ExercisePicker'
+import { useDraftCapture } from '../app/DraftCapture'
 
 export type SetEntry = { weight: string; reps: string; done: boolean }
 export type CardioEntry = { duration: string; speed: string; incline: string; done: boolean }
@@ -45,6 +46,7 @@ type Props = {
 }
 
 export function WorkoutSession({ session, workouts, library, rotations, onChange, onFinish, onBack, onCancel, onDirty, onSetup }: Props) {
+  const confirmAction = useScopedConfirm()
   const [expanded, setExpanded] = useState<string | null>(() => session.exercises.find(exercise => !session.skipped.includes(exercise.name) && !exerciseComplete(session, exercise))?.name || session.exercises[0]?.name || null)
   const [drafts, setDrafts] = useState<Record<string, SetEntry[]>>({})
   const [cardioDrafts, setCardioDrafts] = useState<Record<string, CardioEntry>>({})
@@ -56,6 +58,7 @@ export function WorkoutSession({ session, workouts, library, rotations, onChange
   const [setupEdit, setSetupEdit] = useState<string | null>(null)
   const [setupDraft, setSetupDraft] = useState('')
   const [overviewOpen, setOverviewOpen] = useState(false)
+  useDraftCapture('workout-session', { sessionId: session.id, day: session.day, expanded, sets: drafts, cardio: cardioDrafts, notes: noteDrafts, setupExercise: setupEdit, setup: setupDraft }, Boolean(Object.keys(drafts).length || Object.keys(cardioDrafts).length || Object.keys(noteDrafts).length || setupEdit))
   useEffect(() => { onDirty(Boolean(Object.keys(drafts).length || Object.keys(cardioDrafts).length || Object.keys(noteDrafts).length || setupEdit)); return () => onDirty(false) }, [drafts, cardioDrafts, noteDrafts, setupEdit, onDirty])
   const navigate = async (offset: number) => {
     if (setupEdit && !await confirmAction('Discard unsaved setup changes?')) return

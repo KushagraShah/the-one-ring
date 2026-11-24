@@ -12,7 +12,7 @@ See [setup and verification limits](docs/setup.md) before relying on the preview
 
 - [Architecture and persistence](docs/architecture.md)
 - [Current app behavior](docs/app-behavior.md)
-- [Product vision](docs/product-vision.md) and [next steps](docs/next-steps.md)
+- [Product vision](docs/product-vision.md)
 - [Supabase migrations](docs/supabase-migrations.md) and [Recipe Book installation](docs/recipe-book-supabase.md)
 
 ## License

@@ -1,11 +1,12 @@
 import { ChoiceSelect } from '../ChoiceSelect'
-import { confirmAction } from '../AppDialog'
+import { useScopedConfirm } from '../AppDialog'
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { Workout } from './WorkoutSession'
 import { ExerciseDetails } from './ExerciseDetails'
 import { Sheet } from './Sheet'
 import { SetupText } from './SetupText'
+import { useDraftCapture } from '../app/DraftCapture'
 
 export type Exercise = { id?: string; name: string; equipment: string; sets: string; kind?: 'strength' | 'cardio'; note?: string; instructions?: string; video?: string; tags?: string[]; archived?: boolean; alternatives?: string[]; rotationGroupId?: string; rotationMode?: 'primary' | 'complement'; plannedName?: string; plannedId?: string; routineSlotId?: string; sessionSlotId?: string; sessionItemId?: string; sessionSource?: 'planned' | 'cycle' | 'substitution' | 'extra' }
 
@@ -20,6 +21,7 @@ const empty: Exercise = { name: '', equipment: '', sets: '', note: '', instructi
 const tagColor = (tag: string) => [...tag.toLowerCase()].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 5
 
 export function ExerciseLibrary({ exercises, workouts, onSave, onDirty }: Props) {
+  const confirmAction = useScopedConfirm()
   const [editing, setEditing] = useState<Exercise | null>(null)
   const [originalName, setOriginalName] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -28,6 +30,7 @@ export function ExerciseLibrary({ exercises, workouts, onSave, onDirty }: Props)
   const [showArchived, setShowArchived] = useState(false)
   const [tagText, setTagText] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
+  useDraftCapture('workout-exercise', { originalName, exercise: editing, tagText }, !!editing)
   const selectedExercise = exercises.find(item => (item.id || item.name) === selected)
   useEffect(() => { onDirty(Boolean(editing)); return () => onDirty(false) }, [editing, onDirty])
   const tags = [...new Set(exercises.flatMap(exercise => exercise.tags || []))].sort((a, b) => a.localeCompare(b))

@@ -182,7 +182,7 @@ test('stale recipe saves preserve a recoverable draft and reload the winning acc
   state.revision++
   await page.getByRole('button', { name: 'Review recipe', exact: true }).click()
   await page.getByRole('button', { name: 'Save recipe', exact: true }).click()
-  const recovery = page.getByRole('dialog', { name: 'Recipes changed elsewhere' })
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
   await expect(recovery).toBeVisible()
   await expect(recovery.getByRole('button', { name: 'Retry recipe save' })).toHaveCount(0)
   const download = page.waitForEvent('download')
@@ -242,7 +242,7 @@ test('plans, sides and preparation dates survive reload and backups; failed save
   await page.getByRole('button', { name: 'Save side' }).click()
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await page.getByLabel('Name', { exact: true }).fill('Rice draft to recover')
-  const recovery = page.getByRole('dialog', { name: 'Could not save recipes' })
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
   await expect(recovery).toBeVisible()
   const draftDownload = page.waitForEvent('download')
   await recovery.getByRole('button', { name: 'Export text drafts' }).click()

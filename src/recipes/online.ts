@@ -11,6 +11,7 @@ export class OnlineRecipeStore {
   private busy = false
   private status: SaveStatus = 'saved'
   onStatus: (status: SaveStatus) => void = () => {}
+  getStatus() { return this.status }
   constructor(private client: SupabaseClient, private owner: string) {}
   async load() {
     const { data, error } = await this.client.rpc('tor_online_recipe_read', { p_owner: this.owner })

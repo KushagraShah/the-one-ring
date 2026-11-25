@@ -1,8 +1,9 @@
-import { expect, test, type Page } from '@playwright/test'
-import { readFileSync, statSync } from 'node:fs'
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
+import { mkdirSync, readFileSync, statSync } from 'node:fs'
 import { demoWorkoutBackup } from '../../src/workout/demo'
 import { sampleDays } from '../../src/workout/sampleDays'
 import { workspaceDocuments } from '../../src/workout/workspace'
+import { shiftDate, type Habit, type HabitData } from '../../src/habits/model'
 
 const owner = '10000000-0000-4000-8000-000000000001'
 type Document = { kind: string; id: string; body: Record<string, unknown> }
@@ -11,11 +12,16 @@ async function openApp(page: Page, name: 'Workouts' | 'Habits' | 'Recipes') {
   await page.locator('.app-strip:visible').getByRole('button', { name, exact: true }).click()
 }
 
-async function fakeBackend(page: Page, initialAvatar?: string, initial?: { documents: Document[]; revision: number }) {
+async function selectYesterday(page: Page) {
+  const today = await page.getByLabel('Date', { exact: true }).getAttribute('max')
+  await page.locator(`.habit-date-strip button[aria-label^="${shiftDate(today!, -1)}:"]`).click()
+}
+
+async function fakeBackend(page: Page, initialAvatar?: string, initial?: { documents: Document[]; revision: number; habits?: HabitData }) {
   let documents: Document[] = initial?.documents || []
   let revision = initial?.revision || 0
-  let habitData: unknown = null
-  let habitRevision = 0
+  let habitData: unknown = initial?.habits ?? null
+  let habitRevision = initial?.habits ? 1 : 0
   let lastHabitOperation = ''
   let offline = false
   let lastOperation = ''
@@ -400,7 +406,7 @@ test('routine and habit choices use accessible app views without native disclosu
   const picker = page.getByRole('dialog', { name: 'Schedule' })
   await expect(picker.getByRole('button', { name: 'Fixed weekdays' })).toHaveAttribute('aria-pressed', 'true')
   await picker.getByRole('button', { name: 'Flexible weekly target' }).click()
-  await expect(page.getByLabel('Times per week')).toBeVisible()
+  await expect(page.getByLabel('Weekly goal (points)', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Schedule', exact: true })).toContainText('Flexible weekly target')
   await expect(page.getByRole('button', { name: 'Schedule', exact: true })).toHaveAccessibleDescription('Flexible weekly target')
   await page.getByRole('button', { name: 'Schedule', exact: true }).focus()
@@ -435,10 +441,10 @@ test('demo contains fictional workout and habit history and resets edits', async
   await expect(page.getByRole('button', { name: /Chest press.*Shoulder press/ }).first()).toBeVisible()
   await openApp(page, 'Habits')
   await expect(page.getByText(/Fictional sample habits/)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Read for 20 minutes · Read a little' })).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: 'Did not do it · Read a little' }).click()
+  await expect(page.getByRole('button', { name: 'Read for 20 minutes (Done) · Read a little' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Did not do it (Missed) · Read a little' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Did not do it · Read a little' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Did not do it (Missed) · Read a little' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'History & insights' })).toBeVisible()
   await page.getByRole('button', { name: 'By habit', exact: true }).click()
@@ -446,7 +452,7 @@ test('demo contains fictional workout and habit history and resets edits', async
   await page.reload()
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
-  await expect(page.getByRole('button', { name: 'Read for 20 minutes · Read a little' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Read for 20 minutes (Done) · Read a little' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('signed-in accounts never receive demo workout or habit history', async ({ page }) => {
@@ -540,7 +546,8 @@ test('create, record and correct a habit without changing workouts', async ({ pa
   await page.getByRole('button', { name: 'Partial · Read', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Partial · Read', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('status', { name: '' })).toHaveCount(0)
+  await expect(page.locator('.habit-saving')).toHaveCount(0)
+  await expect(page.getByText('Habit changes saved.', { exact: true })).toBeVisible()
   expect(JSON.stringify(backend.records())).toBe(workoutsBefore)
   await page.reload()
   await openApp(page, 'Habits')
@@ -570,7 +577,7 @@ test('daily cards retain individual outcomes and notes without zero-streak clutt
   await page.getByRole('button', { name: 'Partial · Fixed one' }).click()
   const second = page.locator('.habit-daily-card').filter({ hasText: 'Fixed two' })
   await second.getByRole('button', { name: 'Add note' }).click()
-  await second.getByLabel('Note').fill('Keep this note')
+  await second.getByLabel('Note', { exact: true }).fill('Keep this note')
   await page.getByRole('button', { name: 'Missed · Fixed two' }).click()
   await expect(page.getByRole('button', { name: 'Partial · Fixed one' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: 'Missed · Fixed two' })).toHaveAttribute('aria-pressed', 'true')
@@ -603,7 +610,7 @@ test('Week opens the current calendar week before Monday 1am and stays put throu
   await expect(date).toHaveValue('2025-01-06')
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   await expect(date).toHaveValue('2025-01-13')
-  await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
+  await selectYesterday(page)
   await page.getByRole('button', { name: 'Week', exact: true }).click()
   await expect(date).toHaveValue('2025-01-12')
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
@@ -617,16 +624,16 @@ test('daily automatic cutoff saves notes, while manual Week selections survive f
   await openApp(page, 'Habits')
   const date = page.getByLabel('Date', { exact: true })
   await expect(date).toHaveValue('2024-12-31')
-  await expect(page.locator('.habit-daily-summary h2')).toContainText('Tuesday')
+  await expect(page.getByRole('heading', { name: /Tuesday.*December.*31.*2024/ })).toBeVisible()
   const card = page.locator('.habit-daily-card').filter({ hasText: 'Read a little' })
   await card.getByRole('button', { name: /note/i }).click()
-  await card.getByLabel('Note').fill('Cutoff note')
+  await card.getByLabel('Note', { exact: true }).fill('Cutoff note')
   await page.clock.fastForward('00:31')
   await expect(date).toHaveValue('2025-01-01')
-  await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
+  await selectYesterday(page)
   await expect(date).toHaveValue('2024-12-31')
   await card.getByRole('button', { name: 'Edit note' }).click()
-  await expect(card.getByLabel('Note')).toHaveValue('Cutoff note')
+  await expect(card.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Cutoff note')
   await card.getByRole('button', { name: 'Close note' }).click()
   await page.getByRole('button', { name: 'Week', exact: true }).click()
   await page.getByRole('button', { name: 'Previous week' }).click()
@@ -671,7 +678,7 @@ test('cutoff waits for the note save and stays on its date when that save fails'
   await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   await page.getByRole('button', { name: 'Add note' }).click()
-  await page.getByLabel('Note').fill('Do not lose this')
+  await page.getByLabel('Note', { exact: true }).fill('Do not lose this')
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   let writes = 0
@@ -1074,7 +1081,7 @@ for (const failure of ['error', 'conflict'] as const) {
     await page.locator('.history-button').first().click()
     await page.locator('.review-exercise').first().getByRole('button', { name: 'Edit', exact: true }).click()
     const editor = page.getByRole('dialog', { name: /^Edit / })
-    await editor.getByLabel('Notes').fill('Keep correction during recovery')
+    await editor.getByRole('textbox', { name: 'Notes', exact: true }).fill('Keep correction during recovery')
     release()
     const recovery = page.getByRole('dialog', { name: 'Save recovery' })
     await expect(recovery.getByText(failure === 'error' ? 'Could not save workout data' : 'Workout data changed elsewhere')).toBeVisible()
@@ -1096,7 +1103,7 @@ for (const failure of ['error', 'conflict'] as const) {
       await expect(page.getByRole('dialog', { name: 'Notice' })).toContainText('All three apps must be loaded and saved')
       await page.getByRole('dialog', { name: 'Notice' }).getByRole('button', { name: 'OK' }).click()
       await openApp(page, 'Workouts')
-      await expect(editor.getByLabel('Notes')).toHaveValue('Keep correction during recovery')
+      await expect(editor.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue('Keep correction during recovery')
       expect(writes).toBe(2)
     } else {
       const second = page.waitForEvent('download')
@@ -1265,7 +1272,7 @@ test('a failed habit save preserves an unblurred note draft without another writ
   await expect.poll(() => writes).toBe(1)
   const second = page.locator('.habit-daily-card').filter({ hasText: 'Second' })
   await second.getByRole('button', { name: 'Add note' }).click()
-  await second.getByLabel('Note').fill('Unconfirmed note survives')
+  await second.getByLabel('Note', { exact: true }).fill('Unconfirmed note survives')
   release()
   const recovery = page.getByRole('dialog', { name: 'Save recovery' })
   await expect(recovery.getByText('Could not save habits')).toBeVisible()
@@ -1619,18 +1626,18 @@ test('personal labels toggle and preserve notes across reload', async ({ page })
   await page.getByRole('button', { name: 'Save habit' }).click()
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   const card = page.locator('.habit-daily-card').filter({ hasText: 'Test habit' })
-  await card.getByRole('button', { name: 'Passed · Test habit' }).click()
+  await card.getByRole('button', { name: 'Passed (Done) · Test habit' }).click()
   await card.getByRole('button', { name: 'Add note' }).click()
-  await card.getByLabel('Note').fill('Remember this')
-  await card.getByRole('button', { name: 'Nearly · Test habit' }).click()
+  await card.getByLabel('Note', { exact: true }).fill('Remember this')
+  await card.getByRole('button', { name: 'Nearly (Partial) · Test habit' }).click()
   await expect.poll(() => (backend.habits() as { entries: { outcome: string; note: string }[] }).entries[0]).toMatchObject({ outcome: 'partial', note: 'Remember this' })
-  await card.getByRole('button', { name: 'Nearly · Test habit' }).click()
+  await card.getByRole('button', { name: 'Nearly (Partial) · Test habit' }).click()
   await expect.poll(() => (backend.habits() as { entries: unknown[]; unloggedNotes: { note: string }[] }).unloggedNotes[0]?.note).toBe('Remember this')
   await page.reload()
   await openApp(page, 'Habits')
   await card.getByRole('button', { name: 'Edit note' }).click()
-  await expect(card.getByLabel('Note')).toHaveValue('Remember this')
-  await card.getByRole('button', { name: 'Passed · Test habit' }).click()
+  await expect(card.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Remember this')
+  await card.getByRole('button', { name: 'Passed (Done) · Test habit' }).click()
   await expect.poll(() => (backend.habits() as { entries: { note: string }[] }).entries[0].note).toBe('Remember this')
 })
 
@@ -1648,15 +1655,15 @@ test('custom missed and intentional skip toggle separately with stable date cont
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   const card = page.locator('.habit-daily-card').filter({ hasText: 'Sleep' })
   await expect(page.locator('.habit-date-strip button')).toHaveCount(7)
-  await card.getByRole('button', { name: 'Skipped · Sleep' }).click()
-  await expect(page.getByLabel('Fixed habit daily summary')).toContainText('1 of 1 fixed habits logged')
-  await expect(card.getByRole('button', { name: 'Skipped · Sleep' })).toHaveCSS('background-color', 'rgb(81, 45, 48)')
+  await card.getByRole('button', { name: 'Skipped (Missed) · Sleep' }).click()
+  await expect(page.locator('.habit-daily-header')).toContainText('1 of 1 fixed habits logged')
+  await expect(card.getByRole('button', { name: 'Skipped (Missed) · Sleep' })).toHaveCSS('background-color', 'rgb(81, 45, 48)')
   await card.getByRole('button', { name: 'Intentional skip Sleep' }).click()
-  await expect(page.getByLabel('Fixed habit daily summary')).toContainText('No fixed habits due')
+  await expect(page.locator('.habit-daily-header')).toContainText('No fixed habits due')
   await expect.poll(() => (backend.habits() as { entries: { outcome: string }[] }).entries[0]?.outcome).toBe('skipped')
   await card.getByRole('button', { name: 'Intentional skip Sleep' }).click()
   await expect.poll(() => (backend.habits() as { entries: unknown[] }).entries.length).toBe(0)
-  for (const label of ['Done · Sleep', 'Partial · Sleep', 'Skipped · Sleep']) {
+  for (const label of ['Done · Sleep', 'Partial · Sleep', 'Skipped (Missed) · Sleep']) {
     const button = card.getByRole('button', { name: label, exact: true })
     await button.click()
     await expect(button).toHaveAttribute('aria-pressed', 'true')
@@ -1666,7 +1673,7 @@ test('custom missed and intentional skip toggle separately with stable date cont
   const before = await page.getByLabel('Date', { exact: true }).boundingBox()
   await expect(page.getByRole('button', { name: 'Today', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Today', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
+  await selectYesterday(page)
   const after = await page.getByLabel('Date', { exact: true }).boundingBox()
   expect(before?.width).toBe(after?.width)
   const nav = page.getByRole('navigation', { name: 'Habit Tracker' })
@@ -1762,9 +1769,9 @@ test('historical schedule and outcome criteria survive effective-dated edits', a
   await page.getByRole('button', { name: 'Save habit' }).click()
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   await page.getByLabel('Date', { exact: true }).fill('2026-11-02')
-  await expect(page.getByRole('button', { name: 'Previous standard · Reading' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Previous standard (Done) · Reading' })).toBeVisible()
   await page.getByLabel('Date', { exact: true }).fill('2026-11-08')
-  await expect(page.getByRole('button', { name: 'Previous standard · Reading' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Previous standard (Done) · Reading' })).toHaveCount(0)
 })
 
 test('skipped fixed days are paused in insights and remain correctable', async ({ page }) => {
@@ -1778,10 +1785,10 @@ test('skipped fixed days are paused in insights and remain correctable', async (
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   await page.getByRole('button', { name: 'Intentional skip Reading' }).click()
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
-  const today = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: 'Today · fixed habits' }) })
-  await expect(today.getByText('0 of 0 logged')).toBeVisible()
+  const today = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: /^Today · 2026-11-08 · fixed habits/ }) })
+  await expect(today.getByText('0 of 0 due logged')).toBeVisible()
   await page.getByRole('button', { name: 'By habit', exact: true }).click()
-  await page.getByRole('button', { name: /Reading.*Not enough fixed data/ }).click()
+  await page.getByRole('button', { name: /Reading.*No fixed outcomes recorded/ }).click()
   await page.getByRole('button', { name: /2026-11-08.*Skipped/ }).click()
   await expect(page.getByRole('button', { name: 'Intentional skip Reading' })).toHaveAttribute('aria-pressed', 'true')
 })
@@ -1803,15 +1810,16 @@ test('habit insights retain history and notes after inline correction', async ({
   await page.getByRole('button', { name: 'Close note' }).click()
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
   await page.getByRole('button', { name: 'Weeks', exact: true }).click()
-  await expect(page.getByRole('img', { name: /2026-10-26: performance no data, coverage 0%/ })).toBeVisible()
-  await expect(page.getByRole('img', { name: /2026-11-02: performance 0%, coverage 14%/ })).toBeVisible()
+  await expect(page.getByRole('img', { name: /2026-10-26–2026-11-01: fixed performance no data, fixed coverage 0%/ })).toBeVisible()
+  await expect(page.getByRole('img', { name: /2026-11-02–2026-11-08: fixed performance 0%, fixed coverage 14%/ })).toBeVisible()
   await page.getByRole('button', { name: 'By habit' }).click()
-  await page.getByRole('button', { name: /Reading.*Not enough fixed data/ }).click()
+  await page.getByRole('button', { name: /Reading.*1 fixed outcome recorded/ }).click()
   const history = page.locator('.habit-panel')
   await expect(history.getByText('A recorded note')).toBeVisible()
   await history.getByRole('button', { name: /2026-11-08.*Missed/ }).click()
-  await expect(page.getByLabel('Note')).toHaveValue('A recorded note')
-  await page.getByLabel('Note').fill('Corrected note')
+  await expect(page.locator('.habit-daily-card').filter({ hasText: 'Reading' })).toBeInViewport()
+  await expect(page.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('A recorded note')
+  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Corrected note')
   await page.getByRole('button', { name: 'Partial · Reading' }).click()
   await page.getByRole('button', { name: '← Back to insights' }).click()
   await expect(page.locator('.habit-panel').getByText('Corrected note')).toBeVisible()
@@ -1828,10 +1836,10 @@ test('week grid uses distinct accessible states for fixed and flexible opportuni
   await page.getByRole('button', { name: 'Week', exact: true }).click()
   await expect(page.getByLabel('Week legend')).toContainText('○ Available')
   const flex = page.locator('.habit-week-card').filter({ hasText: 'Go for a walk' })
-  await expect(flex.getByRole('button', { name: /available, no entry/ }).first()).toBeEnabled()
-  await expect(flex.getByRole('button', { name: /available, no entry/ }).first()).toContainText('○')
+  await expect(flex.getByRole('button', { name: /available, no entry/i }).first()).toBeEnabled()
+  await expect(flex.getByRole('button', { name: /available, no entry/i }).first()).toContainText('○')
   const stretch = page.locator('.habit-week-card').filter({ hasText: 'Stretch' })
-  await expect(stretch.getByRole('button', { name: /not scheduled/ }).first()).toBeDisabled()
+  await expect(stretch.getByRole('button', { name: /not scheduled/i }).first()).toBeDisabled()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
@@ -1852,7 +1860,7 @@ test('week navigation and habit notes save without a separate action', async ({ 
   await expect(page.locator('.habit-inline-note textarea')).toBeVisible()
 })
 
-test('week correction uses personal labels and closes immediately', async ({ page }) => {
+test('week correction keeps personal outcomes and notes open until explicit Close', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-08T12:00:00'))
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
@@ -1860,13 +1868,20 @@ test('week correction uses personal labels and closes immediately', async ({ pag
   await page.getByRole('button', { name: 'Week', exact: true }).click()
   const reading = page.locator('.habit-week-section .habit-week-card').filter({ hasText: 'Read a little' })
   await reading.getByRole('button', { name: /Read a little, 2026-11-02/ }).click()
-  const editor = reading.locator('.habit-panel')
+  const editor = page.getByRole('dialog', { name: /Read a little.*Monday, November 2, 2026/ })
   await expect(editor.getByRole('button', { name: 'Read for 20 minutes' })).toBeVisible()
   await expect(editor.getByRole('button', { name: 'Partial', exact: true })).toHaveCount(0)
   await editor.getByRole('button', { name: 'Read for a few minutes' }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(editor).toBeVisible()
+  await expect(editor.getByRole('button', { name: 'Read for a few minutes' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(reading.getByRole('button', { name: /Read a little, 2026-11-02/ })).toHaveAttribute('aria-pressed', 'true')
+  await editor.getByLabel('Note', { exact: true }).fill('Added after the outcome')
+  await editor.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(editor).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Week of 2026-11-02' })).toBeVisible()
   await expect(reading.getByRole('button', { name: /Read a little, 2026-11-02, Read for a few minutes/ })).toBeVisible()
+  await reading.getByRole('button', { name: /Read a little, 2026-11-02/ }).click()
+  await expect(editor.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Added after the outcome')
 })
 
 test('daily history and catch-up offer explicit phone-friendly navigation', async ({ page }) => {
@@ -1876,11 +1891,13 @@ test('daily history and catch-up offer explicit phone-friendly navigation', asyn
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
   const reading = page.locator('article.habit-daily-card').filter({ hasText: 'Read a little' })
-  await expect(reading.getByLabel('Recent days for Read a little')).toBeVisible()
-  await expect(page.getByLabel('Fixed habit daily summary')).toContainText('fixed habits logged')
+  await expect(reading.getByRole('img', { name: /^Last 7 days for Read a little:/ })).toBeVisible()
+  await expect(reading).toContainText('Last 7 days')
+  await expect(page.locator('.habit-date-strip button[aria-current="date"]')).toHaveAttribute('aria-label', /^2026-11-08:/)
+  await expect(page.locator('.habit-daily-header')).toContainText('fixed habits logged')
   await page.getByRole('button', { name: 'Week', exact: true }).click()
   await page.locator('.habit-week-section .habit-week-card').filter({ hasText: 'Read a little' }).getByRole('button', { name: /Read a little, 2026-11-07/ }).click()
-  await expect(page.locator('.habit-week-card .habit-panel').getByRole('button', { name: 'Read for 20 minutes', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: /Read a little.*Saturday, November 7, 2026/ }).getByRole('button', { name: 'Read for 20 minutes', exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
@@ -1969,9 +1986,9 @@ test('habit criteria, draft protection and neutral themed surfaces', async ({ pa
   expect(background).toBe('rgb(41, 41, 41)')
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Partial', exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Read for a few minutes · Read a little' }).click()
+  await page.getByRole('button', { name: 'Read for a few minutes (Partial) · Read a little' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Read for a few minutes · Read a little' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Read for a few minutes (Partial) · Read a little' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('confirmed exercise survives reload and workout completion commits together', async ({ page }) => {
@@ -2074,7 +2091,7 @@ test('editing a legacy two-set result preserves both recorded sets', async ({ pa
   await page.getByRole('button', { name: 'Activity', exact: true }).click()
   await page.locator('.history-button').filter({ hasText: 'Legacy' }).click()
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
-  await page.getByLabel('Notes').fill('Corrected note')
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Corrected note')
   await page.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click()
   await expect.poll(() => ((backend.records().find(item => item.id === id)?.body.exercises as { sets: unknown[]; note: string }[]) || [])[0]?.note).toBe('Corrected note')
   expect(((backend.records().find(item => item.id === id)!.body.exercises as { sets: unknown[] }[])[0].sets)).toHaveLength(2)
@@ -2360,14 +2377,15 @@ test('history filters by exercise identity and dates, and reveals older pages', 
 })
 
 test('archived note-only history remains accessible in Week', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-08T12:00:00'))
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
   const card = page.locator('.habit-daily-card').filter({ hasText: 'Read a little' })
   await card.getByRole('button', { name: 'Add note' }).click()
-  await card.getByLabel('Note').fill('Retained only')
+  await card.getByLabel('Note', { exact: true }).fill('Retained only')
   await card.getByRole('button', { name: 'Close note' }).click()
-  await card.getByRole('button', { name: 'Read for 20 minutes · Read a little' }).click()
+  await card.getByRole('button', { name: 'Read for 20 minutes (Done) · Read a little' }).click()
   await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
   await page.getByRole('button', { name: /Read a little.*Active/ }).click()
   await page.locator('.habit-modal').getByRole('button', { name: 'Archive', exact: true }).click()
@@ -2377,19 +2395,19 @@ test('archived note-only history remains accessible in Week', async ({ page }) =
   await expect(archivedCard).toContainText('Archived · note only')
   await expect(archivedCard.locator('.habit-inline-outcomes')).toHaveCount(0)
   await archivedCard.getByRole('button', { name: 'Edit note' }).click()
-  await expect(archivedCard.getByLabel('Note')).toHaveValue('Retained only')
-  await archivedCard.getByLabel('Note').fill('Updated retained note')
+  await expect(archivedCard.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Retained only')
+  await archivedCard.getByRole('textbox', { name: 'Note', exact: true }).fill('Updated retained note')
   await archivedCard.getByRole('button', { name: 'Close note' }).click()
-  await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
+  await selectYesterday(page)
   const historical = page.locator('.habit-daily-card').filter({ hasText: 'Read a little' })
   await expect(historical.locator('.habit-inline-outcomes')).toHaveCount(1)
-  await historical.getByRole('button', { name: 'Did not do it · Read a little' }).click()
-  await expect(historical.getByRole('button', { name: 'Did not do it · Read a little' })).toHaveAttribute('aria-pressed', 'true')
+  await historical.getByRole('button', { name: 'Did not do it (Missed) · Read a little' }).click()
+  await expect(historical.getByRole('button', { name: 'Did not do it (Missed) · Read a little' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Today', exact: true }).click()
   await page.getByRole('button', { name: 'Week', exact: true }).click()
-  await page.locator('.habit-week-card').filter({ hasText: 'Read a little' }).getByRole('button', { name: /unlogged note/ }).click()
+  await page.locator('.habit-week-card').filter({ hasText: 'Read a little' }).getByRole('button', { name: /Unlogged; note saved/ }).click()
   await expect(page.locator('.habit-modal textarea')).toHaveValue('Updated retained note')
-  await expect(page.locator('.habit-modal')).toContainText('Not scheduled on this date')
+  await expect(page.locator('.habit-modal')).toContainText('No new outcome is available on this date')
 })
 
 
@@ -2399,7 +2417,7 @@ test('selecting today in the date strip resumes automatic midnight rollover', as
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
   const date = page.getByLabel('Date', { exact: true })
-  await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
+  await selectYesterday(page)
   await page.clock.setSystemTime(new Date('2025-01-02T00:00:00'))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(date).toHaveValue('2024-12-31')
@@ -2416,13 +2434,13 @@ test('habit calendar shows the full month and disables future dates', async ({ p
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
-  const calendar = page.getByLabel('Calendar 2024-02')
+  const calendar = page.getByRole('region', { name: 'February 2024 calendar', exact: true })
   await expect(calendar.locator('button')).toHaveCount(29)
   await expect(calendar.getByRole('button', { name: '2024-02-29, future date' })).toBeDisabled()
   await expect(calendar.getByRole('button', { name: /^2024-02-15,/ })).toBeEnabled()
   await page.getByLabel('Month').fill('2024-01')
-  await expect(page.getByLabel('Calendar 2024-01').locator('button')).toHaveCount(31)
-  await expect(page.getByLabel('Calendar 2024-01').getByRole('button', { name: /^2024-01-31,/ })).toBeEnabled()
+  await expect(page.getByRole('region', { name: 'January 2024 calendar', exact: true }).locator('button')).toHaveCount(31)
+  await expect(page.getByRole('region', { name: 'January 2024 calendar', exact: true }).getByRole('button', { name: /^2024-01-31,/ })).toBeEnabled()
 })
 
 test('flexible weekly summary does not reveal a later pause on an earlier day', async ({ page }) => {
@@ -2435,7 +2453,832 @@ test('flexible weekly summary does not reveal a later pause on an earlier day', 
   await page.locator('.habit-modal').getByRole('button', { name: 'Pause indefinitely' }).click()
   await page.locator('.habit-modal').getByRole('button', { name: 'Close' }).click()
   await page.getByRole('button', { name: 'Daily', exact: true }).click()
-  await expect(page.locator('.habit-weekly-summary')).toContainText('not judged (pause or skip)')
-  await page.getByRole('button', { name: 'Yesterday', exact: true }).click()
-  await expect(page.locator('.habit-weekly-summary')).not.toContainText('not judged')
+  await expect(page.locator('.habit-weekly-summary')).toContainText(/Not judged.*Paused/i)
+  await selectYesterday(page)
+  await expect(page.locator('.habit-weekly-summary')).not.toContainText(/Not judged/i)
 })
+
+// Fictional format-1 fixtures share the online mock's revision and write handling.
+function uxHabit(number: number, title: string, overrides: Partial<Habit> = {}): Habit {
+  return {
+    id: `70000000-0000-4000-8000-${String(number).padStart(12, '0')}`,
+    title, icon: '', description: '', start: '2026-10-01', end: null, archived: false,
+    schedules: [{ effective: '2026-10-01', kind: 'fixed', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }],
+    criteria: [{ effective: '2026-10-01', done: '', partial: '', missed: '' }], pauses: [],
+    ...overrides,
+  }
+}
+
+function weeklyHabit(number: number, title: string, weekdays = [0, 1, 2, 3, 4, 5, 6], target = 1): Habit {
+  return uxHabit(number, title, { schedules: [{ effective: '2026-10-01', kind: 'flexible', weekdays, target }] })
+}
+
+async function openHabitFixture(page: Page, data: HabitData, now = '2026-11-08T12:00:00') {
+  await page.clock.setFixedTime(new Date(now))
+  const backend = await fakeBackend(page, undefined, { documents: [], revision: 0, habits: data })
+  await page.goto('/')
+  await openApp(page, 'Habits')
+  await expect(page.getByRole('heading', { name: 'Habit Tracker' })).toBeVisible()
+  return backend
+}
+
+async function expectCenteredHabitDialog(page: Page, dialog: Locator) {
+  await expect(dialog).toBeVisible()
+  const viewport = page.viewportSize()!
+  const box = (await dialog.boundingBox())!
+  expect(box.x).toBeGreaterThanOrEqual(8)
+  expect(box.y).toBeGreaterThanOrEqual(8)
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width - 8)
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height - 8)
+  expect(Math.abs(box.x - (viewport.width - box.x - box.width))).toBeLessThanOrEqual(2)
+  if (viewport.width >= 1000) expect(Math.abs(box.y - (viewport.height - box.y - box.height))).toBeLessThanOrEqual(2)
+  const close = dialog.getByRole('button', { name: 'Close', exact: true }).first()
+  await expect(close).toBeInViewport({ ratio: 1 })
+  const closeBox = (await close.boundingBox())!
+  expect(closeBox.width).toBeGreaterThanOrEqual(44)
+  expect(closeBox.height).toBeGreaterThanOrEqual(44)
+}
+
+test('weekly Skip stays on its own day, two Partial meet a goal, and empty weeks are Not met', async ({ page }, info) => {
+  const weekend = weeklyHabit(1, 'Weekend hair care', [5, 6])
+  const partials = weeklyHabit(2, 'Practice a language')
+  const empty = weeklyHabit(3, 'Call a friend')
+  const skipped = weeklyHabit(4, 'Creative practice')
+  const below = weeklyHabit(5, 'Read a chapter', [0, 1, 2, 3, 4, 5, 6], 2)
+  const paused = weeklyHabit(6, 'Weekend garden', [5, 6])
+  paused.pauses = [{ start: '2026-11-04', end: '2026-11-04' }]
+  const data: HabitData = { version: 1, habits: [weekend, partials, empty, skipped, below, paused], entries: [
+    { habitId: weekend.id, date: '2026-11-07', outcome: 'skipped', note: 'One day only' },
+    { habitId: weekend.id, date: '2026-11-08', outcome: 'done', note: '' },
+    ...['2026-11-03', '2026-11-05'].map(date => ({ habitId: partials.id, date, outcome: 'partial' as const, note: '' })),
+    ...Array.from({ length: 7 }, (_, index) => ({ habitId: skipped.id, date: shiftDate('2026-11-02', index), outcome: 'skipped' as const, note: '' })),
+    { habitId: below.id, date: '2026-11-04', outcome: 'partial', note: '' },
+  ] }
+  const backend = await openHabitFixture(page, data, '2026-11-09T12:00:00')
+  const summary = page.locator('.habit-weekly-summary')
+  await expect(summary).toContainText('Weekend hair care')
+  await expect(page.locator('.habit-daily-card').filter({ hasText: 'Weekend hair care' })).toHaveCount(0)
+  await page.getByLabel('Date', { exact: true }).fill('2026-11-07')
+  await expect(summary).toContainText(/Weekend hair care.*0\s*\/\s*1.*In progress/)
+  await expect(summary).not.toContainText(/skipped week|pause or skip/i)
+  await page.getByLabel('Date', { exact: true }).fill('2026-11-08')
+  await expect(summary).toContainText(/Weekend hair care.*1\s*\/\s*1.*Target reached so far/)
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await page.getByRole('button', { name: 'Weeks', exact: true }).click()
+  await page.getByRole('button', { name: /^2026-11-09–2026-11-15/ }).click()
+  const openWeek = page.getByRole('dialog', { name: '2026-11-09–2026-11-15', exact: true })
+  await expect(openWeek.getByRole('listitem').filter({ hasText: 'Weekend hair care' })).toContainText(/0\s*\/\s*1.*In progress/)
+  await openWeek.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: /^2026-11-02–2026-11-08/ }).click()
+  const week = page.getByRole('dialog', { name: '2026-11-02–2026-11-08', exact: true })
+  for (const title of ['Weekend hair care', 'Practice a language']) {
+    await expect(week.getByRole('listitem').filter({ hasText: title })).toContainText(/1\s*\/\s*1.*\bMet\b/)
+  }
+  for (const title of ['Call a friend', 'Creative practice']) {
+    await expect(week.getByRole('listitem').filter({ hasText: title })).toContainText(/0\s*\/\s*1.*Not met/)
+  }
+  await expect(week.getByRole('listitem').filter({ hasText: 'Read a chapter' })).toContainText(/0\.5\s*\/\s*2.*Not met/)
+  await expect(week.getByRole('listitem').filter({ hasText: 'Weekend garden' })).toContainText(/Not judged.*Paused/)
+  expect(backend.habits()).toEqual(data)
+  expect((backend.habits() as HabitData).entries.filter(entry => entry.habitId === empty.id)).toEqual([])
+  await week.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: 'By habit', exact: true }).click()
+  const rows = page.locator('.habit-period-rank button')
+  await expect(rows).toHaveCount(6)
+  for (const row of await rows.all()) await expect(row).toContainText('Weekly goal')
+  await expect(page.getByText('Not enough fixed data', { exact: true })).toHaveCount(0)
+  await captureHabitEvidence(page, info, 'all-flexible-by-habit')
+})
+
+test('Week keeps the same editor through replacement, unlog and Skip and preserves notes on reload', async ({ page }) => {
+  const habit = weeklyHabit(1, 'Evening practice')
+  const backend = await openHabitFixture(page, { version: 1, habits: [habit], entries: [] })
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  const cell = page.getByRole('button', { name: /^Evening practice, 2026-11-06,/ })
+  await cell.click()
+  const editor = page.getByRole('dialog', { name: /Evening practice.*Friday, November 6, 2026/ })
+  await expectCenteredHabitDialog(page, editor)
+  const original = await editor.elementHandle()
+  await editor.getByLabel('Note', { exact: true }).fill('Note before outcomes')
+  for (const [label, outcome] of [['Done', 'done'], ['Partial', 'partial'], ['Partial', null], ['Skip habit', 'skipped'], ['Skip habit', null]] as const) {
+    await editor.getByRole('button', { name: label, exact: true }).click()
+    await expect(editor).toBeVisible()
+    expect(await original!.evaluate(element => element.isConnected && (element as HTMLDialogElement).open)).toBe(true)
+    await expect(editor.getByRole('button', { name: label, exact: true })).toHaveAttribute('aria-pressed', outcome ? 'true' : 'false')
+    await expect.poll(() => (backend.habits() as HabitData).entries.find(entry => entry.date === '2026-11-06')?.outcome ?? null).toBe(outcome)
+    await expect(editor.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Note before outcomes')
+  }
+  await editor.getByRole('textbox', { name: 'Note', exact: true }).fill('Note after outcomes')
+  await editor.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(editor).toHaveCount(0)
+  await expect.poll(() => (backend.habits() as HabitData).unloggedNotes).toEqual([{ habitId: habit.id, date: '2026-11-06', note: 'Note after outcomes' }])
+  await page.reload()
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  await cell.click()
+  await expect(editor.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Note after outcomes')
+  await expect(editor.getByRole('button', { name: 'Partial', exact: true })).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('unlogging the last archived Week record keeps correction open and prevents a fresh outcome', async ({ page }) => {
+  const habit = uxHabit(1, 'Archived sketch', { archived: true })
+  const backend = await openHabitFixture(page, { version: 1, habits: [habit], entries: [{ habitId: habit.id, date: '2026-11-05', outcome: 'done', note: '' }] })
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  const row = page.locator('.habit-week-card').filter({ hasText: habit.title })
+  await row.getByRole('button', { name: /^Archived sketch, 2026-11-05,/ }).click()
+  const editor = page.getByRole('dialog', { name: /Archived sketch.*Thursday, November 5, 2026/ })
+  const original = await editor.elementHandle()
+  await editor.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(row).toHaveCount(0)
+  await expect(editor).toBeVisible()
+  expect(await original!.evaluate(element => element.isConnected)).toBe(true)
+  await expect(editor.getByRole('button', { name: /^(Done|Partial|Missed|Skip habit)$/ })).toHaveCount(0)
+  await expect(editor).toContainText('No new outcome is available on this date')
+  await editor.getByRole('textbox', { name: 'Note', exact: true }).fill('A retained archived note')
+  await editor.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect.poll(() => (backend.habits() as HabitData).entries).toEqual([])
+  await expect.poll(() => (backend.habits() as HabitData).unloggedNotes).toEqual([{ habitId: habit.id, date: '2026-11-05', note: 'A retained archived note' }])
+  await row.getByRole('button', { name: /2026-11-05, Unlogged; note saved/ }).click()
+  await expect(editor.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('A retained archived note')
+  await expect(editor.getByRole('button', { name: 'Done', exact: true })).toHaveCount(0)
+})
+
+test('old catch-up and picker dates stay visibly selected and note-only history keeps canonical meaning', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 })
+  const habit = uxHabit(1, 'Read a page', { criteria: [
+    { effective: '2026-10-01', done: 'Read one page', partial: 'Read a paragraph', missed: 'Skipped' },
+    { effective: '2026-11-06', done: 'Read a chapter', partial: 'Read a page', missed: 'Skipped' },
+  ] })
+  const backend = await openHabitFixture(page, { version: 1, habits: [habit], entries: [{ habitId: habit.id, date: '2026-11-03', outcome: 'done', note: '' }], unloggedNotes: [{ habitId: habit.id, date: '2026-11-02', note: 'Kept without an outcome' }] })
+  await expect(page.locator('.habit-catchup')).toContainText(/previous 7 days/i)
+  await expect(page.locator('.habit-catchup')).toContainText(/unlogged fixed habits/i)
+  await page.locator('.habit-catchup-chips button').last().click()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-11-01')
+  const selected = page.locator('.habit-date-strip button[aria-current="date"]')
+  await expect(selected).toHaveCount(1)
+  await expect(selected).toHaveAttribute('aria-label', /^2026-11-01:/)
+  await expect(selected).toBeInViewport({ ratio: 1 })
+  await page.getByLabel('Date', { exact: true }).fill('2026-10-12')
+  await expect(selected).toHaveAttribute('aria-label', /^2026-10-12:/)
+  await expect(selected).toBeInViewport({ ratio: 1 })
+  await page.getByRole('button', { name: 'Today', exact: true }).click()
+  await page.locator('.habit-date-strip button[aria-label^="2026-11-07:"]').click()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-11-07')
+  const card = page.locator('.habit-daily-card').filter({ hasText: habit.title })
+  const history = card.getByRole('img', { name: /^Last 7 days for Read a page:/ })
+  await expect(history).toHaveAttribute('aria-label', /2026-11-02: Unlogged; note saved/)
+  await expect(history).toHaveAttribute('aria-label', /2026-11-03: Read one page \(Done\)/)
+  await expect(history.locator('.habit-marker.is-note')).toContainText('✎')
+  await expect(history.getByRole('button')).toHaveCount(0)
+  const customMissed = card.getByRole('button', { name: /^Skipped.*Read a page$/ })
+  await expect(customMissed).toContainText('Missed')
+  await customMissed.click()
+  await expect.poll(() => (backend.habits() as HabitData).entries.find(entry => entry.date === '2026-11-07')?.outcome).toBe('missed')
+  await card.getByRole('button', { name: 'Intentional skip Read a page' }).click()
+  await expect.poll(() => (backend.habits() as HabitData).entries.find(entry => entry.date === '2026-11-07')?.outcome).toBe('skipped')
+  await expect(card.getByRole('button', { name: /^Read a chapter.*Read a page$/ })).toContainText('Done')
+  await expect(card.getByRole('button', { name: /^Read a page.*Read a page$/ })).toContainText('Partial')
+})
+
+test('field errors reveal the first invalid field and keep unrelated form drafts in a short viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 420 })
+  const backend = await openHabitFixture(page, { version: 1, habits: [], entries: [] })
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  const form = page.getByRole('dialog', { name: 'Create habit', exact: true })
+  await form.getByLabel('Description', { exact: true }).fill('Keep this optional draft')
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  const title = form.getByLabel('Title', { exact: true })
+  await expect(title).toBeFocused()
+  await expect(title).toBeInViewport({ ratio: 1 })
+  await expect(title).toHaveAttribute('aria-invalid', 'true')
+  await expect(title).toHaveAccessibleDescription(/Enter a habit name/)
+  await title.fill('A weekly practice')
+  await form.getByRole('button', { name: 'Schedule', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Schedule', exact: true }).getByRole('button', { name: 'Flexible weekly target' }).click()
+  for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) await form.getByLabel(day, { exact: true }).uncheck()
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  await expect(form.getByText('Choose at least one day.', { exact: true })).toBeVisible()
+  await expect(form.getByLabel('Mon', { exact: true })).toBeFocused()
+  for (const day of ['Mon', 'Tue', 'Wed']) await form.getByLabel(day, { exact: true }).check()
+  const goal = form.getByLabel('Weekly goal (points)', { exact: true })
+  for (const value of ['', '1.5', '4']) {
+    await goal.fill(value)
+    await form.getByRole('button', { name: 'Save habit' }).click()
+    await expect(goal).toHaveValue(value)
+    await expect(goal).toBeFocused()
+    await expect(goal).toBeInViewport({ ratio: 1 })
+    await expect(goal).toHaveAttribute('aria-invalid', 'true')
+    await expect(goal).toHaveAccessibleDescription(/whole-number goal from 1 to 3/)
+  }
+  await goal.fill('2')
+  await form.getByLabel('Start date', { exact: true }).fill('2026-11-02')
+  const end = form.getByLabel('End date (optional)', { exact: true })
+  await end.fill('2026-11-01')
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  await expect(end).toBeFocused()
+  await expect(end).toHaveAccessibleDescription(/end date on or after the start date/)
+  await end.fill('2026-11-30')
+  await expect(form.getByRole('textbox', { name: 'Description', exact: true })).toHaveValue('Keep this optional draft')
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  await expect(form).toHaveCount(0)
+  await expect.poll(() => (backend.habits() as HabitData).habits[0]).toMatchObject({ title: 'A weekly practice', description: 'Keep this optional draft', end: '2026-11-30', schedules: [{ effective: '2026-11-02', kind: 'flexible', weekdays: [0, 1, 2], target: 2 }] })
+})
+
+test('Extend focuses the unchanged end and saves only the requested active-date change', async ({ page }) => {
+  const habit = uxHabit(1, 'Ended practice', { end: '2026-10-25', description: 'Preserve the old practice', pauses: [{ start: '2026-10-10', end: '2026-10-11' }] })
+  const data: HabitData = { version: 1, habits: [habit], entries: [{ habitId: habit.id, date: '2026-10-20', outcome: 'done', note: 'Historical entry' }], unloggedNotes: [{ habitId: habit.id, date: '2026-10-21', note: 'Historical note' }] }
+  const backend = await openHabitFixture(page, data)
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Ended practice.*Ended/ }).click()
+  await page.getByRole('dialog', { name: /Ended practice/ }).getByRole('button', { name: /Extend/ }).click()
+  const form = page.getByRole('dialog', { name: 'Edit habit', exact: true })
+  const end = form.getByLabel('End date (optional)', { exact: true })
+  await expect(end).toHaveValue('2026-10-25')
+  await expect(end).toBeFocused()
+  await expect(end).toBeInViewport({ ratio: 1 })
+  await form.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
+  expect(backend.habits()).toEqual(data)
+  await page.getByRole('button', { name: /^Ended practice.*Ended/ }).click()
+  await page.getByRole('dialog', { name: /Ended practice/ }).getByRole('button', { name: /Extend/ }).click()
+  await end.fill('')
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
+  await expect.poll(() => backend.habits()).toEqual({ ...data, habits: [{ ...habit, end: null }] })
+  await page.reload()
+  await openApp(page, 'Habits')
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Ended practice.*Active/ }).click()
+  await page.getByRole('button', { name: 'Edit habit', exact: true }).click()
+  await expect(end).not.toBeFocused()
+  const effective = form.getByLabel('Schedule and criteria effective from', { exact: true })
+  await effective.fill('2026-09-30')
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  await expect(effective).toBeFocused()
+  await expect(effective).toHaveAttribute('aria-invalid', 'true')
+  await expect(effective).toHaveAccessibleDescription(/effective date within the habit's active dates/i)
+})
+
+test('interleaved archive groups reorder within their own boundaries and survive reload', async ({ page }) => {
+  const activeA = uxHabit(1, 'Active first')
+  const archived = uxHabit(2, 'Archived singleton', { archived: true })
+  const activeB = uxHabit(3, 'Active second')
+  const backend = await openHabitFixture(page, { version: 1, habits: [activeA, archived, activeB], entries: [] })
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Active first Active/ }).click()
+  const first = page.getByRole('dialog', { name: /Active first/ })
+  await expect(first.getByRole('button', { name: 'Move Active first up' })).toBeDisabled()
+  await expect(first.getByRole('button', { name: 'Move Active first down' })).toBeEnabled()
+  await first.getByRole('button', { name: 'Move Active first down' }).click()
+  await expect(first).toBeVisible()
+  await expect(first.getByRole('button', { name: 'Move Active first down' })).toBeDisabled()
+  await expect(first.getByRole('button', { name: 'Move Active first up' })).toBeEnabled()
+  await expect.poll(() => (backend.habits() as HabitData).habits.map(item => item.id)).toEqual([activeB.id, archived.id, activeA.id])
+  await first.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: 'Archived habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Archived singleton Archived/ }).click()
+  const singleton = page.getByRole('dialog', { name: /Archived singleton/ })
+  await expect(singleton.getByRole('button', { name: 'Move Archived singleton up' })).toBeDisabled()
+  await expect(singleton.getByRole('button', { name: 'Move Archived singleton down' })).toBeDisabled()
+  await singleton.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.reload()
+  await openApp(page, 'Habits')
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await expect(page.locator('.habit-manage-row strong')).toHaveText(['Active second', 'Active first'])
+})
+
+async function captureHabitEvidence(page: Page, info: TestInfo, name: string) {
+  const directory = '.tmp/habits-uiux-fix/browser-evidence'
+  mkdirSync(directory, { recursive: true })
+  const project = (info.project.name || 'chromium').replace(/[^a-z0-9_-]/gi, '-')
+  const body = await page.screenshot({ path: `${directory}/${project}-${name}.png`, fullPage: false, animations: 'disabled' })
+  await info.attach(name, { body, contentType: 'image/png' })
+}
+
+test('Insights exposes mixed calendar activity and classifies the selected historical period', async ({ page }, info) => {
+  const fixed = uxHabit(1, 'Morning pages')
+  const flexible = weeklyHabit(2, 'Social connection')
+  const mixed = uxHabit(3, 'Changing practice', { schedules: [
+    { effective: '2026-10-01', kind: 'fixed', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 },
+    { effective: '2026-10-21', kind: 'flexible', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 2 },
+  ] })
+  const archived = uxHabit(4, 'Archived craft', { archived: true })
+  const inactive = uxHabit(5, 'Future practice', { start: '2026-11-01', schedules: [{ effective: '2026-11-01', kind: 'fixed', weekdays: [0], target: 1 }], criteria: [{ effective: '2026-11-01', done: '', partial: '', missed: '' }] })
+  const data: HabitData = { version: 1, habits: [fixed, flexible, mixed, archived, inactive], entries: [
+    { habitId: fixed.id, date: '2026-10-20', outcome: 'done', note: 'Entry note' },
+    { habitId: flexible.id, date: '2026-10-20', outcome: 'partial', note: '' },
+    { habitId: archived.id, date: '2026-10-20', outcome: 'missed', note: '' },
+    { habitId: archived.id, date: '2026-10-21', outcome: 'partial', note: '' },
+  ], unloggedNotes: [
+    { habitId: fixed.id, date: '2026-10-20', note: 'Retained compatibility note' },
+    { habitId: fixed.id, date: '2026-10-22', note: 'Only a note' },
+  ] }
+  const backend = await openHabitFixture(page, data)
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await page.getByLabel('Month', { exact: true }).fill('2026-10')
+  for (const title of ['Calendar', 'Fixed overview', 'Flexible activity', 'Patterns to review']) {
+    await expect(page.getByRole('heading', { name: new RegExp(`^${title} · October 2026`) })).toBeVisible()
+  }
+  await expect(page.getByRole('heading', { name: /^Today · 2026-11-08 · fixed habits/ })).toBeVisible()
+  const calendar = page.getByRole('region', { name: 'October 2026 calendar', exact: true })
+  await expect(calendar.getByRole('button')).toHaveCount(31)
+  const mixedDay = calendar.getByRole('button', { name: /^2026-10-20,/ })
+  await expect(mixedDay).toHaveAccessibleName(/1 of 2 fixed logged, 3 outcomes recorded, 2 other recorded outcomes, 1 notes including 0 without an outcome/)
+  await expect(mixedDay).toContainText('1/2')
+  await expect(mixedDay.locator('.habit-calendar-activity')).toBeVisible()
+  await expect(mixedDay.locator('.habit-calendar-note')).toBeVisible()
+  const noteDay = calendar.getByRole('button', { name: /^2026-10-22,/ })
+  await expect(noteDay).toHaveAccessibleName(/0 outcomes recorded.*1 notes including 1 without an outcome/)
+  await expect(noteDay.locator('.habit-calendar-note')).toBeVisible()
+  await expect(noteDay.locator('.habit-calendar-activity')).toHaveCount(0)
+  const patterns = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: 'Patterns to review · October 2026', exact: true }) })
+  await expect(patterns.getByRole('button', { name: /Archived craft.*Archived/ })).toContainText('1 partial · 1 missed · 2 scored outcomes')
+  await mixedDay.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }))
+  await captureHabitEvidence(page, info, 'historical-mixed-calendar')
+  await page.getByRole('button', { name: 'By habit', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'By habit · October 2026', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Social connection.*Weekly goal/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Changing practice.*Schedule changed in this period/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Future practice.*Not active in October 2026/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Archived craft.*Archived/ })).toBeVisible()
+  await expect(page.getByText('Not enough fixed data', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: /Changing practice.*Schedule changed in this period/ }).evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }))
+  await captureHabitEvidence(page, info, 'historical-period-types')
+  await page.getByRole('button', { name: 'Weeks', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /^Past eight weeks · through 2026-11-08/ })).toBeVisible()
+  await page.getByRole('button', { name: /^2026-10-19–2026-10-25/ }).click()
+  const changedWeek = page.getByRole('dialog', { name: '2026-10-19–2026-10-25', exact: true })
+  await expect(changedWeek.getByRole('listitem').filter({ hasText: mixed.title })).toContainText(/Not judged.*Schedule changed/)
+  expect(backend.habits()).toEqual(data)
+})
+
+test('history correction lands on a lower card and restores the month, history pages and scroll', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const habits = Array.from({ length: 16 }, (_, index) => uxHabit(index + 1, index === 15 ? 'Lower list review target' : `Fictional practice ${index + 1}`))
+  const target = habits[15]
+  const entries = Array.from({ length: 15 }, (_, index) => ({ habitId: target.id, date: shiftDate('2026-10-31', -index), outcome: 'done' as const, note: `Fictional history note ${index + 1}` }))
+  const backend = await openHabitFixture(page, { version: 1, habits, entries })
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await page.getByLabel('Month', { exact: true }).fill('2026-10')
+  await page.getByRole('button', { name: 'By habit', exact: true }).click()
+  const selectedRow = page.getByRole('button', { name: /^◈ Lower list review target/ })
+  await selectedRow.click()
+  const history = page.getByRole('dialog', { name: /Lower list review target/ })
+  await expectCenteredHabitDialog(page, history)
+  await history.getByRole('button', { name: 'Show more', exact: true }).click()
+  await expect(history.locator('.habit-history-list button')).toHaveCount(15)
+  const correction = history.getByRole('button', { name: /2026-10-18.*Fictional history note 14/ })
+  await correction.scrollIntoViewIfNeeded()
+  const body = history.locator('.habit-modal-body')
+  const historyScroll = await body.evaluate(element => element.scrollTop)
+  expect(historyScroll).toBeGreaterThan(0)
+  const pageScroll = await page.evaluate(() => scrollY)
+  await correction.click()
+  const card = page.locator('article.habit-daily-card').filter({ hasText: target.title })
+  // These assertions precede any action that could auto-scroll the target into view.
+  await expect(card).toBeInViewport()
+  await expect(card.getByRole('button', { name: 'Done · Lower list review target', exact: true })).toBeInViewport({ ratio: 1 })
+  await expect(card.getByRole('textbox', { name: 'Note', exact: true })).toBeInViewport()
+  await expect(card.getByRole('textbox', { name: 'Note', exact: true })).not.toBeFocused()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-10-18')
+  await captureHabitEvidence(page, info, 'history-lower-card-arrival')
+  await card.getByRole('textbox', { name: 'Note', exact: true }).fill('Corrected lower-card note')
+  await card.getByRole('button', { name: 'Partial · Lower list review target', exact: true }).click()
+  await page.getByRole('button', { name: '← Back to insights', exact: true }).click()
+  await expect(history).toBeVisible()
+  await expect(page.getByLabel('Month', { exact: true })).toHaveValue('2026-10')
+  await expect(page.getByRole('button', { name: 'By habit', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(selectedRow).toHaveAttribute('aria-pressed', 'true')
+  await expect(history.locator('.habit-history-list button')).toHaveCount(15)
+  await expect(history.getByRole('button', { name: /2026-10-18.*Partial.*Corrected lower-card note/ })).toBeVisible()
+  await expect.poll(async () => Math.abs(await body.evaluate(element => element.scrollTop) - historyScroll)).toBeLessThanOrEqual(2)
+  await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - pageScroll)).toBeLessThanOrEqual(2)
+  await captureHabitEvidence(page, info, 'history-restored-context')
+  await expect.poll(() => (backend.habits() as HabitData).entries.find(entry => entry.date === '2026-10-18')).toMatchObject({ outcome: 'partial', note: 'Corrected lower-card note' })
+})
+
+test('effective-date reload confirms only schedule drafts and preserves saved future versions', async ({ page }) => {
+  const habit = uxHabit(1, 'Versioned practice', { schedules: [
+    { effective: '2026-10-01', kind: 'fixed', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 },
+    { effective: '2026-11-15', kind: 'flexible', weekdays: [5, 6], target: 2 },
+  ], criteria: [
+    { effective: '2026-10-01', done: 'Original standard', partial: '', missed: '' },
+    { effective: '2026-11-15', done: 'Future standard', partial: '', missed: '' },
+  ] })
+  const backend = await openHabitFixture(page, { version: 1, habits: [habit], entries: [] })
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Versioned practice Active/ }).click()
+  await page.getByRole('button', { name: 'Edit habit', exact: true }).click()
+  const form = page.getByRole('dialog', { name: 'Edit habit', exact: true })
+  await form.getByLabel('Title', { exact: true }).fill('Renamed practice')
+  await form.getByLabel('Description', { exact: true }).fill('Independent draft retained')
+  await form.getByLabel('Sun', { exact: true }).uncheck()
+  const effective = form.getByLabel('Schedule and criteria effective from', { exact: true })
+  await effective.fill('2026-10-20')
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm', exact: true })
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(effective).toHaveValue('2026-11-08')
+  await expect(form.getByLabel('Sun', { exact: true })).not.toBeChecked()
+  await effective.fill('2026-10-20')
+  await confirmation.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(effective).toHaveValue('2026-10-20')
+  await expect(form.getByLabel('Sun', { exact: true })).toBeChecked()
+  await expect(form.getByLabel('Title', { exact: true })).toHaveValue('Renamed practice')
+  await expect(form.getByRole('textbox', { name: 'Description', exact: true })).toHaveValue('Independent draft retained')
+  await form.getByRole('button', { name: 'Outcome criteria (optional)', exact: true }).click()
+  const criteria = page.getByRole('dialog', { name: 'Outcome criteria (optional)', exact: true })
+  await expect(criteria.getByLabel('Done', { exact: true })).toHaveValue('Original standard')
+  await criteria.getByLabel('Done', { exact: true }).fill('Revised historical standard')
+  await criteria.getByRole('button', { name: 'Close', exact: true }).click()
+  await form.getByRole('button', { name: 'Save habit', exact: true }).click()
+  await expect.poll(() => (backend.habits() as HabitData).habits[0]).toEqual({ ...habit, title: 'Renamed practice', description: 'Independent draft retained', criteria: [...habit.criteria, { effective: '2026-10-20', done: 'Revised historical standard', partial: '', missed: '' }] })
+  await page.reload()
+  await openApp(page, 'Habits')
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Renamed practice Active/ }).click()
+  await page.getByRole('button', { name: 'Edit habit', exact: true }).click()
+  await effective.fill('2026-11-15')
+  await expect(form.getByRole('button', { name: 'Schedule', exact: true })).toContainText('Flexible weekly target')
+  await expect(form.getByLabel('Weekly goal (points)', { exact: true })).toHaveValue('2')
+  await form.getByRole('button', { name: 'Outcome criteria (optional)', exact: true }).click()
+  await expect(criteria.getByLabel('Done', { exact: true })).toHaveValue('Future standard')
+  await criteria.getByRole('button', { name: 'Close', exact: true }).click()
+  await form.getByLabel('Start date', { exact: true }).fill('2026-09-20')
+  await form.getByRole('button', { name: 'Save habit', exact: true }).click()
+  await confirmation.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect.poll(() => (backend.habits() as HabitData).habits[0]).toEqual({
+    ...habit, title: 'Renamed practice', description: 'Independent draft retained', start: '2026-09-20',
+    schedules: [...habit.schedules, { ...habit.schedules[0], effective: '2026-09-20' }],
+    criteria: [...habit.criteria, { effective: '2026-10-20', done: 'Revised historical standard', partial: '', missed: '' }, { ...habit.criteria[0], effective: '2026-09-20' }],
+  })
+})
+
+test('archive group arrows update in the open panel and pause dates validate inclusively', async ({ page }) => {
+  const habit = uxHabit(1, 'Changing group', { pauses: [{ start: '2026-10-10', end: '2026-10-11' }, { start: '2026-12-01', end: '2026-12-02' }] })
+  const archived = uxHabit(2, 'Earlier archive', { archived: true })
+  const backend = await openHabitFixture(page, { version: 1, habits: [archived, habit], entries: [] })
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Changing group Active/ }).click()
+  const panel = page.getByRole('dialog', { name: /Changing group/ })
+  const up = panel.getByRole('button', { name: 'Move Changing group up' })
+  await expect(up).toBeDisabled()
+  await panel.getByRole('button', { name: 'Archive', exact: true }).click()
+  await expect(panel).toBeVisible()
+  await expect(up).toBeEnabled()
+  await panel.getByRole('button', { name: 'Unarchive', exact: true }).click()
+  await expect(up).toBeDisabled()
+  const until = panel.getByLabel('Pause through', { exact: true })
+  await until.fill('2026-11-07')
+  await panel.getByRole('button', { name: 'Pause through date', exact: true }).click()
+  await expect(until).toHaveValue('2026-11-07')
+  await expect(until).toHaveAccessibleDescription(/on or after today/)
+  await until.fill('2026-11-08')
+  await panel.getByRole('button', { name: 'Pause through date', exact: true }).click()
+  await expect(panel.getByRole('button', { name: 'Resume today', exact: true })).toBeVisible()
+  await expect.poll(() => (backend.habits() as HabitData).habits[1].pauses).toEqual([...habit.pauses, { start: '2026-11-08', end: '2026-11-08' }])
+  await panel.getByRole('button', { name: 'Resume today', exact: true }).click()
+  await expect(until).toHaveValue('')
+  await expect.poll(() => (backend.habits() as HabitData).habits[1]).toEqual(habit)
+})
+
+test('delete cancellation preserves records and accepted deletion removes only that habit and its notes', async ({ page }) => {
+  const habit = uxHabit(1, 'Delete this practice')
+  const other = uxHabit(2, 'Keep this practice')
+  const data: HabitData = { version: 1, habits: [habit, other], entries: [habit, other].map(item => ({ habitId: item.id, date: '2026-11-07', outcome: 'partial', note: 'Recorded note' })), unloggedNotes: [habit, other].map(item => ({ habitId: item.id, date: '2026-11-06', note: 'Retained note' })) }
+  const backend = await openHabitFixture(page, data)
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Delete this practice Active/ }).click()
+  const panel = page.getByRole('dialog', { name: /Delete this practice/ })
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm', exact: true })
+  await panel.getByRole('button', { name: 'Delete', exact: true }).click()
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(panel).toBeVisible()
+  expect(backend.habits()).toEqual(data)
+  await panel.getByRole('button', { name: 'Delete', exact: true }).click()
+  await confirmation.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(panel).toHaveCount(0)
+  await expect.poll(() => backend.habits()).toEqual({ ...data, habits: [other], entries: data.entries.filter(item => item.habitId === other.id), unloggedNotes: data.unloggedNotes!.filter(item => item.habitId === other.id) })
+})
+
+test('calendar navigation creates no draft and navigating away cancels a pending history scroll', async ({ page }) => {
+  const habits = Array.from({ length: 16 }, (_, index) => uxHabit(index + 1, `Navigation practice ${index + 1}`))
+  const target = habits[15]
+  const data: HabitData = { version: 1, habits, entries: [{ habitId: target.id, date: '2026-11-07', outcome: 'done', note: 'Navigate here' }] }
+  const backend = await openHabitFixture(page, data)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await page.getByRole('region', { name: 'November 2026 calendar', exact: true }).getByRole('button', { name: /^2026-11-06,/ }).click()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-11-06')
+  await expect(page.locator('.habit-inline-note')).toHaveCount(0)
+  expect(backend.habits()).toEqual(data)
+  await page.getByRole('button', { name: '← Back to insights', exact: true }).click()
+  await page.getByRole('button', { name: 'By habit', exact: true }).click()
+  await page.getByRole('button', { name: /^◈ Navigation practice 16 / }).click()
+  // Hold animation frames so navigation can supersede the history arrival before it runs.
+  await page.evaluate(() => {
+    const state = window as typeof window & { heldFrames: FrameRequestCallback[]; cardScrolls: number; restoreFrames: () => void }
+    const request = window.requestAnimationFrame
+    const scroll = Element.prototype.scrollIntoView
+    state.heldFrames = []; state.cardScrolls = 0
+    window.requestAnimationFrame = callback => { state.heldFrames.push(callback); return state.heldFrames.length }
+    Element.prototype.scrollIntoView = function (options) { if (this.matches('.habit-daily-card')) state.cardScrolls++; scroll.call(this, options) }
+    state.restoreFrames = () => { window.requestAnimationFrame = request; for (const callback of state.heldFrames) callback(performance.now()); Element.prototype.scrollIntoView = scroll }
+    ;(document.querySelector('.habit-history-list button') as HTMLButtonElement).click()
+  })
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-11-07')
+  await page.evaluate(() => { (Array.from(document.querySelectorAll('.habit-nav button')).find(button => button.textContent === 'Week') as HTMLButtonElement).click() })
+  await expect(page.getByRole('heading', { name: 'Week of 2026-11-02', exact: true })).toBeVisible()
+  await page.evaluate(() => (window as typeof window & { restoreFrames: () => void }).restoreFrames())
+  expect(await page.evaluate(() => (window as typeof window & { cardScrolls: number }).cardScrolls)).toBe(0)
+  expect(backend.habits()).toEqual(data)
+})
+
+for (const failure of ['error', 'conflict'] as const) test(`delete confirmation cannot mutate habits after pending save ${failure}`, async ({ page }) => {
+  const habit = uxHabit(1, 'Protected deletion')
+  const data: HabitData = { version: 1, habits: [habit], entries: [{ habitId: habit.id, date: '2026-11-07', outcome: 'partial', note: 'Keep recorded note' }], unloggedNotes: [{ habitId: habit.id, date: '2026-11-06', note: 'Keep retained note' }] }
+  const backend = await openHabitFixture(page, data)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const requests: string[] = []
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    requests.push(route.request().postData()!)
+    await gate
+    await route.fulfill({ status: failure === 'error' ? 503 : 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: failure === 'error' ? 'unavailable' : JSON.stringify({ status: 'conflict' }) })
+  })
+  await page.getByRole('button', { name: 'Done · Protected deletion', exact: true }).click()
+  await expect.poll(() => requests.length).toBe(1)
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: /^Protected deletion Active/ }).click()
+  await page.getByRole('dialog', { name: /Protected deletion/ }).getByRole('button', { name: 'Delete', exact: true }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Please confirm', exact: true })
+  await expect(confirmation).toContainText('Permanently delete Protected deletion and all its records')
+  release()
+  await expect.poll(() => page.locator('[data-recovery-blocked="true"]').count()).toBe(1)
+  await confirmation.getByRole('button', { name: 'Continue', exact: true }).click()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery', exact: true })
+  await expect(recovery).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export unsaved habits', exact: true }).click()
+  const exported = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(exported.data.habits).toEqual([habit])
+  expect(exported.data.entries).toContainEqual(data.entries[0])
+  expect(exported.data.entries).toContainEqual({ habitId: habit.id, date: '2026-11-08', outcome: 'done', note: '' })
+  expect(exported.data.unloggedNotes).toEqual(data.unloggedNotes)
+  expect(backend.habits()).toEqual(data)
+  expect(requests).toHaveLength(1)
+})
+
+function typicalHabitReviewData(): HabitData {
+  const habits = [uxHabit(1, 'Read a little'), uxHabit(2, 'Morning stretch'), uxHabit(3, 'Write a journal'), uxHabit(4, 'Drink water'), weeklyHabit(5, 'Social connection', [0, 1, 2, 3, 4, 5, 6], 2), weeklyHabit(6, 'Weekend hair care', [5, 6])]
+  habits[0].criteria = [{ effective: '2026-10-01', done: 'Read one thoughtful page and write down an idea', partial: 'Read a few lines', missed: 'Did not read today' }]
+  return { version: 1, habits, entries: [], unloggedNotes: [{ habitId: habits[1].id, date: '2026-11-07', note: 'Fictional note without an outcome' }] }
+}
+
+for (const [width, height] of [[320, 740], [360, 800], [390, 844], [1280, 900]] as const) {
+  test(`habit workflow geometry and bounded screenshots at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await openHabitFixture(page, typicalHabitReviewData())
+    await captureHabitEvidence(page, info, `${width}-daily-initial`)
+    const selected = page.locator('.habit-date-strip button[aria-current="date"]')
+    await expect(selected).toBeInViewport({ ratio: 1 })
+    const outcomes = page.locator('.habit-daily-card').first().locator('.habit-inline-outcomes button')
+    if (width === 390) {
+      const nav = (await page.locator('.mobile-nav').boundingBox())!
+      for (const button of await outcomes.all()) {
+        await expect(button).toBeInViewport({ ratio: 1 })
+        const box = (await button.boundingBox())!
+        expect(box.y + box.height).toBeLessThanOrEqual(nav.y)
+      }
+    }
+    for (const button of await outcomes.all()) {
+      const box = (await button.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.locator('.habit-catchup-chips button').last().click()
+    await expect(selected).toHaveAttribute('aria-label', /^2026-11-01:/)
+    await expect(selected).toBeInViewport({ ratio: 1 })
+    await captureHabitEvidence(page, info, `${width}-daily-oldest-catchup`)
+    await page.getByRole('button', { name: 'Today', exact: true }).click()
+    await page.getByRole('button', { name: 'Week', exact: true }).click()
+    const scroll = page.getByRole('region', { name: 'Week dates and habit outcomes', exact: true })
+    await scroll.scrollIntoViewIfNeeded()
+    if (width < 760) await scroll.evaluate(element => {
+      const nav = document.querySelector('.mobile-nav')!.getBoundingClientRect()
+      const bottom = element.getBoundingClientRect().bottom
+      if (bottom > nav.top) window.scrollBy(0, bottom - nav.top + 8)
+    })
+    const header = scroll.locator('.habit-week-grid-head > time')
+    const cells = scroll.locator('.habit-week-card').last().locator('.habit-week > button')
+    for (const edge of ['first', 'last'] as const) {
+      await scroll.evaluate((element, end) => { element.scrollLeft = end ? element.scrollWidth : 0; element.scrollTop = element.scrollHeight }, edge === 'last')
+      const headings = await header.evaluateAll(elements => elements.map(element => { const rect = element.getBoundingClientRect(); return { x: rect.x, width: rect.width } }))
+      const boxes = await cells.evaluateAll(elements => elements.map(element => { const rect = element.getBoundingClientRect(); return { x: rect.x, width: rect.width, height: rect.height } }))
+      expect(boxes).toHaveLength(7)
+      for (let index = 0; index < 7; index++) {
+        expect(Math.abs(boxes[index].x - headings[index].x)).toBeLessThanOrEqual(1)
+        expect(Math.abs(boxes[index].width - headings[index].width)).toBeLessThanOrEqual(1)
+        expect(boxes[index].width).toBeGreaterThanOrEqual(44)
+        expect(boxes[index].height).toBeGreaterThanOrEqual(44)
+      }
+      const visibleCell = edge === 'last' ? cells.last() : cells.first()
+      await expect(visibleCell).toBeInViewport({ ratio: 1 })
+      if (width < 760) {
+        const nav = (await page.locator('.mobile-nav').boundingBox())!
+        const cell = (await visibleCell.boundingBox())!
+        expect(cell.y + cell.height).toBeLessThanOrEqual(nav.y)
+      }
+      const headerBox = (await header.last().boundingBox())!
+      const scrollBox = (await scroll.boundingBox())!
+      const titles = await scroll.locator('.habit-week-title > strong').evaluateAll(elements => elements.map(element => {
+        const rect = element.getBoundingClientRect()
+        return { left: rect.left, right: rect.right }
+      }))
+      for (const title of titles) {
+        expect(title.left).toBeGreaterThanOrEqual(scrollBox.x)
+        expect(title.right).toBeLessThanOrEqual(scrollBox.x + scrollBox.width)
+      }
+      expect(headerBox.y).toBeGreaterThanOrEqual(scrollBox.y)
+      expect(headerBox.y + headerBox.height).toBeLessThanOrEqual(scrollBox.y + scrollBox.height)
+      await captureHabitEvidence(page, info, `${width}-week-${edge}-columns`)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await cells.last().click()
+    const weekEditor = page.getByRole('dialog', { name: /Weekend hair care.*Sunday, November 8, 2026/ })
+    await expectCenteredHabitDialog(page, weekEditor)
+    await weekEditor.getByRole('button', { name: 'Partial', exact: true }).click()
+    await weekEditor.getByLabel('Note', { exact: true }).fill('Fictional correction after a Partial outcome')
+    await captureHabitEvidence(page, info, `${width}-week-editor-outcome-note`)
+    await weekEditor.getByRole('button', { name: 'Close', exact: true }).click()
+    await page.getByRole('button', { name: 'Insights', exact: true }).click()
+    const calendar = page.getByRole('region', { name: 'November 2026 calendar', exact: true })
+    const lastDate = calendar.getByRole('button', { name: '2026-11-30, future date', exact: true })
+    await lastDate.scrollIntoViewIfNeeded()
+    for (const button of await calendar.getByRole('button').all()) {
+      const box = (await button.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+    }
+    await expect(lastDate).toBeInViewport({ ratio: 1 })
+    if (width < 760) {
+      const nav = (await page.locator('.mobile-nav').boundingBox())!
+      const finalRow = (await lastDate.boundingBox())!
+      expect(finalRow.y + finalRow.height).toBeLessThanOrEqual(nav.y)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await captureHabitEvidence(page, info, `${width}-calendar-final-row`)
+    await page.getByRole('button', { name: 'By habit', exact: true }).click()
+    await page.getByRole('button', { name: /Weekend hair care.*Weekly goal/ }).click()
+    const history = page.getByRole('dialog', { name: /Weekend hair care/ })
+    await expectCenteredHabitDialog(page, history)
+    await captureHabitEvidence(page, info, `${width}-history-dialog`)
+    await history.getByRole('button', { name: 'Close', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+    await page.getByRole('button', { name: /^Read a little Active/ }).click()
+    const management = page.getByRole('dialog', { name: /Read a little/ })
+    await expectCenteredHabitDialog(page, management)
+    await captureHabitEvidence(page, info, `${width}-management-group-edge`)
+    await management.getByRole('button', { name: 'Edit habit', exact: true }).click()
+    const form = page.getByRole('dialog', { name: 'Edit habit', exact: true })
+    await expectCenteredHabitDialog(page, form)
+    await expect(form.getByLabel('Title', { exact: true })).toBeInViewport({ ratio: 1 })
+    await captureHabitEvidence(page, info, `${width}-form-top`)
+    const trigger = form.getByRole('button', { name: 'Outcome criteria (optional)', exact: true })
+    await trigger.click()
+    const criteria = page.getByRole('dialog', { name: 'Outcome criteria (optional)', exact: true })
+    await expect(criteria.getByRole('heading', { name: 'Outcome criteria (optional)', exact: true })).toBeVisible()
+    await criteria.getByLabel('Partial', { exact: true }).fill('A short fictional reading session')
+    await captureHabitEvidence(page, info, `${width}-nested-criteria-title`)
+    await page.keyboard.press('Escape')
+    await expect(criteria).toHaveCount(0)
+    await expect(form).toBeVisible()
+    await expect(trigger).toBeFocused()
+    await expect(page.getByRole('dialog', { name: 'Please confirm' })).toHaveCount(0)
+    await trigger.click()
+    await expect(criteria.getByLabel('Partial', { exact: true })).toHaveValue('A short fictional reading session')
+    await page.keyboard.press('Escape')
+    await form.getByRole('button', { name: 'Cancel', exact: true }).click()
+    const confirmation = page.getByRole('dialog', { name: 'Please confirm', exact: true })
+    await expect(confirmation).toHaveCount(1)
+    await confirmation.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(form).toHaveCount(0)
+    await expect(confirmation).toHaveCount(0)
+    await page.getByRole('button', { name: 'Create habit', exact: true }).click()
+    const create = page.getByRole('dialog', { name: 'Create habit', exact: true })
+    await expectCenteredHabitDialog(page, create)
+    await create.getByRole('button', { name: 'Close', exact: true }).click()
+    await page.getByRole('dialog', { name: 'Please confirm', exact: true }).getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(create).toHaveCount(0)
+  })
+}
+
+test('enlarged text and reduced viewport keep form actions, errors and the nested title reachable', async ({ page }, info) => {
+  await page.setViewportSize({ width: 360, height: 420 })
+  await openHabitFixture(page, { version: 1, habits: [], entries: [] })
+  await page.addStyleTag({ content: 'html { font-size: 18px }' })
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  const form = page.getByRole('dialog', { name: 'Create habit', exact: true })
+  await form.getByLabel('Description', { exact: true }).fill('Fictional long draft '.repeat(12))
+  const save = form.getByRole('button', { name: 'Save habit', exact: true })
+  await save.scrollIntoViewIfNeeded()
+  await expect(save).toBeInViewport({ ratio: 1 })
+  await expect(form.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport({ ratio: 1 })
+  await captureHabitEvidence(page, info, '360-reduced-viewport-form-actions')
+  await save.click()
+  await expect(form.getByLabel('Title', { exact: true })).toBeFocused()
+  await expect(form.getByLabel('Title', { exact: true })).toBeInViewport({ ratio: 1 })
+  await expect(form.getByText('Enter a habit name.', { exact: true })).toBeVisible()
+  expect(await form.evaluate(element => element.scrollHeight <= element.clientHeight + 1)).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await captureHabitEvidence(page, info, '360-reduced-viewport-invalid-field')
+  await form.getByRole('button', { name: 'Outcome criteria (optional)', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Outcome criteria (optional)' }).getByRole('heading', { name: 'Outcome criteria (optional)' })).toBeInViewport({ ratio: 1 })
+  await captureHabitEvidence(page, info, '360-reduced-viewport-nested-title')
+})
+
+test('a persistent Week correction preserves its draft through save failure and retries the same request', async ({ page }, info) => {
+  const habit = weeklyHabit(1, 'Recovery practice')
+  const backend = await openHabitFixture(page, { version: 1, habits: [habit], entries: [] })
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  await page.getByRole('button', { name: /^Recovery practice, 2026-11-05,/ }).click()
+  const editor = page.getByRole('dialog', { name: /Recovery practice.*Thursday, November 5, 2026/ })
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let failing = true
+  const requests: string[] = []
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    requests.push(route.request().postData()!)
+    if (!failing) { await route.fallback(); return }
+    await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await editor.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect.poll(() => requests.length).toBe(1)
+  await expect(editor).toBeVisible()
+  await expect(editor).toContainText('Saving habits')
+  await expect(editor).not.toContainText('Habit changes saved')
+  await captureHabitEvidence(page, info, 'week-pending-modal-feedback')
+  await editor.getByLabel('Note', { exact: true }).fill('Unblurred Week note retained during recovery')
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery', exact: true })
+  await expect(recovery).toBeVisible()
+  await expect(editor).toBeHidden()
+  const workspaceDownload = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export unsaved habits', exact: true }).click()
+  const workspace = JSON.parse(readFileSync((await (await workspaceDownload).path())!, 'utf8'))
+  expect(workspace.data.entries).toEqual([{ habitId: habit.id, date: '2026-11-05', outcome: 'done', note: '' }])
+  const draftDownload = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts', exact: true }).click()
+  const drafts = JSON.parse(readFileSync((await (await draftDownload).path())!, 'utf8'))
+  expect(drafts.drafts).toContainEqual(expect.objectContaining({ kind: 'habit-entry', data: expect.objectContaining({ habitId: habit.id, date: '2026-11-05', outcome: 'done', originalOutcome: 'done', note: 'Unblurred Week note retained during recovery' }) }))
+  expect(requests).toHaveLength(1)
+  await captureHabitEvidence(page, info, 'week-failed-modal-recovery')
+  failing = false
+  await recovery.getByRole('button', { name: 'Retry habit save', exact: true }).click()
+  await expect(recovery).toBeHidden()
+  await expect(editor).toBeVisible()
+  expect(requests).toHaveLength(2)
+  expect(requests[1]).toBe(requests[0])
+  await expect(editor.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Unblurred Week note retained during recovery')
+  await editor.getByRole('button', { name: 'Partial', exact: true }).click()
+  await expect.poll(() => (backend.habits() as HabitData).entries).toEqual([{ habitId: habit.id, date: '2026-11-05', outcome: 'partial', note: 'Unblurred Week note retained during recovery' }])
+  await expect(editor.getByRole('button', { name: 'Partial', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
+
+for (const width of [320, 360]) {
+test(`a long Week list retains aligned dates and complete names at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 800 })
+  const habits = Array.from({ length: 16 }, (_, index) => uxHabit(index + 1, `Fictional practice ${index + 1} with a deliberately long descriptive name`, { archived: index % 4 === 1 }))
+  const entries = habits.filter(habit => habit.archived).map(habit => ({ habitId: habit.id, date: '2026-11-05', outcome: 'done' as const, note: 'Retained fictional archive record' }))
+  await openHabitFixture(page, { version: 1, habits, entries })
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  const grid = page.getByRole('region', { name: 'Week dates and habit outcomes', exact: true })
+  await grid.scrollIntoViewIfNeeded()
+  await grid.evaluate(element => {
+    const nav = document.querySelector('.mobile-nav')!.getBoundingClientRect()
+    const bottom = element.getBoundingClientRect().bottom
+    if (bottom > nav.top) window.scrollBy(0, bottom - nav.top + 8)
+  })
+  await grid.evaluate(element => { element.scrollTop = element.scrollHeight; element.scrollLeft = element.scrollWidth })
+  const title = grid.locator('.habit-week-card').last().locator('.habit-week-title')
+  await expect(title).toBeInViewport({ ratio: 1 })
+  const finalDay = grid.getByRole('button', { name: /^Fictional practice 16.*2026-11-08,/ })
+  await expect(finalDay).toBeInViewport({ ratio: 1 })
+  const day = grid.locator('.habit-week-grid-head time').last()
+  await expect(day).toBeInViewport({ ratio: 1 })
+  const headingBox = (await day.boundingBox())!
+  const cellBox = (await finalDay.boundingBox())!
+  const navBox = (await page.locator('.mobile-nav').boundingBox())!
+  expect(cellBox.y + cellBox.height).toBeLessThanOrEqual(navBox.y)
+  expect(Math.abs(headingBox.x - cellBox.x)).toBeLessThanOrEqual(1)
+  expect(cellBox.width).toBeGreaterThanOrEqual(44)
+  expect(cellBox.height).toBeGreaterThanOrEqual(44)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await captureHabitEvidence(page, info, `${width}-long-week-final-habit-day`)
+  await finalDay.click()
+  await expect(page.getByRole('dialog', { name: /Fictional practice 16.*Sunday, November 8, 2026/ })).toContainText('Unlogged')
+})
+}

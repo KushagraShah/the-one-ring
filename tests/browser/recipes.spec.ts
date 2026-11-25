@@ -386,7 +386,7 @@ test('partial Markdown extraction warns before making a shopping list', async ({
   await page.getByRole('button', { name: 'Save recipe' }).click()
   await page.getByRole('button', { name: 'Close recipe' }).click()
   await page.getByRole('navigation', { name: 'Recipe Book' }).getByRole('button', { name: 'Shopping' }).click()
-  await page.getByLabel('Partial').check()
+  await page.getByRole('checkbox', { name: 'Partial', exact: true }).check()
   await page.getByRole('button', { name: 'Start shopping' }).click()
   await expect(page.getByText(/Some ingredients may not be extracted for: Partial/)).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()

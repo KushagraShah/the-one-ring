@@ -1,160 +1,361 @@
-.habit-app{max-width:850px}.habit-app>button{margin:8px 8px 8px 0}.habit-date,.habit-actions,.habit-pause,.habit-weekdays{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0}.habit-date label,.habit-form label,.habit-details label,.habit-pause label{display:grid;gap:6px}.habit-app input,.habit-app select,.habit-app textarea{background:#111;color:#eee;border:1px solid #535353;border-radius:6px;padding:9px;max-width:100%}.habit-form{display:grid;gap:14px;margin-top:16px}.habit-form fieldset{border:1px solid #535353}.habit-weekdays label{display:flex;align-items:center}.habit-card{border:1px solid #383b3a;border-radius:10px;background:#1d1f1e;margin:12px 0;padding:15px}.habit-row{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;background:transparent;color:inherit}.habit-row strong,.habit-row small{display:block}.habit-row small{color:#aaaaaa;margin-top:6px}.habit-details{padding-top:14px}.habit-details textarea{width:100%;min-height:70px}.habit-outcomes,.habit-week{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.habit-week{grid-template-columns:repeat(7,1fr);margin-top:12px}.habit-outcomes button,.habit-week button,.habit-actions button,.habit-pause button{background:#292929;border:1px solid #535353;border-radius:6px;color:#eee;padding:10px 5px}.habit-outcomes button.selected{border-color:var(--accent);color:var(--accent)}.habit-week button small{display:block;font-size:9px}.habit-week button:disabled{opacity:.45}.habit-details dt{font-weight:700}.habit-details dd{margin:0 0 8px}.habit-saving{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;background:#171717;color:white;padding:8px 16px;border-radius:8px}.habit-save-error{position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,.85);display:grid;place-items:center;padding:24px}
-.habit-nav{overflow-x:auto;white-space:nowrap}.habit-nav button{min-height:44px;flex-shrink:0}.habit-row{min-height:48px}.habit-outcomes button,.habit-actions button,.habit-pause button{min-height:44px}.habit-empty{padding:24px 0}.habit-insights h2{margin-bottom:6px}.habit-insights-header p,.habit-insight-note{color:#bcbcbc;line-height:1.5;font-size:12px}.habit-insights .habit-card{padding:18px}.habit-insights h3{margin:0 0 14px;font-size:16px}.habit-section-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.habit-section-heading label{font-size:12px}.habit-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.habit-summary-grid>div{background:#292929;border-radius:8px;padding:14px}.habit-summary-grid strong,.habit-summary-grid span,.habit-summary-grid small{display:block}.habit-summary-grid strong{font-size:24px;color:var(--accent)}.habit-summary-grid span{font-weight:700;margin-top:3px}.habit-summary-grid small{color:#bcbcbc;margin-top:4px}.habit-counts{display:flex;flex-wrap:wrap;gap:8px}.habit-counts span{border:1px solid #535353;border-radius:20px;padding:5px 9px;font-size:12px}.habit-workload{border-left:3px solid var(--accent);padding-left:10px;line-height:1.5}.habit-trend details{border-top:1px solid #383b3a;padding:12px 0}.habit-trend summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;line-height:1.5}.habit-trend summary span:last-child{font-size:12px;color:#bcbcbc}.habit-trend ul{padding-left:20px;line-height:1.7}.habit-rank button,.habit-history-list button{width:100%;display:flex;justify-content:space-between;gap:12px;text-align:left;padding:13px 4px;background:transparent;color:#eee;border-bottom:1px solid #383b3a;min-height:44px}.habit-rank button span:last-child,.habit-history-list button span:last-child{color:#bcbcbc;font-size:12px}.habit-rank button[aria-pressed=true]{color:var(--accent)}.habit-month-days{margin-top:16px}.habit-month-days summary{cursor:pointer;padding:10px 0}.habit-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.habit-month-grid button{min-height:44px;color:#eee;background:#292929;border:1px solid #535353;border-radius:6px}.habit-month-grid small{display:block;font-size:9px;color:#bcbcbc}@media(max-width:420px){.habit-month-grid button{padding:4px 1px}.habit-rank button,.habit-history-list button{flex-wrap:wrap}}
-.habit-daily-summary{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:18px 0 12px}.habit-daily-summary h2{font-size:24px;margin:0}.habit-daily-summary p,.habit-daily-summary>span{font-size:12px;line-height:1.4;color:#bcbcbc;margin:5px 0 0}.habit-daily-summary>span{text-align:right}.habit-row>span:last-child{text-align:right;white-space:nowrap}.habit-row>span:last-child small{color:var(--accent)}
+/* Habits retains the shared typefaces and violet accent. */
+.habit-app { width: 100%; max-width: 760px; min-width: 0; color: #e6e6e6; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.habit-app[hidden], .habit-app [hidden] { display: none !important; }
+.habit-app > button { margin: 8px 8px 8px 0; }
+.habit-app .habit-heading { margin: 0 0 8px; flex-direction: row; align-items: center; gap: 8px; }
+.app-shell[data-theme="habits"] .habit-app .habit-heading { padding-block: 10px; }
+.habit-heading h1 { font-size: 26px; margin: 0; }
+.habit-heading p { color: #b4b4b4; }
+.habit-eyebrow { display: block; color: var(--accent); font-size: 10px; letter-spacing: .13em; font-weight: 700; margin-bottom: 8px; }
+.habit-heading .habit-eyebrow { display: none; }
+.habit-app .habit-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 5px; margin-bottom: 10px; border: 1px solid #383b3a; border-radius: 12px; background: #1d1f1e; }
+.habit-app .habit-nav button { min-width: 0; min-height: 44px; padding: 10px 4px; border-radius: 8px; text-align: center; }
+.habit-app input, .habit-app select, .habit-app textarea { min-width: 0; max-width: 100%; padding: 9px; border: 1px solid #535353; border-radius: 9px; background: #151515; color: #f1f1f1; font: inherit; }
+.habit-app textarea { resize: vertical; }
+.habit-app textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.habit-app input[type=date], .habit-app input[type=month] { color-scheme: dark; }
+.habit-saving { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 999; max-width: calc(100% - 24px); padding: 8px 16px; border-radius: 8px; background: #171717; color: white; }
+.habit-save-error { position: fixed; inset: 0; z-index: 1001; display: grid; place-items: center; padding: 24px; background: #000d; }
 
-/* Habit workspace: compact check-in first, details when needed. */
-.habit-app{max-width:760px;color:#e6e6e6}
-.habit-heading{margin-bottom:22px}
-.habit-heading p{color:#b4b4b4}
-.habit-eyebrow{display:block;color:var(--accent);font-size:10px;letter-spacing:.13em;font-weight:700;margin-bottom:8px}
-.habit-nav{display:flex;gap:4px;padding:5px;background:#1d1f1e;border:1px solid #383b3a;border-radius:12px;margin-bottom:22px}
-.habit-nav button{flex:1;min-width:max-content;text-align:center;border-radius:8px;padding:10px 12px}
-.habit-date{background:#1d1f1e;border:1px solid #383b3a;border-radius:12px;padding:9px;flex-wrap:nowrap;gap:8px}
-.habit-date label{flex:1;font-size:10px;color:#b4b4b4;gap:2px}
-.habit-date input{width:100%;border:0;background:transparent;padding:2px;color:#f1f1f1;font-weight:600}
-.habit-date button{min-height:44px;min-width:44px}
-.habit-daily-summary{background:linear-gradient(125deg,color-mix(in srgb,var(--accent) 13%,#1c1c1c),#1d1f1e);border:1px solid color-mix(in srgb,var(--accent) 24%,#303030);border-radius:14px;padding:20px;margin:18px 0}
-.habit-daily-summary h2{font-size:26px;color:#f3f3f3}
-.habit-daily-summary>span{color:#b4b4b4}
-.habit-card{background:#1d1f1e;border-color:#383b3a;border-radius:13px;margin:10px 0;padding:16px}
-.habit-daily-card{padding:0;overflow:hidden}
-.habit-row{padding:0;color:#ededed}
-.habit-daily-card .habit-row{padding:17px;min-height:74px}
-.habit-row-main{min-width:0;display:grid;gap:6px;text-align:left}.habit-row-main strong,.habit-row-main small{margin:0}
-.habit-row strong{font-size:15px;overflow-wrap:anywhere}
-.habit-row small{line-height:1.45;color:#b4b4b4}
-.habit-status{display:inline-flex;align-items:center;gap:9px;border:1px solid #535353;border-radius:20px;padding:7px 10px;font-size:12px;font-weight:700;color:#e3e3e3}
-.habit-status span{font-size:16px;line-height:1}
-.habit-status.status-done{background:color-mix(in srgb,var(--accent) 18%,#222222);border-color:color-mix(in srgb,var(--accent) 45%,#333333);color:var(--accent)}
-.habit-status.status-partial{background:#303030;color:#dedede;border-color:#595959}
-.habit-status.status-missed,.habit-status.status-skipped{color:#d1d1d1;background:#2c2c2c}
-.habit-details{border-top:1px solid #383b3a;padding:16px 17px 18px}
-.habit-details>p{color:#bcbcbc;line-height:1.5;margin:0 0 12px}
-.habit-details .habit-detail-label{color:#e3e3e3;font-size:12px;font-weight:700;margin:0 0 9px}
-.habit-outcomes{gap:7px;margin-bottom:14px}
-.habit-outcomes button{min-height:44px;background:#292929;border-color:#535353;border-radius:9px;font-weight:600;font-size:12px}
-.habit-outcomes button.selected{background:color-mix(in srgb,var(--accent) 17%,#222);border-color:var(--accent)}
-.habit-criteria{border-top:1px solid #383b3a;padding:12px 0;color:#c4c4c4}
-.habit-criteria summary{cursor:pointer;font-weight:600;font-size:12px}
-.habit-criteria dl{line-height:1.5;font-size:12px}
-.habit-details label,.habit-form label{font-size:12px;font-weight:600;color:#cfcfcf}
-.habit-details textarea,.habit-form input,.habit-form textarea,.habit-form select{border-radius:9px;background:#151515;border-color:#535353;color:#f1f1f1}
-.habit-details textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.habit-empty{background:#1d1f1e;border:1px dashed #535353;border-radius:13px;padding:24px;margin:12px 0;color:#bcbcbc}
-.habit-row .habit-current-streak{color:#d8c9ee;font-weight:600}
-.habit-week-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:24px}
-.habit-week-heading h2{margin:0;font-size:22px}.habit-week-nav{display:flex;gap:6px}.habit-week-nav button{min-width:44px;min-height:44px}
-.habit-week-section>p{font-size:12px;line-height:1.5;color:#b4b4b4}
-.habit-week button{min-width:0;min-height:55px;font-size:11px;border-radius:8px;padding:8px 1px}
-.habit-week button small{font-size:9px;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
-.habit-form{border-radius:14px;padding:20px}.habit-form h2{margin:0}.habit-form input:not([type=checkbox]),.habit-form select,.habit-form textarea{width:100%;min-height:44px}
-.habit-form textarea{min-height:76px}.habit-form fieldset{border:1px solid #535353;border-radius:10px;padding:12px}.habit-form legend{padding:0 5px;font-size:12px;font-weight:700}
-.habit-weekdays{gap:6px}.habit-weekdays label{background:#292929;border:1px solid #535353;border-radius:8px;min-height:40px;padding:6px}
-.habit-form-help{font-size:12px;line-height:1.5;color:#b4b4b4;margin:0}
-.habit-insights-header{margin:26px 0 14px}.habit-insights .habit-card{border-radius:14px}.habit-summary-grid>div{background:#292929}
-.habit-actions{gap:6px}.habit-actions button,.habit-pause button{border-radius:8px;padding:9px 12px}
-@media(max-width:400px){.habit-outcomes{grid-template-columns:repeat(2,1fr)}.habit-date{gap:4px}.habit-date button{min-width:38px;padding:8px}.habit-daily-summary{padding:16px}.habit-week{gap:3px}.habit-week button{font-size:10px}}
-.habit-manage-more{border-top:1px solid #383b3a;margin-top:12px;padding-top:12px}
-.habit-manage-more summary{cursor:pointer;color:#c0c0c0;font-size:12px;font-weight:600;min-height:32px}
-.habit-insight-nav{display:flex;gap:7px;margin:18px 0}
-.habit-insight-nav button{flex:1;min-height:44px;background:#292929;color:#c0c0c0;border:1px solid #535353;border-radius:9px;font-weight:600}
-.habit-insight-nav button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 17%,#222222);border-color:color-mix(in srgb,var(--accent) 55%,#333333);color:var(--accent)}
-.habit-manage-heading strong,.habit-manage-heading small{display:block;text-align:left}
-.habit-manage-heading strong{font-size:15px;overflow-wrap:anywhere}
-.habit-manage-heading small{margin-top:5px;color:var(--accent);font-size:12px}
-.habit-criteria-list{display:grid;gap:8px;margin:16px 0;color:#dedede;font-size:12px}
-.habit-criteria-list>div{display:flex;align-items:baseline;gap:10px;min-width:0}
-.habit-criteria-list dt{flex:0 0 52px;font-weight:700;color:var(--accent)}
-.habit-criteria-list dd{margin:0;overflow-wrap:anywhere;line-height:1.5}
-.habit-manage-more .habit-actions{margin:12px 0}
-.habit-pause{align-items:end;gap:10px;margin:14px 0 0}
-.habit-pause label{font-size:12px;color:#cfcfcf}
-.habit-pause input{min-height:44px}
-.habit-entry-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
-.habit-entry-actions button{min-height:44px}
+/* One compact date header, with overflow confined to its dated controls. */
+.habit-daily-header { min-width: 0; margin: 8px 0 10px; }
+.habit-daily-date-heading { display: grid; gap: 6px; min-width: 0; }
+.habit-daily-date-heading h2 { margin: 0; color: #f3f3f3; font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }
+.habit-daily-date-heading .habit-date-tools { margin: 0; }
+.habit-daily-date-heading .habit-date-tools label { display: flex; align-items: center; gap: 6px; }
+.habit-daily-context { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; margin-top: 4px; }
+.habit-daily-context > p { margin: 0; color: #bcbcbc; font-size: 12px; line-height: 1.4; }
+.habit-daily-header > p { margin: 6px 0 0; color: #bcbcbc; font-size: 12px; line-height: 1.4; }
+.habit-weekly-link { display: inline-block; padding-block: 4px; color: var(--accent); font-size: 12px; line-height: 1.5; text-underline-offset: 3px; }
+.habit-strip-caption { display: block; color: #bcb3c8; font-size: 10px; line-height: 1.4; }
+.habit-daily-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; margin: 8px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 24%, #303030); border-radius: 9px; background: linear-gradient(125deg, color-mix(in srgb, var(--accent) 13%, #1c1c1c), #1d1f1e); }
+.habit-daily-summary > div { min-width: 0; }
+.habit-daily-summary h2 { margin: 0; color: #f3f3f3; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+.habit-daily-summary p, .habit-daily-summary > span { margin: 5px 0 0; color: #bcbcbc; font-size: 12px; line-height: 1.4; }
+.habit-daily-summary .habit-eyebrow { margin-bottom: 4px; }
+.habit-daily-score { display: grid; justify-items: end; gap: 2px; flex: none; text-align: right; }
+.habit-daily-score strong { font-size: 22px; color: var(--accent); }
+.habit-daily-score span { font-size: 11px; color: #d0cbd5; }
+.habit-date-tools { display: flex; align-items: end; gap: 6px; margin: 8px 0; min-width: 0; }
+.habit-date-tools label { display: grid; gap: 3px; flex: 1; min-width: 0; font-size: 11px; color: #bcbcbc; }
+.habit-date-tools input { width: 100%; min-height: 44px; }
+.habit-date-tools button, .habit-catchup-chips button { flex: none; min-height: 44px; padding: 7px 10px; border: 1px solid #5b5270; border-radius: 8px; background: #302a39; color: #eee; }
+.habit-date { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px 64px; gap: 6px; margin: 8px 0 0; padding: 7px; border: 1px solid #383b3a; border-radius: 12px; background: #1d1f1e; }
+.habit-date label { display: grid; gap: 2px; min-width: 0; color: #b4b4b4; font-size: 11px; }
+.habit-date input { width: 100%; min-height: 44px; padding: 2px; border: 0; background: transparent; font-size: 14px; font-weight: 600; }
+.habit-date button { min-width: 0; min-height: 44px; width: 100%; padding: 6px; }
+.habit-date .habit-today-button { border: 1px solid #5b5270; border-radius: 8px; background: #302a39; color: #e3d7f3; font-size: 12px; font-weight: 700; }
+.habit-date .habit-today-button:disabled { opacity: 1; color: #aaa3b1; background: #252427; border-color: #454047; cursor: default; }
+.habit-date-strip { display: grid; grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 4px; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scroll-padding-inline: 4px; margin: 6px 0; padding: 3px 2px 6px; }
+.habit-date-strip button { position: relative; display: grid; place-items: center; gap: 1px; min-width: 44px; min-height: 58px; padding: 4px 2px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #ddd; }
+.habit-date-strip button[aria-current=date], .habit-date-strip button[aria-pressed=true] { border-color: var(--accent); background: #30293b; color: #f0e6fa; }
+.habit-date-strip button:disabled { opacity: .4; }
+.habit-date-strip span, .habit-date-strip small { font-size: 10px; }
+.habit-date-strip small { color: #c2b5d1; }
+.habit-date-strip i { position: absolute; right: 5px; top: 2px; color: #f3c877; font-style: normal; }
+.habit-strip-legend, .habit-date-strip-legend, .habit-scroll-hint { margin: 3px 0 6px; color: #bcb3c8; font-size: 11px; line-height: 1.4; }
+.habit-catchup { min-width: 0; margin: 10px 0; padding: 9px 12px; border: 1px solid #555342; border-radius: 12px; background: #23221c; font-size: 12px; }
+.habit-catchup > p { margin: 4px 0 0; color: #bebdb1; font-size: 11px; line-height: 1.4; }
+.habit-catchup > small { display: block; margin-top: 3px; color: #bebdb1; font-size: 11px; }
+.habit-catchup-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; }
+.habit-catchup-heading small { color: #bebdb1; font-size: 11px; }
+.habit-catchup-chips { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; margin-top: 7px; padding-bottom: 4px; }
+.habit-catchup-chips button { white-space: nowrap; }
+.habit-catchup-toggle { width: 100%; min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 0; text-align: left; background: transparent; color: #f2f1e8; }
+.habit-catchup-toggle > span:first-child { display: grid; gap: 4px; }
+.habit-catchup-toggle small { color: #bebdb1; font-size: 11px; }
+.habit-catchup-list { display: flex; gap: 6px; overflow-x: auto; }
+.habit-catchup-list button { flex: none; min-height: 44px; padding: 8px 10px; background: transparent; color: #eee; font-size: 12px; }
+.habit-weekly-context { margin: 5px 0; color: #cfc0e2; font-size: 12px; line-height: 1.4; }
+.habit-weekly-context a { color: var(--accent); }
+.habit-weekly-summary { min-width: 0; margin: 14px 0; padding: 12px; border: 1px solid #4e415e; border-radius: 10px; background: #27212e; font-size: 13px; }
+.habit-weekly-summary h2 { margin: 0; font-size: 16px; }
+.habit-weekly-summary > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 10px; margin-top: 10px; }
+.habit-weekly-summary > div span:first-child { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+.habit-weekly-summary > div span:last-child { flex: 1 1 140px; text-align: right; overflow-wrap: anywhere; }
+.habit-weekly-summary small { display: block; margin-top: 8px; color: #beb3c8; line-height: 1.5; }
 
-/* Daily check-in: meaningful choices and a compact, accessible history. */
-.habit-catchup{margin:14px 0;border:1px solid #555342;border-radius:12px;background:#23221c;overflow:hidden}
-.habit-catchup-toggle{width:100%;min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:12px 15px;background:transparent;color:#f2f1e8}
-.habit-catchup-toggle>span:first-child{display:grid;gap:4px}.habit-catchup-toggle strong{font-size:13px}.habit-catchup-toggle small{font-size:11px;color:#bebdb1;line-height:1.4}.habit-catchup-toggle>span:last-child{font-size:20px;color:var(--accent)}
-.habit-catchup-list{padding:0 10px 10px}.habit-catchup-list button{width:100%;min-height:44px;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid #45443a;background:transparent;color:#eee;text-align:left;font-size:12px}.habit-catchup-list button span:last-child{color:#c5c3b6}
-.habit-recent{display:flex;align-items:center;gap:8px;padding:0 16px 10px}.habit-recent-label{font-size:9px;letter-spacing:.08em;color:#aab0aa;font-weight:700;flex:none}.habit-recent-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;flex:1;min-width:0}.habit-recent-day{height:40px;min-width:0;padding:4px;background:transparent;border:0;border-radius:8px;color:#aeb6af;display:grid;place-items:center}.habit-recent-day span{width:24px;height:24px;border:1px solid #4d554f;border-radius:7px;background:#292d2a;display:grid;place-items:center;font-size:12px;font-weight:700}.habit-recent-day.is-selected span{outline:2px solid var(--accent);outline-offset:2px}.habit-recent-day.is-done span,.habit-week button.is-done{background:#234635;border-color:#47755b;color:#c2ecd2}.habit-recent-day.is-partial span,.habit-week button.is-partial{background:#514226;border-color:#877044;color:#f2d99f}.habit-recent-day.is-missed span,.habit-week button.is-missed{background:#512d30;border-color:#89555a;color:#f0c0c2}.habit-recent-day.is-skipped span,.habit-week button.is-skipped{background:#333d48;border-color:#5a6877;color:#d0dce9}.habit-recent-day:disabled{opacity:.45;cursor:default}.habit-recent-day:disabled span{background:transparent;border-style:dashed}
-.habit-flex-hint{margin:0;padding:0 17px 12px;color:#b8beb8;font-size:11px;line-height:1.5}.habit-outcome-choices{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.habit-outcome-choices button{display:grid;align-content:center;gap:5px;text-align:left;padding:10px 12px;min-height:54px}.habit-choice-title{font-size:12px;font-weight:700}.habit-choice-description{font-size:11px;font-weight:400;color:#c4cbc4;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}.habit-outcome-choices button.selected .habit-choice-description{color:#edf2ea}.habit-entry-editor .habit-detail-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.habit-week button[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}.habit-week-editor{margin-top:14px;padding:14px;border-radius:10px;background:#242724;border:1px solid #434a44}.habit-week-editor-heading{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.habit-week-editor-heading span{color:#b6beb7;font-size:12px}.habit-week-editor .habit-details{border:0;padding:14px 0 0}
-@media(max-width:400px){.habit-recent{padding-left:12px;padding-right:12px;gap:5px}.habit-recent-days{gap:1px}.habit-recent-day{padding:2px}.habit-outcome-choices{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Immediate outcomes and informational recent history. */
+.habit-card { min-width: 0; margin: 10px 0; padding: 16px; border: 1px solid #383b3a; border-radius: 13px; background: #1d1f1e; }
+.habit-daily-card { padding: 0; scroll-margin-top: calc(88px + env(safe-area-inset-top, 0px)); scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+#habit-daily-weekly-goals { scroll-margin-top: calc(88px + env(safe-area-inset-top, 0px)); }
+.habit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; width: 100%; min-height: 48px; padding: 0; background: transparent; color: #ededed; text-align: left; }
+.habit-daily-card .habit-row { padding: 10px 12px; min-height: 54px; }
+.habit-row-main { display: grid; gap: 6px; min-width: 0; text-align: left; }
+.habit-row strong, .habit-row small { display: block; margin: 0; overflow-wrap: anywhere; }
+.habit-row strong { font-size: 15px; }
+.habit-row small { color: #b4b4b4; line-height: 1.45; }
+.habit-row > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.habit-card-heading { cursor: default; }
+.habit-card-heading .info-tip { flex: none; }
+.habit-row .habit-current-streak { color: #d8c9ee; font-weight: 600; }
+.habit-status { display: inline-flex; align-items: center; gap: 9px; max-width: 48%; padding: 7px 10px; border: 1px solid #535353; border-radius: 20px; color: #e3e3e3; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+.habit-status span { font-size: 16px; line-height: 1; }
+.habit-inline-outcomes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(48px, .55fr); gap: 6px; padding: 0 12px 10px; }
+.habit-inline-outcomes button { display: grid; align-content: center; gap: 3px; min-width: 0; min-height: 48px; padding: 7px 9px; border: 1px solid #4b4d4c; border-radius: 8px; background: #292929; color: #eee; text-align: left; }
+.habit-inline-outcomes button span { font-size: 12px; font-weight: 700; overflow-wrap: anywhere; white-space: pre-wrap; }
+.habit-inline-outcomes button small { color: #bcbcbc; font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
+.habit-inline-outcomes button[aria-pressed=true] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, #242424); }
+.habit-inline-outcomes .habit-choice-skipped, .habit-inline-outcomes .habit-inline-skip { justify-items: center; padding: 6px 3px; border-color: #526474; background: #273039; text-align: center; }
+.habit-inline-outcomes .habit-choice-skipped > span, .habit-inline-outcomes .habit-inline-skip > span { font-size: 17px; }
+.habit-inline-outcomes .habit-choice-done[aria-pressed=true], .habit-status.status-done { background: #234635; border-color: #619376; color: #d5f1df; }
+.habit-inline-outcomes .habit-choice-partial[aria-pressed=true], .habit-status.status-partial { background: #514226; border-color: #a68b51; color: #f8e6b9; }
+.habit-inline-outcomes .habit-choice-missed[aria-pressed=true], .habit-status.status-missed { background: #512d30; border-color: #a6656b; color: #f7d2d4; }
+.habit-inline-outcomes .habit-choice-skipped[aria-pressed=true], .habit-status.status-skipped { background: #354653; border-color: #87a2b7; color: #e0edf6; }
+.habit-inline-outcomes button[aria-pressed=true] small { color: inherit; }
+.habit-card-footer { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 0 12px 10px; }
+.habit-card-footer > div:first-child { display: grid; justify-items: start; gap: 5px; min-width: 0; }
+.habit-note-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 4px; background: transparent; color: #c9bed6; font-size: 12px; font-weight: 600; }
+.habit-note-toggle { padding: 0 12px 5px; }
+.habit-note-toggle button { min-height: 44px; padding: 5px 0; font-size: 12px; }
+.habit-inline-note { padding: 0 12px 10px; }
+.habit-inline-note label { display: grid; gap: 5px; font-size: 12px; }
+.habit-inline-note textarea { width: 100%; min-height: 70px; }
+.habit-quick-done { min-height: 44px; max-width: 100%; margin: 0; padding: 8px 14px; border: 1px solid #47755b; border-radius: 8px; background: #234635; color: #c2ecd2; font-weight: 700; text-align: left; overflow-wrap: anywhere; }
+.habit-recent { display: flex; flex-direction: column; align-items: end; gap: 3px; min-width: 0; }
+.habit-recent-label, .habit-recent-caption, .habit-history-hint { color: #b8beb8; font-size: 10px; line-height: 1.4; }
+.habit-recent-days { display: flex; gap: 3px; padding: 2px; }
+.habit-marker { display: grid; place-items: center; width: 17px; height: 22px; border: 1px solid #4d554f; border-radius: 4px; background: #292d2a; color: #c9ceca; font-size: 10px; font-weight: 700; }
+.habit-marker.is-selected { outline: 1px solid var(--accent); outline-offset: 1px; }
+.habit-recent-day { display: grid; place-items: center; min-width: 0; padding: 2px; background: transparent; color: #aeb6af; }
+.habit-recent-day span { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #4d554f; border-radius: 7px; background: #292d2a; font-size: 12px; font-weight: 700; }
+.habit-recent-day.is-selected span { outline: 1px solid var(--accent); outline-offset: 1px; }
+.habit-marker.is-done, .habit-recent-day.is-done span, .habit-week button.is-done { background: #234635; border-color: #47755b; color: #c2ecd2; }
+.habit-marker.is-partial, .habit-recent-day.is-partial span, .habit-week button.is-partial { background: #514226; border-color: #877044; color: #f2d99f; }
+.habit-marker.is-missed, .habit-recent-day.is-missed span, .habit-week button.is-missed { background: #512d30; border-color: #89555a; color: #f0c0c2; }
+.habit-marker.is-skipped, .habit-recent-day.is-skipped span, .habit-week button.is-skipped { background: #333d48; border-color: #5a6877; color: #d0dce9; }
+.habit-marker.is-note, .habit-marker.is-note-only, .habit-week button.is-note, .habit-week button.is-note-only { border-color: #9780b2; background: #352b40; color: #e0cefa; }
+.habit-marker.is-unscheduled, .habit-recent-day:disabled span { background: transparent; border-style: dashed; color: #888; }
+.habit-flex-hint { margin: 0; padding: 0 12px 10px; color: #b8beb8; font-size: 11px; line-height: 1.5; }
+.habit-empty { margin: 12px 0; padding: 24px; border: 1px dashed #535353; border-radius: 13px; background: #1d1f1e; color: #bcbcbc; }
 
-/* Quick check-in and bounded habit details. */
-.habit-heading{margin:0 0 8px}.habit-heading h1{font-size:26px;margin:0}.habit-heading .habit-eyebrow{display:none}.habit-nav{margin-bottom:10px}
-.habit-date{margin:8px 0;padding:4px 8px}.habit-date-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:10px 0}.habit-date-strip button{position:relative;min-height:50px;display:grid;place-items:center;gap:1px;border:1px solid #414344;border-radius:8px;background:#202220;color:#ddd}.habit-date-strip button[aria-pressed=true]{border-color:var(--accent);background:#30293b}.habit-date-strip span{font-size:10px}.habit-date-strip i{position:absolute;right:5px;top:2px;color:#f3c877;font-style:normal}
-.habit-daily-summary{padding:10px 12px;margin:8px 0;border-radius:9px}.habit-daily-summary h2{font-size:18px}.habit-daily-summary .habit-eyebrow,.habit-daily-summary>span{display:none}.habit-daily-card .habit-row{padding:10px 12px;min-height:54px}.habit-quick-done{margin:0 12px 4px;padding:8px 14px;min-height:40px;border:1px solid #47755b;border-radius:8px;background:#234635;color:#c2ecd2;font-weight:700}.habit-status.status-done{background:#234635;border-color:#47755b;color:#c2ecd2}.habit-status.status-partial{background:#514226;border-color:#877044;color:#f2d99f}.habit-status.status-missed{background:#512d30;border-color:#89555a;color:#f0c0c2}.habit-status.status-skipped{background:#333d48;border-color:#5a6877;color:#d0dce9}
-.habit-manage-toolbar{display:flex;align-items:center;justify-content:space-between;margin:12px 0}.habit-manage-row{width:100%;min-height:62px;display:flex;align-items:center;gap:10px;text-align:left;color:#eee;background:#1d1f1e;border:1px solid #383b3a;border-radius:9px;padding:10px;margin:7px 0}.habit-manage-row>span:nth-child(2){flex:1;min-width:0}.habit-manage-row strong,.habit-manage-row small{display:block;overflow-wrap:anywhere}.habit-manage-row small{color:#bcbcbc;margin-top:4px}.habit-icon{font-size:22px}.habit-app .habit-details{border:0;padding:0}.habit-week-chart{height:130px;display:flex;gap:6px;align-items:stretch;margin:15px 0}.habit-week-chart-column{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}.habit-bars{height:100%;width:100%;display:flex;justify-content:center;align-items:end;gap:2px;border-bottom:1px solid #666}.habit-bars span{width:9px;border-radius:3px 3px 0 0}.habit-bar-performance{background:var(--accent)}.habit-bar-coverage{background:#a9adaf}.habit-week-chart-column small{font-size:9px;color:#bbb}
+/* Week header and rows share one canvas and one bounded scroll owner. */
+.habit-week-section { min-width: 0; }
+.habit-week-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.habit-week-heading > div:first-child { min-width: 0; }
+.habit-week-heading h2 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.habit-week-heading small { color: #b8b8b8; font-size: 11px; }
+.habit-week-nav { display: flex; flex: none; gap: 6px; }
+.habit-week-nav button { min-width: 44px; min-height: 44px; }
+.habit-week-section > p { color: #b4b4b4; font-size: 12px; line-height: 1.5; }
+.habit-week-legend { display: flex; flex-wrap: wrap; gap: 5px 11px; margin: 10px 0; color: #c5c5c5; font-size: 11px; }
+.habit-week-scroll { container-type: inline-size; min-width: 0; max-width: 100%; max-height: 65vh; max-height: min(65dvh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; border: 1px solid #454047; border-radius: 10px; background: #1d1f1e; scroll-padding: 58px 4px 4px; }
+.habit-week-scroll.has-overflow { border-inline-end-color: #9780b2; }
+.habit-week-scroll-cue, .habit-calendar-scroll-cue { margin: 6px 0; color: #d0bfdf; font-size: 11px; line-height: 1.4; }
+.habit-week-canvas { min-width: 350px; padding: 0 8px 8px; }
+.habit-week-grid-head, .habit-week { display: grid; grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 4px; }
+.habit-week-grid-head { position: sticky; top: 0; z-index: 1; margin: 0; padding: 8px 0; border-bottom: 1px solid #51465f; background: #1d1f1e; color: #c3b9ce; font-size: 11px; text-align: center; }
+.habit-week-grid-head > span, .habit-week-grid-head > time { display: block; min-height: 38px; padding: 4px 0; border-radius: 6px; line-height: 1.4; }
+.habit-week-grid-head .is-selected { color: #fff; background: #493b59; font-weight: 700; }
+.habit-week-card { min-width: 0; margin: 0; padding: 10px 0; border-bottom: 1px solid #383b3a; }
+.habit-week-card:last-child { border-bottom: 0; }
+.habit-week-title { position: sticky; left: 8px; width: calc(100cqw - 16px); max-width: 100%; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 5px 8px; min-width: 0; }
+.habit-week-title strong { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+.habit-week-title small { color: #bcbcbc; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.habit-week { margin-top: 6px; }
+.habit-week button { position: relative; display: grid; place-items: center; gap: 4px; min-width: 44px; min-height: 48px; padding: 5px 2px; border: 1px solid #535353; border-radius: 8px; background: #292929; color: #eee; font-size: 11px; }
+.habit-week button.has-note:not(.is-note-only)::after { content: '✎'; position: absolute; top: 2px; right: 4px; font-size: 10px; line-height: 1; }
+.habit-week button strong { font-size: 17px; line-height: 1; }
+.habit-week button span, .habit-week button small { font-size: 10px; overflow-wrap: anywhere; }
+.habit-week button[aria-pressed=true] { outline: 2px solid var(--accent); outline-offset: -3px; }
+.habit-week button.is-unlogged { border-style: dashed; color: #ddd; }
+.habit-week button.is-available { border-color: #75678d; color: #d5c1f0; }
+.habit-week button.is-unscheduled, .habit-week button.is-future { background: transparent; border-style: dashed; }
+.habit-week button:disabled { opacity: .45; cursor: default; }
+.habit-week-editor { margin-top: 14px; padding: 14px; border: 1px solid #434a44; border-radius: 10px; background: #242724; }
+.habit-week-editor-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.habit-week-editor-heading span { color: #b6beb7; font-size: 12px; }
 
-/* Week correction and readable insight context. */
-.habit-insights-back{margin:4px 0}.habit-week-heading{margin-top:12px}.habit-week-heading h2{font-size:18px}.habit-week-heading small{color:#b8b8b8;font-size:11px}.habit-week-legend{display:flex;flex-wrap:wrap;gap:5px 11px;color:#c5c5c5;font-size:11px;margin:12px 0}.habit-week-card{padding:11px;margin:8px 0}.habit-week-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.habit-week-title strong{font-size:14px;overflow-wrap:anywhere}.habit-week-title small{font-size:11px;color:#bcbcbc}.habit-week{margin-top:9px;gap:4px}.habit-week button{display:grid;place-items:center;gap:4px;min-height:52px;padding:4px 0}.habit-week button span{font-size:10px;font-weight:400}.habit-week button strong{font-size:17px;line-height:1}.habit-week button.is-unlogged{border-style:dashed;color:#ddd}.habit-week button.is-available{border-color:#75678d;color:#d5c1f0}.habit-week button.is-unscheduled,.habit-week button.is-future{background:transparent;border-style:dashed}.habit-history-result{display:grid;justify-items:end;gap:4px;min-width:0}.habit-history-result small{display:block;max-width:100%;color:#c8c8c8;white-space:pre-wrap;overflow-wrap:anywhere;text-align:right;font-size:12px}.habit-bars .habit-bar-track{height:100%;width:12px;display:flex;align-items:end;justify-content:center}.habit-bars .habit-bar-fill{width:9px;border-radius:3px 3px 0 0}.habit-bars .habit-bar-zero,.habit-bars .habit-bar-na{width:auto;font-size:10px;line-height:1;background:transparent;font-weight:700}.habit-bar-zero.habit-bar-performance{color:var(--accent)}.habit-bar-zero.habit-bar-coverage{color:#c4c8ca}.habit-bars .habit-bar-na{color:#aaa}
-.habit-row>span:last-child{white-space:normal;overflow-wrap:anywhere}.habit-status{max-width:48%}.habit-choice-title{white-space:pre-wrap;overflow-wrap:anywhere}
+/* Native panels: centered, bounded, with a persistent header and one body. */
+.habit-modal.habit-panel { position: fixed; inset: 0; width: min(480px, calc(100% - 24px)); height: fit-content; max-width: none; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 0; border: 1px solid #53535d; border-radius: 12px; background: #242426; color: #f1f3f1; overflow: hidden; }
+.habit-modal.habit-modal-form { width: min(620px, calc(100% - 24px)); }
+.habit-modal[open] { display: flex; flex-direction: column; }
+.habit-modal::backdrop { background: #000b; }
+.habit-modal > header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 16px; border-bottom: 1px solid #44434b; }
+.habit-modal > header > strong, .habit-modal > header > h2 { min-width: 0; margin: 0; font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }
+.habit-modal > header button { flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+.habit-modal > div { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 14px 16px 18px; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scroll-padding-block: 16px; }
+.habit-modal .habit-form { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.habit-panel-status, .habit-modal-status, .habit-modal-save-status, .habit-save-feedback { margin: 0 0 12px; color: #d2bfed; font-size: 12px; line-height: 1.5; }
+.habit-heading .habit-save-feedback { flex: 1; min-width: 0; min-height: 36px; margin: 0; font-size: 12px; line-height: 18px; display: flex; align-items: center; justify-content: end; text-align: right; }
+.habit-modal-save-status:empty { display: none; }
+.habit-entry-context { display: grid; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid #44434b; }
+.habit-entry-context > span { color: #d7c8e8; font-size: 12px; }
+.habit-details { min-width: 0; }
+.habit-details > p { margin: 0 0 12px; color: #bcbcbc; line-height: 1.5; overflow-wrap: anywhere; }
+.habit-details .habit-detail-label { margin: 0 0 9px; color: #e3e3e3; font-size: 12px; font-weight: 700; }
+.habit-entry-editor .habit-detail-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.habit-details label, .habit-form label, .habit-pause label { display: grid; gap: 6px; min-width: 0; color: #cfcfcf; font-size: 12px; font-weight: 600; }
+.habit-details textarea { width: 100%; min-height: 70px; }
+.habit-details dt { font-weight: 700; }
+.habit-details dd { margin: 0 0 8px; }
+.habit-outcomes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-bottom: 14px; }
+.habit-outcomes button, .habit-actions button, .habit-pause button { min-width: 44px; min-height: 44px; padding: 9px 12px; border: 1px solid #535353; border-radius: 8px; background: #292929; color: #eee; }
+.habit-outcomes button { font-size: 12px; font-weight: 600; }
+.habit-outcomes button.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 17%, #222); color: var(--accent); }
+.habit-outcome-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.habit-outcome-choices button { display: grid; align-content: center; gap: 5px; min-height: 54px; padding: 10px 12px; text-align: left; }
+.habit-choice-title { font-size: 12px; font-weight: 700; white-space: pre-wrap; overflow-wrap: anywhere; }
+.habit-choice-description { color: #c4cbc4; font-size: 11px; font-weight: 400; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.habit-outcome-choices button.selected .habit-choice-description { color: #edf2ea; }
+.habit-intentional-skip { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 16px; padding: 12px; border: 1px solid #48515a; border-radius: 9px; background: #242a30; }
+.habit-intentional-skip > div { min-width: 0; }
+.habit-intentional-skip strong { font-size: 12px; }
+.habit-intentional-skip p { margin: 4px 0 0; color: #c1c9d0; font-size: 11px; line-height: 1.4; }
+.habit-intentional-skip button { flex: none; min-height: 44px; padding: 8px 12px; border: 1px solid #718293; border-radius: 8px; background: #333d48; color: #e1eaf2; font-weight: 700; }
+.habit-intentional-skip button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
+.habit-entry-actions, .habit-actions, .habit-pause { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.habit-entry-actions button { min-height: 44px; }
+.habit-pause { align-items: end; gap: 10px; margin: 14px 0 0; }
+.habit-pause input { min-height: 44px; }
+.habit-pause > .habit-form-help, .habit-pause > .habit-field-error { flex-basis: 100%; }
 
-/* Compact daily overview: history is a glance, corrections live in Week. */
-.habit-app .habit-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px;align-items:stretch}
-.habit-app .habit-nav button{min-width:0;padding:10px 4px}
-.habit-date label{font-size:11px;min-width:0}.habit-date input{min-height:30px;font-size:14px;color-scheme:dark}.habit-date button{flex:none}.habit-daily-summary h2{line-height:1.25;overflow-wrap:anywhere}
-.habit-daily-summary{align-items:center;gap:12px}
-.habit-daily-score{display:grid;justify-items:end;gap:2px;text-align:right;flex:none}
-.habit-daily-score strong{font-size:22px;color:var(--accent)}
-.habit-daily-score span{font-size:11px;color:#d0cbd5}
-.habit-card-footer{display:flex;align-items:end;justify-content:space-between;gap:8px;padding:0 12px 10px}
-.habit-card-footer>div:first-child{min-width:0;display:grid;justify-items:start;gap:5px}
-.habit-quick-done{margin:0;max-width:100%;overflow-wrap:anywhere;text-align:left}
-.habit-history-hint{font-size:10px;color:#b8beb8}
-.habit-recent{padding:0;flex:none}.habit-recent-days{display:flex;gap:3px}
-.habit-marker{width:17px;height:22px;display:grid;place-items:center;border-radius:4px;background:#292d2a;border:1px solid #4d554f;color:#c9ceca;font-size:10px;font-weight:700}
-.habit-marker.is-selected{outline:1px solid var(--accent);outline-offset:1px}
-.habit-marker.is-done{background:#234635;border-color:#47755b;color:#c2ecd2}.habit-marker.is-partial{background:#514226;border-color:#877044;color:#f2d99f}.habit-marker.is-missed{background:#512d30;border-color:#89555a;color:#f0c0c2}.habit-marker.is-skipped{background:#333d48;border-color:#5a6877;color:#d0dce9}.habit-marker.is-unscheduled{background:transparent;border-style:dashed;color:#888}
-@media(max-width:360px){.habit-marker{width:14px}.habit-recent-days{gap:2px}.habit-card-footer{gap:5px}}
+/* Form essentials, field feedback, then reachable actions. */
+.habit-form { display: grid; gap: 14px; min-width: 0; margin-top: 16px; padding: 20px; border-radius: 14px; }
+.habit-form h2 { margin: 0; }
+.habit-form input:not([type=checkbox]), .habit-form select, .habit-form textarea { width: 100%; min-height: 44px; }
+.habit-form textarea { min-height: 76px; }
+.habit-form fieldset { min-width: 0; margin: 0; padding: 12px; border: 1px solid #535353; border-radius: 10px; }
+.habit-form legend { padding: 0 5px; font-size: 12px; font-weight: 700; }
+.habit-form-section { display: grid; gap: 14px; min-width: 0; }
+.habit-form-section > h3 { margin: 4px 0 0; color: #ddd4e9; font-size: 14px; }
+.habit-form-row, .habit-form-dates { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
+.habit-form-dates > div { min-width: 0; }
+.habit-form-dates .habit-field-error { margin-top: 6px; }
+.habit-weekdays { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+.habit-weekdays label { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px; border: 1px solid #535353; border-radius: 8px; background: #292929; }
+.habit-weekdays input { width: auto; }
+.habit-form-help { margin: 0; color: #b4b4b4; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.habit-field-error, .habit-form-error, .habit-form-feedback { margin: 0; color: #f2b9bd; font-size: 12px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.habit-form [aria-invalid=true] { border-color: #d78890; }
+.habit-form label, .habit-form fieldset { scroll-margin-block: 16px; }
+.habit-form-footer { position: sticky; bottom: -18px; z-index: 1; display: grid; gap: 8px; margin: 0 -16px -18px; padding: 12px 16px 18px; border-top: 1px solid #44434b; background: #242426; }
+.habit-form-footer .habit-actions { margin: 0; }
+.habit-form-footer button { min-height: 44px; }
+.habit-modal-form > .habit-modal-body { scroll-padding-bottom: 120px; }
+.habit-criteria { padding: 12px 0; border-top: 1px solid #383b3a; color: #c4c4c4; }
+.habit-criteria summary { cursor: pointer; font-weight: 600; font-size: 12px; }
+.habit-criteria dl { line-height: 1.5; font-size: 12px; }
+.habit-criteria-list { display: grid; gap: 8px; margin: 16px 0; color: #dedede; font-size: 12px; }
+.habit-criteria-list > div { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.habit-criteria-list dt { flex: 0 0 52px; color: var(--accent); font-weight: 700; }
+.habit-criteria-list dd { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.habit-manage-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.habit-manage-toolbar button { min-height: 44px; }
+.habit-manage-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 62px; margin: 7px 0; padding: 10px; border: 1px solid #383b3a; border-radius: 9px; background: #1d1f1e; color: #eee; text-align: left; }
+.habit-manage-row > span:nth-child(2) { flex: 1; min-width: 0; }
+.habit-manage-row strong, .habit-manage-row small, .habit-manage-heading strong, .habit-manage-heading small { display: block; overflow-wrap: anywhere; }
+.habit-manage-row small { margin-top: 4px; color: #bcbcbc; }
+.habit-manage-heading strong { font-size: 15px; }
+.habit-manage-heading small { margin-top: 5px; color: var(--accent); font-size: 12px; }
+.habit-icon { flex: none; font-size: 22px; }
+.habit-manage-more { margin-top: 12px; padding-top: 12px; border-top: 1px solid #383b3a; }
+.habit-manage-more summary { min-height: 44px; color: #c0c0c0; cursor: pointer; font-size: 12px; font-weight: 600; }
+.habit-manage-more .habit-actions { margin: 12px 0; }
 
-/* Personal outcomes stay distinct from an intentional, neutral skip. */
-.habit-inline-outcomes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 12px 10px}
-.habit-inline-outcomes button{min-width:0;min-height:48px;display:grid;align-content:center;gap:3px;text-align:left;padding:7px 9px;border:1px solid #4b4d4c;border-radius:8px;background:#292929;color:#eee}
-.habit-inline-outcomes button span{font-size:12px;font-weight:700;overflow-wrap:anywhere;white-space:pre-wrap}.habit-inline-outcomes button small{font-size:10px;color:#bcbcbc}
-.habit-inline-outcomes button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,#242424)}
-.habit-outcome-choices{grid-template-columns:repeat(3,minmax(0,1fr))}
-.habit-intentional-skip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 16px;padding:12px;border:1px solid #48515a;border-radius:9px;background:#242a30}
-.habit-intentional-skip strong{font-size:12px}.habit-intentional-skip p{margin:4px 0 0;color:#c1c9d0;font-size:11px;line-height:1.4}.habit-intentional-skip button{flex:none;min-height:44px;padding:8px 12px;border:1px solid #718293;border-radius:8px;background:#333d48;color:#e1eaf2;font-weight:700}
-.habit-intentional-skip button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+/* Insights: explicit periods, recorded activity and readable history. */
+.habit-insights { min-width: 0; }
+.habit-insights-back { margin: 4px 0; }
+.habit-insights-header { margin: 26px 0 14px; }
+.habit-insights h2 { margin-bottom: 6px; }
+.habit-insights-header p, .habit-insight-note { color: #bcbcbc; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.habit-insights .habit-card { padding: 14px 12px; border-radius: 14px; }
+.habit-insights h3 { margin: 0 0 14px; font-size: 16px; overflow-wrap: anywhere; }
+.habit-insight-nav { display: flex; gap: 7px; margin: 18px 0; }
+.habit-insight-nav button { flex: 1; min-width: 0; min-height: 44px; border: 1px solid #535353; border-radius: 9px; background: #292929; color: #c0c0c0; font-weight: 600; }
+.habit-insight-nav button[aria-pressed=true] { border-color: color-mix(in srgb, var(--accent) 55%, #333); background: color-mix(in srgb, var(--accent) 17%, #222); color: var(--accent); }
+.habit-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.habit-section-heading label { display: grid; gap: 5px; min-width: 0; max-width: 100%; font-size: 12px; }
+.habit-section-heading input { min-height: 44px; }
+.habit-insights-period { margin: 10px 0; }
+.habit-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.habit-summary-grid > div { min-width: 0; padding: 14px; border-radius: 8px; background: #292929; }
+.habit-summary-grid strong, .habit-summary-grid span, .habit-summary-grid small { display: block; overflow-wrap: anywhere; }
+.habit-summary-grid strong { color: var(--accent); font-size: 24px; }
+.habit-summary-grid span { margin-top: 3px; font-weight: 700; }
+.habit-summary-grid small { margin-top: 4px; color: #bcbcbc; line-height: 1.4; }
+.habit-counts { display: flex; flex-wrap: wrap; gap: 8px; }
+.habit-counts span { padding: 5px 9px; border: 1px solid #535353; border-radius: 20px; font-size: 12px; }
+.habit-workload { padding-left: 10px; border-left: 3px solid var(--accent); line-height: 1.5; }
+.habit-calendar { min-width: 0; margin: 14px -8px 0; }
+.habit-calendar-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 6px; }
+.habit-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 4px; min-width: 332px; }
+.habit-calendar-grid > strong { color: #bbb; font-size: 10px; text-align: center; }
+.habit-calendar-grid button { display: grid; place-items: center; gap: 2px; min-width: 44px; min-height: 54px; padding: 4px 2px; border: 1px solid #51465f; border-radius: 6px; background: #29252e; color: #eee; }
+.habit-calendar-grid button > span:first-child { font-weight: 600; }
+.habit-calendar-grid button small, .habit-calendar > small { color: #c3b5d0; font-size: 10px; }
+.habit-calendar > small { display: block; margin-top: 8px; line-height: 1.5; }
+.habit-calendar-markers, .habit-calendar-activity { display: flex; align-items: center; justify-content: center; gap: 4px; color: #dfcff3; font-size: 11px; }
+.habit-calendar-markers { min-height: 12px; }
+.habit-calendar-grid .habit-calendar-activity { color: var(--accent); }
+.habit-calendar-grid .habit-calendar-note { color: #e5cc9c; font-size: 12px; }
+.habit-calendar-grid button:disabled { opacity: .4; cursor: default; background: transparent; border-style: dashed; }
+.habit-calendar-grid button[aria-current=date], .habit-calendar-grid button[aria-pressed=true] { border-color: var(--accent); background: #3a2e48; }
+.habit-calendar:not(:has(.habit-calendar-scroll)) { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.habit-rank button, .habit-history-list button { display: flex; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 13px 4px; border-bottom: 1px solid #383b3a; background: transparent; color: #eee; text-align: left; }
+.habit-rank button > span, .habit-history-list button > span { min-width: 0; overflow-wrap: anywhere; }
+.habit-rank button > span:last-child, .habit-history-list button > span:last-child { color: #bcbcbc; font-size: 12px; }
+.habit-rank button[aria-pressed=true] { color: var(--accent); }
+.habit-history-result { display: grid; justify-items: end; gap: 4px; min-width: 0; text-align: right; }
+.habit-history-result small { display: block; max-width: 100%; color: #c8c8c8; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.habit-period-rank button { align-items: baseline; flex-wrap: wrap; gap: 5px 12px; }
+.habit-period-rank button > span:first-child { flex: 1 1 180px; }
+.habit-period-rank button > span:last-child { flex: 1 1 220px; line-height: 1.5; }
+.habit-history-period { padding-bottom: 14px; border-bottom: 1px solid #44434b; }
+.habit-history-period p, .habit-history-period li { line-height: 1.5; overflow-wrap: anywhere; }
+.habit-history-period ul { padding-left: 20px; }
+.habit-history-period li + li { margin-top: 8px; }
+.habit-trend details { padding: 12px 0; border-top: 1px solid #383b3a; }
+.habit-trend summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; cursor: pointer; line-height: 1.5; }
+.habit-trend summary span:last-child { color: #bcbcbc; font-size: 12px; }
+.habit-trend ul { padding-left: 20px; line-height: 1.7; }
+.habit-week-chart { display: flex; align-items: stretch; gap: 6px; height: 130px; margin: 15px 0; }
+.habit-week-chart-column { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.habit-week-chart-column small { color: #bbb; font-size: 9px; }
+.habit-bars { display: flex; align-items: end; justify-content: center; gap: 2px; height: 100%; width: 100%; border-bottom: 1px solid #666; }
+.habit-bars span { width: 9px; border-radius: 3px 3px 0 0; }
+.habit-bar-performance { background: var(--accent); }
+.habit-bar-coverage { background: #a9adaf; }
+.habit-bars .habit-bar-track { display: flex; align-items: end; justify-content: center; height: 100%; width: 12px; }
+.habit-bars .habit-bar-fill { width: 9px; border-radius: 3px 3px 0 0; }
+.habit-bars .habit-bar-zero, .habit-bars .habit-bar-na { width: auto; background: transparent; font-size: 10px; line-height: 1; font-weight: 700; }
+.habit-bar-zero.habit-bar-performance { color: var(--accent); }
+.habit-bar-zero.habit-bar-coverage { color: #c4c8ca; }
+.habit-bars .habit-bar-na { color: #aaa; }
+.habit-month-days { margin-top: 16px; }
+.habit-month-days summary { padding: 10px 0; cursor: pointer; }
+.habit-month-grid { display: grid; grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 5px; }
+.habit-month-grid button { min-height: 44px; border: 1px solid #535353; border-radius: 6px; background: #292929; color: #eee; }
+.habit-month-grid small { display: block; color: #bcbcbc; font-size: 9px; }
 
-/* Inline entry and stable date controls. */
-.habit-date label,.habit-date input{min-width:0}.habit-date button{flex:none}.habit-date .habit-today-button{width:58px;min-width:58px;padding:8px 2px}.habit-date .habit-today-button:disabled{visibility:hidden}
-.habit-card-heading{cursor:default}.habit-card-heading .info-tip{flex:none}
-.habit-inline-outcomes{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(48px,0.55fr)}
-.habit-inline-outcomes .habit-inline-skip{text-align:center;justify-items:center;padding:6px 3px;background:#273039;border-color:#526474}
-.habit-inline-outcomes .habit-inline-skip span{font-size:17px}.habit-inline-outcomes .habit-inline-skip small{font-size:9px;line-height:1.2}
-.habit-note-toggle{padding:0 12px 5px}.habit-note-toggle button{min-height:36px;padding:5px 0;font-size:12px}
-.habit-inline-note{padding:0 12px 10px}.habit-inline-note label{display:grid;gap:5px;font-size:12px}.habit-inline-note textarea{width:100%;min-height:70px;resize:vertical}
-.habit-panel{margin:12px 0;padding:14px;border:1px solid #53535d;border-radius:10px;background:#242426}.habit-panel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.habit-panel>header button{min-height:44px}.habit-panel>div{max-height:60vh;overflow-y:auto}
-
-/* Date navigation and outcome states. */
-.habit-date{display:grid;grid-template-columns:44px minmax(0,1fr) 44px 64px;gap:6px;margin:8px 0 0;padding:7px}
-.habit-date button{min-width:0;width:100%;padding:6px}.habit-date label{min-width:0}.habit-date input{width:100%}
-.habit-date .habit-today-button{width:100%;min-width:0;min-height:44px;border:1px solid #5b5270;border-radius:8px;background:#302a39;color:#e3d7f3;font-size:12px;font-weight:700}
-.habit-date .habit-today-button:disabled{visibility:visible;opacity:1;color:#aaa3b1;background:#252427;border-color:#454047;cursor:default}
-.habit-date-strip{gap:4px;margin:6px 0 10px}.habit-date-strip button{min-height:48px;border-color:transparent;background:transparent}.habit-date-strip button[aria-current=date]{border-color:var(--accent);background:#30293b;color:#f0e6fa}.habit-date-strip button:disabled{opacity:.4}
-.habit-inline-outcomes .habit-choice-skipped{text-align:center;justify-items:center;padding:6px 3px;background:#273039;border-color:#526474}.habit-choice-skipped span{font-size:17px!important}
-.habit-inline-outcomes .habit-choice-done[aria-pressed=true]{background:#234635;border-color:#619376;color:#d5f1df}
-.habit-inline-outcomes .habit-choice-partial[aria-pressed=true]{background:#514226;border-color:#a68b51;color:#f8e6b9}
-.habit-inline-outcomes .habit-choice-missed[aria-pressed=true]{background:#512d30;border-color:#a6656b;color:#f7d2d4}
-.habit-inline-outcomes .habit-choice-skipped[aria-pressed=true]{background:#354653;border-color:#87a2b7;color:#e0edf6}
-.habit-inline-outcomes button[aria-pressed=true] small{color:inherit}
-.habit-note-button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 4px;background:transparent;color:#c9bed6;font-size:12px;font-weight:600}
-
-/* Phone-first date and overview controls. */
-.habit-date-tools{display:flex;align-items:end;gap:6px;margin:8px 0}.habit-date-tools label{display:grid;gap:3px;flex:1;min-width:0;font-size:11px;color:#bcbcbc}.habit-date-tools input{width:100%;min-width:0;color-scheme:dark}.habit-date-tools button,.habit-catchup-chips button{min-height:44px;padding:7px 10px;border:1px solid #5b5270;border-radius:8px;background:#302a39;color:#eee}.habit-date-strip button{min-height:58px}.habit-date-strip small{font-size:10px;color:#c2b5d1}.habit-catchup{padding:10px 12px;font-size:12px}.habit-catchup-chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px}.habit-catchup-chips button{white-space:nowrap}.habit-weekly-summary{padding:12px;border:1px solid #4e415e;border-radius:10px;background:#27212e;font-size:13px}.habit-weekly-summary>div{display:flex;justify-content:space-between;gap:10px;margin-top:8px}.habit-weekly-summary small{display:block;color:#beb3c8;margin-top:8px}.habit-modal::backdrop{background:#000b}.habit-modal>div{max-height:65vh;overflow:auto}.habit-calendar{margin-top:14px}.habit-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.habit-calendar-grid>strong{text-align:center;font-size:10px;color:#bbb}.habit-calendar-grid button{min-width:0;min-height:46px;background:#29252e;color:#eee;border:1px solid #51465f;border-radius:6px;display:grid;place-items:center;padding:3px}.habit-calendar-grid button small,.habit-calendar>small{font-size:10px;color:#c3b5d0}.habit-calendar>small{display:block;margin-top:8px}
-
-@media(max-width:400px){.habit-inline-outcomes{grid-template-columns:repeat(2,minmax(0,1fr))}.habit-inline-outcomes button{min-height:44px}.habit-inline-outcomes .habit-choice-skipped span{font-size:14px!important}}
-.habit-week-grid-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;color:#c3b9ce;font-size:11px;margin-top:12px}.habit-week-card{padding:8px 0;margin:0;border-bottom:1px solid #383b3a}.habit-week-card .habit-week{margin-top:5px}.habit-week-card .habit-week button{min-height:44px}.habit-week-card .habit-week-title strong{font-size:13px}
-
-.habit-modal>div{padding:14px 18px 18px}.habit-modal .habit-form{margin:0;padding:0;border:0;background:transparent}.habit-modal .habit-form h2{display:none}
-
-.habit-card-heading .habit-row-main{text-align:left}.habit-weekly-summary>div span:first-child{flex:1;min-width:0}.habit-weekly-summary>div span:last-child{text-align:right}
-
-.habit-week-grid-head .is-selected{color:#fff;background:#493b59;border-radius:6px;font-weight:700}
-
-.habit-calendar-grid button:disabled{opacity:.4;cursor:default;background:transparent;border-style:dashed}
+@media (min-width: 480px) {
+  .habit-daily-date-heading { grid-template-columns: minmax(0, 1fr) minmax(210px, .7fr); align-items: center; gap: 12px; }
+  .habit-form-row, .habit-form-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .habit-insights .habit-card { padding: 18px; }
+}
+@media (max-width: 760px) {
+  /* The shell already reserves its navigation height; retain extra end spacing. */
+  .habit-app { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .habit-app input:not([type=checkbox]), .habit-app textarea { font-size: 16px; }
+}
+@media (max-width: 400px) {
+  .habit-inline-outcomes, .habit-outcomes, .habit-outcome-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .habit-inline-outcomes button { min-height: 44px; }
+  .habit-inline-outcomes .habit-choice-skipped > span { font-size: 14px; }
+  .habit-date-tools { flex-wrap: wrap; }
+  .habit-date-tools label { flex-basis: 120px; }
+  .habit-date-tools button { padding-inline: 8px; }
+  .habit-rank button, .habit-history-list button { flex-wrap: wrap; }
+  .habit-history-result { flex: 1 1 100%; }
+  .habit-intentional-skip { flex-wrap: wrap; }
+}
+@media (max-height: 560px) {
+  .habit-modal.habit-panel { max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); }
+  .habit-modal > header { padding-block: 6px; }
+  .habit-form-footer { position: static; }
+  .habit-modal-form > .habit-modal-body { scroll-padding-bottom: 16px; }
+  .habit-week-scroll { max-height: 58vh; max-height: 58dvh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .habit-app *, .habit-app *::before, .habit-app *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}

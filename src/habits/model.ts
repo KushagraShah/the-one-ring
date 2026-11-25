@@ -53,15 +53,94 @@ export function eligible(habit: Habit, date: string): boolean {
   const schedule = versionAt(habit.schedules, date)
   return date >= habit.start && (!habit.end || date <= habit.end) && !paused(habit, date) && Boolean(schedule?.weekdays.includes(weekday(date)))
 }
+export type WeeklyExclusion = 'partial-active' | 'schedule-changed' | 'not-flexible' | 'paused'
+export type FlexibleWeekEvaluation = {
+  monday: string
+  sunday: string
+  through: string | null
+  phase: 'future' | 'in-progress' | 'completed'
+  points: number
+  target: number | null
+  eligibleDaysThrough: number
+  skippedDaysThrough: number
+  primaryExclusion: WeeklyExclusion | null
+  judgment: 'pending' | 'met' | 'not-met' | 'not-judged'
+  streakDisposition: 'count' | 'pass-over' | 'stop'
+}
+
+/** Observed flexible schedule presence; pauses and weekdays do not hide a goal. */
+export function hasFlexibleWeek(habit: Habit, monday: string, asOf: string): boolean {
+  monday = weekStart(monday)
+  for (let day = monday; day <= shiftDate(monday, 6) && day <= asOf; day = shiftDate(day, 1)) {
+    if (day >= habit.start && (!habit.end || day <= habit.end) && versionAt(habit.schedules, day)?.kind === 'flexible') return true
+  }
+  return false
+}
+
+/** Pure local-calendar weekly facts. Skip affects one opportunity, never comparability. */
+export function evaluateFlexibleWeek(habit: Habit, entriesByDate: ReadonlyMap<string, Entry>, monday: string, asOf: string): FlexibleWeekEvaluation {
+  monday = weekStart(monday)
+  const sunday = shiftDate(monday, 6)
+  const phase = asOf < monday ? 'future' : asOf > sunday ? 'completed' : 'in-progress'
+  const through = phase === 'future' ? null : asOf < sunday ? asOf : sunday
+  const result: FlexibleWeekEvaluation = { monday, sunday, through, phase, points: 0, target: null, eligibleDaysThrough: 0, skippedDaysThrough: 0, primaryExclusion: null, judgment: 'pending', streakDisposition: 'stop' }
+  if (through === null) return result
+
+  const schedules = new Set<Schedule | undefined>()
+  let observedPause = false
+  for (let day = monday; day <= through; day = shiftDate(day, 1)) {
+    if (day < habit.start || (habit.end && day > habit.end)) continue
+    const schedule = versionAt(habit.schedules, day)
+    schedules.add(schedule)
+    if (paused(habit, day)) observedPause = true
+    if (schedule?.kind !== 'flexible' || !eligible(habit, day)) continue
+    result.eligibleDaysThrough++
+    const entry = entriesByDate.get(day)
+    if (!entry || entry.habitId !== habit.id || entry.date !== day) continue
+    result.points += entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0
+    if (entry.outcome === 'skipped') result.skippedDaysThrough++
+  }
+  const schedule = schedules.size === 1 ? [...schedules][0] : undefined
+  if (schedule?.kind === 'flexible') result.target = schedule.target
+
+  // Preserve historical streak precedence: active range, schedule boundary, then pause.
+  if (habit.start > monday || (habit.end !== null && habit.end < through)) result.primaryExclusion = 'partial-active'
+  else if (schedules.size > 1) result.primaryExclusion = 'schedule-changed'
+  else if (schedule?.kind !== 'flexible') result.primaryExclusion = 'not-flexible'
+  else if (observedPause) result.primaryExclusion = 'paused'
+
+  if (result.primaryExclusion) {
+    result.judgment = 'not-judged'
+    result.streakDisposition = result.primaryExclusion === 'partial-active' || result.primaryExclusion === 'paused' ? 'pass-over' : 'stop'
+  } else if (phase === 'completed' && result.target !== null) {
+    result.judgment = result.points >= result.target ? 'met' : 'not-met'
+    result.streakDisposition = result.points > 0 ? 'count' : 'stop'
+  }
+  return result
+}
+
+export const weeklyExclusionText: Readonly<Record<WeeklyExclusion, string>> = {
+  'partial-active': 'Partial active week',
+  'schedule-changed': 'Schedule changed',
+  'not-flexible': 'Not a flexible week',
+  paused: 'Paused',
+}
+
+/** Shared visible policy for Daily, Week and Insights. */
+export function flexibleWeekText(result: FlexibleWeekEvaluation): string {
+  const activity = result.target === null ? `${result.points} points` : `${result.points} / ${result.target}`
+  const status = result.phase === 'future' ? 'Future week'
+    : result.primaryExclusion ? `Not judged · ${weeklyExclusionText[result.primaryExclusion]}`
+      : result.judgment === 'met' ? 'Met'
+        : result.judgment === 'not-met' ? 'Not met'
+          : result.target !== null && result.points >= result.target ? 'Target reached so far' : 'In progress'
+  return `${activity} · ${status}`
+}
+
+/** Compatibility metadata only; targetSoFar is never a reduced weekly judgment target. */
 export function weekProgress(habit: Habit, entries: Entry[], date: string) {
-  const monday = weekStart(date)
-  const days = Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
-  const schedule = versionAt(habit.schedules, date)
-  const records = entries.filter(entry => entry.habitId === habit.id && days.includes(entry.date))
-  const points = records.filter(entry => entry.date <= date && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible').reduce((sum, entry) => sum + (entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0), 0)
-  const affected = days.some(day => day <= date && day >= habit.start && (!habit.end || day <= habit.end) && paused(habit, day)) || records.some(entry => entry.date <= date && entry.outcome === 'skipped')
-  const availableSoFar = days.filter(day => day <= date && eligible(habit, day)).length
-  return { points, target: schedule?.target || 0, targetSoFar: Math.min(schedule?.target || 0, availableSoFar), affected }
+  const result = evaluateFlexibleWeek(habit, indexEntries(entries).byHabitDate.get(habit.id) || new Map(), weekStart(date), date)
+  return { points: result.points, target: result.target ?? 0, targetSoFar: Math.min(result.target ?? 0, result.eligibleDaysThrough), affected: result.primaryExclusion !== null }
 }
 
 /** Recent unlogged fixed opportunities only; flexible eligible days are not obligations. */

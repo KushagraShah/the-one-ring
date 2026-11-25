@@ -18,7 +18,7 @@ export function HabitWeek({ date, habits, entries, selected, onDate, onSelect, e
   const days = labels.map((_, i) => shiftDate(monday, i))
   const visible = habits.filter(habit => days.some(day => (!habit.archived && eligible(habit, day)) || entries.get(habit.id)?.has(day)))
   return <section className="habit-week-section">
-    <div className="habit-week-heading"><div><h2>Week of {monday}</h2><small>Tap a day to record or correct</small></div><div className="habit-week-nav"><button className="outline-button" aria-label="Previous week" onClick={() => onDate(shiftDate(date, -7))}>←</button><button className="outline-button" aria-label="Next week" disabled={monday >= weekStart(today)} onClick={() => onDate([shiftDate(date, 7), today].sort()[0])}>→</button></div></div>
+    <div className="habit-week-heading"><div><h2>{new Date(`${monday}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – {new Date(`${days[6]}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</h2><small>Tap a day to record or correct</small></div><div className="habit-week-nav"><button className="outline-button" aria-label="Previous week" onClick={() => onDate(shiftDate(date, -7))}>←</button><button className="outline-button" aria-label="Next week" disabled={monday >= weekStart(today)} onClick={() => onDate([shiftDate(date, 7), today].sort()[0])}>→</button></div></div>
     <div className="habit-week-legend" aria-label="Week legend"><span>✓ Done</span><span>½ Partial</span><span>× Missed</span><span>– Skipped</span><span>· Unlogged</span><span>○ Available</span></div>
     {visible.length === 0 && <p>No scheduled or recorded habits this week.</p>}
     {visible.map(habit => {
@@ -26,7 +26,7 @@ export function HabitWeek({ date, habits, entries, selected, onDate, onSelect, e
       const progress = weekProgress(habit, [...(records?.values() || [])], date)
       const schedule = versionAt(habit.schedules, date)
       return <div className="habit-card habit-week-card" key={habit.id}>
-        <div className="habit-week-title"><strong><span aria-hidden="true">{habit.icon || '◈'}</span> {habit.title}</strong>{schedule?.kind === 'flexible' && <small>{progress.points} / {progress.target} through {date === today ? 'today' : date}{progress.affected ? ' · not judged' : ''}</small>}</div>
+        <div className="habit-week-title"><strong><span aria-hidden="true">{habit.icon || '◈'}</span> {habit.title}</strong>{schedule?.kind === 'flexible' && <small>{progress.points} / {progress.target} through {date === today ? 'today' : date}{progress.affected ? ` · not judged: ${progress.reason}` : progress.points >= progress.target ? ' · goal met so far' : ' · in progress'}</small>}</div>
         <div className="habit-week">{days.map((day, i) => {
           const record = records?.get(day)
           const canEdit = Boolean(record) || (!habit.archived && eligible(habit, day))

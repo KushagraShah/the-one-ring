@@ -42,8 +42,9 @@ test('entry indexes preserve original records and order across a large history',
 })
 test('flexible target so far is bounded; pause and skip exclude target judgment', () => {
   const entries = [{ habitId: habit.id, date: '2026-11-02', outcome: 'partial' as const, note: '' }]
-  assert.deepEqual(weekProgress({ ...habit, pauses: [] }, entries, '2026-11-02'), { points: 0.5, target: 4, targetSoFar: 1, affected: false })
-  assert.equal(weekProgress(habit, entries, '2026-11-03').affected, true)
+  assert.deepEqual(weekProgress({ ...habit, pauses: [] }, entries, '2026-11-02'), { points: 0.5, target: 4, targetSoFar: 1, affected: false, reason: 'Week in progress' })
+  assert.equal(weekProgress(habit, entries, '2026-11-03').affected, false)
+  assert.equal(weekProgress(habit, entries, '2026-11-05').affected, true)
   assert.equal(weekProgress({ ...habit, pauses: [] }, [...entries, { habitId: habit.id, date: '2026-11-03', outcome: 'skipped' as const, note: '' }], '2026-11-03').affected, true)
 })
 test('flexible progress is through the selected date and excludes ineligible or fixed records', () => {
@@ -52,6 +53,14 @@ test('flexible progress is through the selected date and excludes ineligible or 
   assert.equal(weekProgress(flex, entries, '2026-11-02').points, 0.5)
   assert.equal(weekProgress(flex, entries, '2026-11-05').points, 1.5)
   assert.equal(weekProgress({ ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }, entries, '2026-11-05').points, 0.5)
+})
+test('weekly progress does not reveal an end date after the selected date', () => {
+  const ended = { ...habit, end: '2026-11-06', pauses: [] }
+  assert.equal(weekProgress(ended, [], '2026-11-04').reason, 'Week in progress')
+  assert.equal(weekProgress(ended, [], '2026-11-04').affected, false)
+  assert.equal(weekProgress(ended, [], '2026-11-06').reason, 'Partial active week')
+  assert.equal(weekProgress(ended, [], '2026-11-08').reason, 'Partial active week')
+  assert.equal(weekProgress({ ...ended, end: '2026-11-08' }, [], '2026-11-08').affected, false)
 })
 test('catch up excludes archived and flexible habits and respects recorded outcomes', () => {
   const fixed = { ...habit, pauses: [], schedules: [{ effective: habit.start, kind: 'fixed' as const, weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }] }

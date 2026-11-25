@@ -144,3 +144,11 @@
 .habit-inline-outcomes .habit-choice-skipped[aria-pressed=true]{background:#354653;border-color:#87a2b7;color:#e0edf6}
 .habit-inline-outcomes button[aria-pressed=true] small{color:inherit}
 .habit-note-button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 4px;background:transparent;color:#c9bed6;font-size:12px;font-weight:600}
+
+/* Compact local-date controls and a focused, recovery-safe form. */
+.habit-date{grid-template-columns:44px minmax(0,1fr) 44px; }
+.habit-date .habit-yesterday-button,.habit-date .habit-today-button{width:auto;min-height:44px;border:1px solid #5b5270;border-radius:8px;background:#302a39;color:#e3d7f3;font-weight:700}
+.habit-date .habit-yesterday-button{grid-column:1 / 3}
+.habit-form-dialog{width:min(94vw,600px);max-height:90dvh;overflow:auto;padding:0;border:1px solid #5b5270;border-radius:14px;background:#1d1f1e;color:#eee}
+.habit-form-dialog::backdrop{background:#000b}.habit-form-dialog .habit-form{margin:0}.habit-form-fields{display:grid;gap:14px;border:0!important;padding:0!important;min-width:0}.habit-form-dialog input,.habit-form-dialog textarea{background:#151515;color:#eee;border:1px solid #535353;border-radius:9px;padding:9px;max-width:100%}
+.habit-inline-outcomes button[aria-pressed=true]{outline:2px solid currentColor;outline-offset:-3px}

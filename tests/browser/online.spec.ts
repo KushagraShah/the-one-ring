@@ -400,7 +400,7 @@ test('routine and habit choices use accessible app views without native disclosu
   const picker = page.getByRole('dialog', { name: 'Schedule' })
   await expect(picker.getByRole('button', { name: 'Fixed weekdays' })).toHaveAttribute('aria-pressed', 'true')
   await picker.getByRole('button', { name: 'Flexible weekly target' }).click()
-  await expect(page.getByLabel('Times per week')).toBeVisible()
+  await expect(page.getByLabel('Weekly goal (points)')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Schedule', exact: true })).toContainText('Flexible weekly target')
   await expect(page.getByRole('button', { name: 'Schedule', exact: true })).toHaveAccessibleDescription('Flexible weekly target')
   await page.getByRole('button', { name: 'Schedule', exact: true }).focus()
@@ -587,13 +587,13 @@ test('daily cards show current streaks and retain individual outcomes and notes'
   expect(Math.abs(positions.title - positions.subtitle)).toBeLessThan(1)
 })
 
-test('Week opens the current calendar week before Monday 1am and stays put through rollover', async ({ page }) => {
+test('Week opens the current calendar week at midnight and stays put through rollover', async ({ page }) => {
   await page.clock.install({ time: new Date('2025-01-06T00:59:30') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
   const date = page.getByLabel('Date', { exact: true })
-  await expect(date).toHaveValue('2025-01-05')
+  await expect(date).toHaveValue('2025-01-06')
   await page.getByRole('button', { name: 'Week', exact: true }).click()
   await expect(date).toHaveValue('2025-01-06')
   await page.clock.fastForward('00:31')
@@ -610,8 +610,8 @@ test('Week opens the current calendar week before Monday 1am and stays put throu
   await expect(date).toHaveValue('2025-01-12')
 })
 
-test('daily automatic cutoff saves notes, while manual Week selections survive foreground resync', async ({ page }) => {
-  await page.clock.install({ time: new Date('2025-01-01T00:59:30') })
+test('daily midnight saves notes, while manual Week selections survive foreground resync', async ({ page }) => {
+  await page.clock.install({ time: new Date('2024-12-31T23:59:30') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')
@@ -638,7 +638,7 @@ test('daily automatic cutoff saves notes, while manual Week selections survive f
   await expect(date).toHaveValue('2025-01-02')
 })
 
-test('automatic daily selection resyncs after a suspended midnight and 1am', async ({ page }) => {
+test('automatic daily selection resyncs after a suspended midnight', async ({ page }) => {
   await page.clock.install({ time: new Date('2024-12-31T23:59:00') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Explore the demo' }).click()
@@ -646,8 +646,8 @@ test('automatic daily selection resyncs after a suspended midnight and 1am', asy
   const date = page.getByLabel('Date', { exact: true })
   await page.clock.setSystemTime(new Date('2025-01-01T00:30:00'))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await expect(date).toHaveValue('2024-12-31')
-  await page.clock.setSystemTime(new Date('2025-01-01T01:01:00'))
+  await expect(date).toHaveValue('2025-01-01')
+  await page.clock.setSystemTime(new Date('2025-01-01T00:01:00'))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(date).toHaveValue('2025-01-01')
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
@@ -657,11 +657,11 @@ test('automatic daily selection resyncs after a suspended midnight and 1am', asy
   await expect(date).toHaveValue('2025-01-01')
   await page.clock.setSystemTime(new Date('2025-01-02T02:00:00'))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await expect(date).toHaveValue('2025-01-01')
+  await expect(date).toHaveValue('2025-01-02')
 })
 
 test('cutoff waits for the note save and stays on its date when that save fails', async ({ page }) => {
-  await page.clock.install({ time: new Date('2025-01-01T00:59:00') })
+  await page.clock.install({ time: new Date('2024-12-31T23:59:00') })
   const backend = await fakeBackend(page)
   await page.goto('/')
   await openApp(page, 'Habits')
@@ -680,7 +680,7 @@ test('cutoff waits for the note save and stays on its date when that save fails'
     writes++; await gate
     await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
   })
-  await page.clock.setSystemTime(new Date('2025-01-01T01:01:00'))
+  await page.clock.setSystemTime(new Date('2025-01-01T00:01:00'))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect.poll(() => writes).toBe(1)
   await expect(page.locator('.habit-date input[type=date]')).toHaveValue('2024-12-31')
@@ -696,7 +696,7 @@ test('cutoff waits for the note save and stays on its date when that save fails'
 
 for (const outcome of ['success', 'failure', 'manual'] as const) {
   test(`closed note save blocks automatic cutoff until ${outcome}`, async ({ page }) => {
-    await page.clock.install({ time: new Date('2025-01-01T00:59:00') })
+    await page.clock.install({ time: new Date('2024-12-31T23:59:00') })
     const backend = await fakeBackend(page)
     await page.goto('/')
     await openApp(page, 'Habits')
@@ -720,7 +720,7 @@ for (const outcome of ['success', 'failure', 'manual'] as const) {
     await page.getByRole('button', { name: 'Close note' }).click()
     await expect(page.getByLabel('Note', { exact: true })).toHaveCount(0)
     await expect.poll(() => writes).toBe(1)
-    await page.clock.setSystemTime(new Date('2025-01-01T01:01:00'))
+    await page.clock.setSystemTime(new Date('2025-01-01T00:01:00'))
     await page.evaluate(() => window.dispatchEvent(new Event('focus')))
     const date = page.locator('.habit-date input[type=date]')
     await expect(date).toHaveValue('2024-12-31')
@@ -772,6 +772,14 @@ test('failed habit save can be retried without changing workouts', async ({ page
 
 test('a pending confirmation remains operable when a save fails, including discard confirmation', async ({ page }) => {
   const backend = await fakeBackend(page)
+  await page.goto('/')
+  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Pending')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect(page.getByRole('dialog', { name: 'Create habit' })).toBeHidden()
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   let pending = false
@@ -779,29 +787,27 @@ test('a pending confirmation remains operable when a save fails, including disca
     pending = true; await gate
     await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
   })
-  await page.goto('/')
-  await expect.poll(() => backend.records().length).toBeGreaterThan(0)
-  await openApp(page, 'Habits')
-  await page.getByRole('button', { name: 'Create your first habit' }).click()
-  await page.getByLabel('Title').fill('Pending')
-  await page.getByRole('button', { name: 'Save habit' }).click()
-  await expect.poll(() => pending).toBe(true)
-  await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
-  await page.getByLabel('Username').fill('Unfinished profile')
-  await page.getByRole('button', { name: 'Home', exact: true }).last().click()
-  const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
-  await expect(confirmation).toBeVisible()
-  release()
-  await expect(confirmation).toBeVisible()
-  await confirmation.getByRole('button', { name: 'Cancel' }).click()
-  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
-  await expect(recovery).toBeVisible()
-  await recovery.getByRole('button', { name: 'Discard and reload' }).click()
-  await expect(confirmation).toContainText('Discard ALL unsaved')
-  await confirmation.getByRole('button', { name: 'Cancel' }).click()
-  await expect(recovery).toBeVisible()
-  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
-  await expect(page.getByLabel('Username')).toHaveValue('Unfinished profile')
+  try {
+    await page.getByRole('button', { name: 'Done · Pending' }).click()
+    await expect.poll(() => pending).toBe(true)
+    await page.getByRole('button', { name: 'Settings', exact: true }).last().click()
+    await page.getByLabel('Username').fill('Unfinished profile')
+    await page.getByRole('button', { name: 'Home', exact: true }).last().click()
+    const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+    await expect(confirmation).toBeVisible()
+    release()
+    await expect.poll(() => page.locator('[data-recovery-blocked="true"]').count()).toBe(1)
+    await expect(confirmation).toBeVisible()
+    await confirmation.getByRole('button', { name: 'Cancel' }).click()
+    const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+    await expect(recovery).toBeVisible()
+    await recovery.getByRole('button', { name: 'Discard and reload' }).click()
+    await expect(confirmation).toContainText('Discard ALL unsaved')
+    await confirmation.getByRole('button', { name: 'Cancel' }).click()
+    await expect(recovery).toBeVisible()
+    await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+    await expect(page.getByLabel('Username')).toHaveValue('Unfinished profile')
+  } finally { release() }
 })
 
 test('a pending habit form confirmation cannot edit a workspace after that workspace fails', async ({ page }) => {
@@ -829,7 +835,7 @@ test('a pending habit form confirmation cannot edit a workspace after that works
   await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
   await page.getByRole('button', { name: 'Create habit' }).click()
   await page.getByLabel('Title').fill('Unsaved third habit')
-  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  await page.keyboard.press('Escape')
   const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
   await expect(confirmation).toBeVisible()
   release()
@@ -907,10 +913,16 @@ for (const failure of ['error', 'conflict'] as const) {
   })
 }
 
-test('navigation-originated habit confirmation retains its workspace guard after conflict', async ({ page }) => {
+test('habit dialog confirmation retains its workspace guard after conflict', async ({ page }) => {
   const backend = await fakeBackend(page)
   await page.goto('/')
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Pending')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   let writes = 0
@@ -918,14 +930,12 @@ test('navigation-originated habit confirmation retains its workspace guard after
     writes++; await gate
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
   })
-  await openApp(page, 'Habits')
-  await page.getByRole('button', { name: 'Create your first habit' }).click()
-  await page.getByLabel('Title').fill('Pending')
-  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Done · Pending' }).click()
   await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
   await page.getByRole('button', { name: 'Create habit' }).click()
   await page.getByLabel('Title').fill('Keep navigation draft')
-  await openApp(page, 'Workouts')
+  await page.keyboard.press('Escape')
   const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
   await expect(confirmation).toContainText('Discard unsaved habit changes')
   release()
@@ -1144,6 +1154,12 @@ test('a habit conflict permits finishing an unrelated workout routine draft', as
   const backend = await fakeBackend(page)
   await page.goto('/')
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Conflicting habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect(page.getByRole('dialog', { name: 'Create habit' })).toBeHidden()
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   let pending = false
@@ -1151,29 +1167,34 @@ test('a habit conflict permits finishing an unrelated workout routine draft', as
     pending = true; await gate
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
   })
-  await openApp(page, 'Habits')
-  await page.getByRole('button', { name: 'Create your first habit' }).click()
-  await page.getByLabel('Title').fill('Conflicting habit')
-  await page.getByRole('button', { name: 'Save habit' }).click()
-  await expect.poll(() => pending).toBe(true)
-  await openApp(page, 'Workouts')
-  await page.getByRole('button', { name: 'Build routine', exact: true }).click()
-  await page.getByLabel('Day name').fill('Protected workout draft')
-  release()
-  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
-  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
-  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
-  await expect(page.getByLabel('Day name')).toHaveValue('Protected workout draft')
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
-  await expect.poll(() => JSON.stringify(backend.records())).toContain('Protected workout draft')
-  await page.getByRole('button', { name: 'Return to save recovery' }).click()
-  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+  try {
+    await page.getByRole('button', { name: 'Done · Conflicting habit' }).click()
+    await expect.poll(() => pending).toBe(true)
+    await openApp(page, 'Workouts')
+    await page.getByRole('button', { name: 'Build routine', exact: true }).click()
+    await page.getByLabel('Day name').fill('Protected workout draft')
+    release()
+    const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+    await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+    await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+    await expect(page.getByLabel('Day name')).toHaveValue('Protected workout draft')
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect.poll(() => JSON.stringify(backend.records())).toContain('Protected workout draft')
+    await page.getByRole('button', { name: 'Return to save recovery' }).click()
+    await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+  } finally { release() }
 })
 
 test('same-app habit conflict preserves an open habit form in a manual draft export', async ({ page }) => {
   const backend = await fakeBackend(page)
   await page.goto('/')
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Earlier habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   let writes = 0
@@ -1181,11 +1202,9 @@ test('same-app habit conflict preserves an open habit form in a manual draft exp
     writes++; await gate
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ status: 'conflict' }) })
   })
-  await openApp(page, 'Habits')
-  await page.getByRole('button', { name: 'Create your first habit' }).click()
-  await page.getByLabel('Title').fill('Earlier habit')
-  await page.getByRole('button', { name: 'Save habit' }).click()
+  await page.getByRole('button', { name: 'Done · Earlier habit' }).click()
   await expect.poll(() => writes).toBe(1)
+  await page.getByRole('button', { name: 'Habits', exact: true }).first().click()
   await page.getByRole('button', { name: 'Create habit' }).click()
   await page.getByLabel('Title').fill('Unsaved same-app habit')
   await page.getByLabel('Description').fill('Keep this description')
@@ -1337,6 +1356,12 @@ test('a recovered workout draft dialog is available while habit conflict remains
   const backend = await fakeBackend(page)
   await page.goto('/')
   await expect.poll(() => backend.records().length).toBeGreaterThan(0)
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Conflicting habit')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect(page.getByRole('dialog', { name: 'Create habit' })).toBeHidden()
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   let habitWrites = 0; let workoutWrites = 0; let failWorkout = true
@@ -1350,32 +1375,31 @@ test('a recovered workout draft dialog is available while habit conflict remains
     await gate
     await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
   })
-  await openApp(page, 'Habits')
-  await page.getByRole('button', { name: 'Create your first habit' }).click()
-  await page.getByLabel('Title').fill('Conflicting habit')
-  await page.getByRole('button', { name: 'Save habit' }).click()
-  await expect.poll(() => habitWrites).toBe(1)
-  await openApp(page, 'Workouts')
-  await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
-  await page.getByRole('button', { name: 'Skip day', exact: true }).click()
-  await expect.poll(() => workoutWrites).toBe(1)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: 'New exercise' }).click()
-  await page.getByLabel('Exercise / variant name').fill('Preserved exercise draft')
-  release()
-  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
-  await expect(recovery.getByText('Could not save workout data')).toBeVisible()
-  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
-  failWorkout = false
-  await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
-  await expect(recovery.getByText('Could not save workout data')).toBeHidden()
-  await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
-  const exercise = page.getByRole('dialog', { name: 'New exercise' })
-  await expect(exercise).toBeVisible()
-  await expect(exercise.getByLabel('Exercise / variant name')).toHaveValue('Preserved exercise draft')
-  await exercise.getByRole('button', { name: 'Return to save recovery' }).click()
-  await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
-  expect(habitWrites).toBe(1)
+  try {
+    await page.getByRole('button', { name: 'Done · Conflicting habit' }).click()
+    await expect.poll(() => habitWrites).toBe(1)
+    await openApp(page, 'Workouts')
+    await page.getByRole('button', { name: 'Skip this day in the cycle' }).click()
+    await page.getByRole('button', { name: 'Skip day', exact: true }).click()
+    await expect.poll(() => workoutWrites).toBe(1)
+    await page.getByRole('button', { name: 'Library', exact: true }).click()
+    await page.getByRole('button', { name: 'New exercise' }).click()
+    await page.getByLabel('Exercise / variant name').fill('Preserved exercise draft')
+    release()
+    const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+    await expect(recovery.getByText('Could not save workout data')).toBeVisible()
+    await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+    failWorkout = false
+    await recovery.getByRole('button', { name: 'Retry save', exact: true }).click()
+    await expect(recovery.getByText('Could not save workout data')).toBeHidden()
+    await recovery.getByRole('button', { name: 'Review other app drafts' }).click()
+    const exercise = page.getByRole('dialog', { name: 'New exercise' })
+    await expect(exercise).toBeVisible()
+    await expect(exercise.getByLabel('Exercise / variant name')).toHaveValue('Preserved exercise draft')
+    await exercise.getByRole('button', { name: 'Return to save recovery' }).click()
+    await expect(recovery.getByText('Habits changed elsewhere')).toBeVisible()
+    expect(habitWrites).toBe(1)
+  } finally { release() }
 })
 
 test('individual and full restore file-size boundaries reject oversized files before reading', async ({ page }) => {
@@ -1865,8 +1889,8 @@ test('week correction uses personal labels and closes immediately', async ({ pag
   await expect(editor.getByRole('button', { name: 'Read for 20 minutes' })).toBeVisible()
   await expect(editor.getByRole('button', { name: 'Partial', exact: true })).toHaveCount(0)
   await editor.getByRole('button', { name: 'Read for a few minutes' }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'Week of 2026-11-02' })).toBeVisible()
+  await expect(editor).toHaveCount(0)
+  await expect(page.locator('.habit-week-heading h2')).toHaveText('Nov 2 – Nov 8, 2026')
   await expect(reading.getByRole('button', { name: /Read a little, 2026-11-02, Read for a few minutes/ })).toBeVisible()
 })
 
@@ -2359,4 +2383,147 @@ test('history filters by exercise identity and dates, and reveals older pages', 
   await page.getByRole('button', { name: 'Exercise', exact: true }).click()
   await page.getByRole('dialog', { name: 'Exercise' }).getByRole('button', { name: 'Shoulder press · Shoulder press machine' }).click()
   await expect(page.getByText('No workouts match these filters.')).toBeVisible()
+})
+
+test('weekly insights show partial and changed flexible weeks but not ended habits later', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-09T12:00:00'))
+  await fakeBackend(page)
+  const base = { description: '', end: null, archived: false, criteria: [{ effective: '2026-11-02', done: '', partial: '', missed: '' }], pauses: [] }
+  const fixed = { effective: '2026-11-02', kind: 'fixed', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }
+  const flexible = { ...fixed, kind: 'flexible' }
+  const habits = [
+    { ...base, id: '00000000-0000-4000-8000-000000000001', title: 'Started Tuesday', start: '2026-11-03', schedules: [flexible] },
+    { ...base, id: '00000000-0000-4000-8000-000000000002', title: 'Changed Wednesday', start: '2026-11-02', schedules: [fixed, { ...flexible, effective: '2026-11-04' }] },
+    { ...base, id: '00000000-0000-4000-8000-000000000003', title: 'Ended Thursday', start: '2026-11-02', end: '2026-11-05', schedules: [flexible] },
+  ]
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_read$/, route => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ revision: 1, data: { version: 1, habits, entries: [] } }) }))
+  await page.goto('/')
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await page.getByRole('button', { name: 'Weeks', exact: true }).click()
+  await page.getByRole('button', { name: /Week of 2026-11-02/ }).click()
+  let detail = page.getByRole('dialog', { name: 'Week of 2026-11-02' })
+  await expect(detail).toContainText('Started Tuesday: 0 points · not judged: Partial active week')
+  await expect(detail).toContainText('Changed Wednesday: 0 points · not judged: Schedule changed')
+  await expect(detail).toContainText('Ended Thursday: 0 points · not judged: Partial active week')
+  await detail.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: /Week of 2026-11-09/ }).click()
+  detail = page.getByRole('dialog', { name: 'Week of 2026-11-09' })
+  await expect(detail).not.toContainText('Ended Thursday')
+})
+
+test('habit daily and guarded form fit mobile and desktop widths', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await openApp(page, 'Habits')
+  for (const width of [320, 360, 390, 1280]) {
+    await page.setViewportSize({ width, height: 800 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+    await page.getByRole('button', { name: 'Create habit' }).click()
+    const form = page.getByRole('dialog', { name: 'Create habit' })
+    await expect(form).toBeVisible()
+    await form.getByLabel('Title').fill('Protected draft')
+    expect(await form.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    await page.keyboard.press('Escape')
+    const confirmation = page.getByRole('dialog', { name: 'Please confirm' })
+    await expect(confirmation).toContainText('Discard unsaved habit changes')
+    await confirmation.getByRole('button', { name: 'Cancel' }).click()
+    await expect(form.getByLabel('Title')).toHaveValue('Protected draft')
+    await page.keyboard.press('Escape')
+    await confirmation.getByRole('button', { name: 'Continue' }).click()
+    await expect(form).toHaveCount(0)
+    await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  }
+})
+
+for (const method of ['next', 'picker'] as const) test(`returning to today via ${method} restores automatic midnight selection`, async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-08T23:59:30') })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await openApp(page, 'Habits')
+  const date = page.getByLabel('Date', { exact: true })
+  await page.getByRole('button', { name: 'Previous day' }).click()
+  await expect(date).toHaveValue('2026-11-07')
+  if (method === 'next') await page.getByRole('button', { name: 'Next day' }).click()
+  else await date.fill('2026-11-08')
+  await expect(date).toHaveValue('2026-11-08')
+  await page.clock.fastForward('00:31')
+  await expect(date).toHaveValue('2026-11-09')
+  await page.getByRole('button', { name: 'Previous day' }).click()
+  await page.clock.setSystemTime(new Date('2026-11-10T10:00:00'))
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(date).toHaveValue('2026-11-08')
+})
+
+test('pending habit form save retains its draft through failure and retry', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await openApp(page, 'Habits')
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  const requests: string[] = []
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    writes++; requests.push(route.request().postData()!)
+    if (writes === 1) {
+      await gate
+      await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' }); return
+    }
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  const form = page.getByRole('dialog', { name: 'Create habit' })
+  await form.getByLabel('Title').fill('Pending form draft')
+  await form.getByLabel('Description').fill('Retain form text')
+  await form.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => writes).toBe(1)
+  await expect(form.getByLabel('Title')).toBeDisabled()
+  await expect(form.getByLabel('Title')).toHaveValue('Pending form draft')
+  await expect(form.getByText('Saving habit…')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(form).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Please confirm' })).toHaveCount(0)
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export workout and habit drafts' }).click()
+  const saved = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(saved.drafts).toContainEqual(expect.objectContaining({ kind: 'habit-form', data: expect.objectContaining({ title: 'Pending form draft', description: 'Retain form text' }) }))
+  await recovery.getByRole('button', { name: 'Retry habit save' }).click()
+  await expect(recovery).toBeHidden()
+  expect(requests[1]).toBe(requests[0])
+  await expect(form).toHaveCount(0)
+  await expect.poll(() => JSON.stringify(backend.habits())).toContain('Pending form draft')
+})
+
+test('shell navigation saves an open habit note and recovery retains it after failure', async ({ page }) => {
+  const backend = await fakeBackend(page)
+  await page.goto('/')
+  await openApp(page, 'Habits')
+  await page.getByRole('button', { name: 'Create your first habit' }).click()
+  await page.getByLabel('Title').fill('Navigation note')
+  await page.getByRole('button', { name: 'Save habit' }).click()
+  await expect.poll(() => (backend.habits() as { habits: unknown[] } | null)?.habits.length).toBe(1)
+  await page.getByRole('button', { name: 'Daily', exact: true }).click()
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+    writes++; await gate
+    await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+  })
+  await page.getByRole('button', { name: 'Add note' }).click()
+  await page.getByLabel('Note', { exact: true }).fill('Preserve on shell navigation')
+  await openApp(page, 'Workouts')
+  await expect.poll(() => writes).toBe(1)
+  await expect(page.getByRole('navigation', { name: 'Workout Tracker' })).toBeVisible()
+  release()
+  const recovery = page.getByRole('dialog', { name: 'Save recovery' })
+  await expect(recovery).toBeVisible()
+  const download = page.waitForEvent('download')
+  await recovery.getByRole('button', { name: 'Export unsaved habits' }).click()
+  const saved = JSON.parse(readFileSync((await (await download).path())!, 'utf8'))
+  expect(JSON.stringify(saved.data)).toContain('Preserve on shell navigation')
 })

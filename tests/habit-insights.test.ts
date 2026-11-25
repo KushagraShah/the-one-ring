@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixedScore, flexibleWeek, habitStreak, monthBounds } from '../src/habits/insights'
+import { fixedScore, flexibleWeek, hasFlexibleWeek, habitStreak, monthBounds } from '../src/habits/insights'
 import { indexEntries, type Entry, type Habit, type HabitData } from '../src/habits/model'
 
 const id = '00000000-0000-4000-8000-000000000001'
@@ -34,9 +34,9 @@ test('fixed streak treats skip as a pause and partial as engagement', () => {
 })
 test('flexible weeks exclude pauses, skips, schedule changes, partial and future weeks', () => {
   const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', target: 2 }] }
-  assert.deepEqual(flexibleWeek(flex, [e('2026-11-02', 'done'), e('2026-11-03', 'partial')], '2026-11-02', '2026-11-08'), { points: 1.5, target: 2, reason: null })
-  assert.equal(flexibleWeek(flex, [e('2026-11-02', 'skipped')], '2026-11-02', '2026-11-08').reason, 'Paused or skipped')
-  assert.equal(flexibleWeek({ ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }, [], '2026-11-02', '2026-11-08').reason, 'Paused or skipped')
+  assert.deepEqual(flexibleWeek(flex, [e('2026-11-02', 'done'), e('2026-11-03', 'partial')], '2026-11-02', '2026-11-09'), { points: 1.5, target: 2, reason: null })
+  assert.equal(flexibleWeek(flex, [e('2026-11-02', 'skipped')], '2026-11-02', '2026-11-08').reason, 'Intentional skip')
+  assert.equal(flexibleWeek({ ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }, [], '2026-11-02', '2026-11-08').reason, 'Paused')
   assert.equal(flexibleWeek({ ...flex, start: '2026-11-03' }, [], '2026-11-02', '2026-11-08').reason, 'Partial active week')
   assert.equal(flexibleWeek(flex, [], '2026-11-02', '2026-11-04').reason, 'Week in progress')
   assert.equal(flexibleWeek({ ...flex, schedules: [...flex.schedules, { ...flex.schedules[0], effective: '2026-11-04', target: 3 }] }, [], '2026-11-02', '2026-11-08').reason, 'Schedule changed')
@@ -46,7 +46,49 @@ test('flexible streak counts only comparable completed weeks', () => {
   const entries = [e('2026-11-02', 'done'), e('2026-11-03', 'done'), e('2026-11-09', 'skipped'), e('2026-11-16', 'partial'), e('2026-11-17', 'done')]
   assert.deepEqual(habitStreak(flex, entries, '2026-11-23'), { success: 0, engagement: 2, unit: 'weeks' })
 })
+test('flexible streak skips flexible schedule changes but never crosses a type transition', () => {
+  const flex = { ...fixed.schedules[0], kind: 'flexible' as const, target: 1 }
+  const changed: Habit = { ...fixed, schedules: [flex, { ...flex, effective: '2026-11-11', target: 2 }] }
+  const entries = [e('2026-11-02', 'done'), e('2026-11-16', 'done'), e('2026-11-17', 'done')]
+  assert.deepEqual(habitStreak(changed, entries, '2026-11-23'), { success: 2, engagement: 2, unit: 'weeks' })
+  assert.deepEqual(habitStreak(changed, entries, '2026-11-16'), { success: 1, engagement: 1, unit: 'weeks' })
+  const switched: Habit = { ...changed, schedules: [flex, { ...fixed.schedules[0], effective: '2026-11-10' }, { ...flex, effective: '2026-11-12' }] }
+  assert.deepEqual(habitStreak(switched, entries, '2026-11-23'), { success: 1, engagement: 1, unit: 'weeks' })
+  assert.deepEqual(habitStreak(switched, entries, '2026-11-12'), { success: 0, engagement: 0, unit: 'weeks' })
+  const pausedSwitch = { ...switched, pauses: [{ start: '2026-11-10', end: '2026-11-10' }] }
+  assert.deepEqual(habitStreak(pausedSwitch, entries, '2026-11-23'), { success: 1, engagement: 1, unit: 'weeks' })
+  assert.deepEqual(habitStreak({ ...changed, end: '2026-11-13' }, entries, '2026-11-23'), { success: 1, engagement: 1, unit: 'weeks' })
+})
 test('month bounds respect leap years and today', () => {
   assert.deepEqual(monthBounds('2024-02', '2024-03-02'), { from: '2024-02-01', to: '2024-02-29' })
   assert.deepEqual(monthBounds('2026-11', '2026-11-08'), { from: '2026-11-01', to: '2026-11-08' })
+})
+
+
+test('weekly goals use selected-date cutoff and finalize only after Sunday', () => {
+  const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', weekdays: [5, 6], target: 1 }] }
+  const entries = [e('2026-11-07', 'partial'), e('2026-11-08', 'done')]
+  assert.deepEqual(flexibleWeek(flex, entries, '2026-11-02', '2026-11-04'), { points: 0, target: null, reason: 'Week in progress' })
+  assert.deepEqual(flexibleWeek(flex, entries, '2026-11-02', '2026-11-07'), { points: 0.5, target: null, reason: 'Week in progress' })
+  assert.deepEqual(flexibleWeek(flex, entries, '2026-11-02', '2026-11-08'), { points: 1.5, target: null, reason: 'Week in progress' })
+  assert.deepEqual(flexibleWeek(flex, entries, '2026-11-02', '2026-11-09'), { points: 1.5, target: 1, reason: null })
+  assert.equal(flexibleWeek(flex, [e('2026-11-03', 'skipped')], '2026-11-02', '2026-11-09').reason, 'Intentional skip')
+})
+
+
+test('weekly insights include only active flexible portions through the cutoff', () => {
+  const flex = { ...fixed.schedules[0], kind: 'flexible' as const }
+  const started: Habit = { ...fixed, start: '2026-11-03', schedules: [{ ...flex, effective: '2026-11-03' }] }
+  const switched: Habit = { ...fixed, schedules: [fixed.schedules[0], { ...flex, effective: '2026-11-04' }] }
+  const ended: Habit = { ...fixed, end: '2026-11-05', schedules: [flex] }
+  assert.equal(hasFlexibleWeek(started, '2026-11-02', '2026-11-09'), true)
+  assert.equal(flexibleWeek(started, [], '2026-11-02', '2026-11-09').reason, 'Partial active week')
+  assert.equal(hasFlexibleWeek(switched, '2026-11-02', '2026-11-09'), true)
+  assert.equal(flexibleWeek(switched, [], '2026-11-02', '2026-11-09').reason, 'Schedule changed')
+  assert.equal(hasFlexibleWeek(switched, '2026-11-02', '2026-11-03'), false)
+  assert.equal(hasFlexibleWeek(ended, '2026-11-02', '2026-11-09'), true)
+  assert.equal(flexibleWeek(ended, [], '2026-11-02', '2026-11-09').reason, 'Partial active week')
+  assert.equal(hasFlexibleWeek(ended, '2026-11-09', '2026-11-15'), false)
+  assert.equal(hasFlexibleWeek({ ...ended, archived: true }, '2026-11-02', '2026-11-09'), false)
+  assert.equal(hasFlexibleWeek({ ...ended, pauses: [{ start: '2026-11-02', end: '2026-11-05' }] }, '2026-11-02', '2026-11-09'), true)
 })

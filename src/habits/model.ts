@@ -53,22 +53,15 @@ export function eligible(habit: Habit, date: string): boolean {
   const schedule = versionAt(habit.schedules, date)
   return date >= habit.start && (!habit.end || date <= habit.end) && !paused(habit, date) && Boolean(schedule?.weekdays.includes(weekday(date)))
 }
-/** Evaluate only facts known through the selected day; a week closes the following Monday. */
 export function weekProgress(habit: Habit, entries: Entry[], date: string) {
   const monday = weekStart(date)
   const days = Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
   const schedule = versionAt(habit.schedules, date)
-  const records = entries.filter(entry => entry.habitId === habit.id && entry.date >= monday && entry.date <= date && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible')
-  const points = records.reduce((sum, entry) => sum + (entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0), 0)
-  const knownDays = days.filter(day => day <= date)
-  const pausedWeek = knownDays.some(day => day >= habit.start && (!habit.end || day <= habit.end) && paused(habit, day))
-  const skipped = entries.some(entry => entry.habitId === habit.id && entry.date >= monday && entry.date <= date && entry.outcome === 'skipped')
-  const initial = versionAt(habit.schedules, monday)
-  const changed = knownDays.some(day => versionAt(habit.schedules, day) !== initial)
-  const partial = habit.start > monday || (habit.end !== null && habit.end <= date && habit.end < days[6])
-  const reason = partial ? 'Partial active week' : changed || !initial || initial.kind !== 'flexible' ? 'Schedule changed' : pausedWeek ? 'Paused' : skipped ? 'Intentional skip' : 'Week in progress'
-  const availableSoFar = knownDays.filter(day => eligible(habit, day)).length
-  return { points, target: schedule?.target || 0, targetSoFar: Math.min(schedule?.target || 0, availableSoFar), affected: partial || changed || pausedWeek || skipped, reason }
+  const records = entries.filter(entry => entry.habitId === habit.id && days.includes(entry.date))
+  const points = records.filter(entry => entry.date <= date && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible').reduce((sum, entry) => sum + (entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0), 0)
+  const affected = days.some(day => day >= habit.start && (!habit.end || day <= habit.end) && paused(habit, day)) || records.some(entry => entry.outcome === 'skipped')
+  const availableSoFar = days.filter(day => day <= date && eligible(habit, day)).length
+  return { points, target: schedule?.target || 0, targetSoFar: Math.min(schedule?.target || 0, availableSoFar), affected }
 }
 
 /** Recent unlogged fixed opportunities only; flexible eligible days are not obligations. */

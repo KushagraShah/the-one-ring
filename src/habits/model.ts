@@ -59,7 +59,7 @@ export function weekProgress(habit: Habit, entries: Entry[], date: string) {
   const schedule = versionAt(habit.schedules, date)
   const records = entries.filter(entry => entry.habitId === habit.id && days.includes(entry.date))
   const points = records.filter(entry => entry.date <= date && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible').reduce((sum, entry) => sum + (entry.outcome === 'done' ? 1 : entry.outcome === 'partial' ? 0.5 : 0), 0)
-  const affected = days.some(day => day >= habit.start && (!habit.end || day <= habit.end) && paused(habit, day)) || records.some(entry => entry.outcome === 'skipped')
+  const affected = days.some(day => day <= date && day >= habit.start && (!habit.end || day <= habit.end) && paused(habit, day)) || records.some(entry => entry.date <= date && entry.outcome === 'skipped')
   const availableSoFar = days.filter(day => day <= date && eligible(habit, day)).length
   return { points, target: schedule?.target || 0, targetSoFar: Math.min(schedule?.target || 0, availableSoFar), affected }
 }

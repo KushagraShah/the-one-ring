@@ -26,7 +26,7 @@ export function flexibleWeek(habit: Habit, entries: Entry[], monday: string, tod
   const relevant = entries.filter(entry => entry.habitId === habit.id && entry.date >= monday && entry.date <= sunday && entry.date <= today && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible')
   const total = relevant.reduce((sum, entry) => sum + points[entry.outcome], 0)
   const schedule = versionAt(habit.schedules, monday)
-  if (sunday > today) return { points: total, target: null, reason: 'Week in progress' }
+  if (sunday >= today) return { points: total, target: null, reason: 'Week in progress' }
   if (habit.start > monday || (habit.end && habit.end < sunday)) return { points: total, target: null, reason: 'Partial active week' }
   if (!schedule || schedule.kind !== 'flexible' || days.some(day => versionAt(habit.schedules, day) !== schedule)) return { points: total, target: null, reason: 'Schedule changed' }
   if (days.some(day => paused(habit, day)) || relevant.some(entry => entry.outcome === 'skipped')) return { points: total, target: null, reason: 'Paused or skipped' }

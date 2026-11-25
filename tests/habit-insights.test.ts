@@ -34,12 +34,13 @@ test('fixed streak treats skip as a pause and partial as engagement', () => {
 })
 test('flexible weeks exclude pauses, skips, schedule changes, partial and future weeks', () => {
   const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', target: 2 }] }
-  assert.deepEqual(flexibleWeek(flex, [e('2026-11-02', 'done'), e('2026-11-03', 'partial')], '2026-11-02', '2026-11-08'), { points: 1.5, target: 2, reason: null })
-  assert.equal(flexibleWeek(flex, [e('2026-11-02', 'skipped')], '2026-11-02', '2026-11-08').reason, 'Paused or skipped')
-  assert.equal(flexibleWeek({ ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }, [], '2026-11-02', '2026-11-08').reason, 'Paused or skipped')
-  assert.equal(flexibleWeek({ ...flex, start: '2026-11-03' }, [], '2026-11-02', '2026-11-08').reason, 'Partial active week')
+  assert.deepEqual(flexibleWeek(flex, [e('2026-11-02', 'done'), e('2026-11-03', 'partial')], '2026-11-02', '2026-11-09'), { points: 1.5, target: 2, reason: null })
+  assert.equal(flexibleWeek(flex, [e('2026-11-02', 'skipped')], '2026-11-02', '2026-11-09').reason, 'Paused or skipped')
+  assert.equal(flexibleWeek({ ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }, [], '2026-11-02', '2026-11-09').reason, 'Paused or skipped')
+  assert.equal(flexibleWeek({ ...flex, start: '2026-11-03' }, [], '2026-11-02', '2026-11-09').reason, 'Partial active week')
   assert.equal(flexibleWeek(flex, [], '2026-11-02', '2026-11-04').reason, 'Week in progress')
-  assert.equal(flexibleWeek({ ...flex, schedules: [...flex.schedules, { ...flex.schedules[0], effective: '2026-11-04', target: 3 }] }, [], '2026-11-02', '2026-11-08').reason, 'Schedule changed')
+  assert.equal(flexibleWeek(flex, [], '2026-11-02', '2026-11-08').reason, 'Week in progress')
+  assert.equal(flexibleWeek({ ...flex, schedules: [...flex.schedules, { ...flex.schedules[0], effective: '2026-11-04', target: 3 }] }, [], '2026-11-02', '2026-11-09').reason, 'Schedule changed')
 })
 test('flexible streak counts only comparable completed weeks', () => {
   const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', target: 2 }] }

@@ -43,15 +43,20 @@ test('entry indexes preserve original records and order across a large history',
 test('flexible target so far is bounded; pause and skip exclude target judgment', () => {
   const entries = [{ habitId: habit.id, date: '2026-11-02', outcome: 'partial' as const, note: '' }]
   assert.deepEqual(weekProgress({ ...habit, pauses: [] }, entries, '2026-11-02'), { points: 0.5, target: 4, targetSoFar: 1, affected: false })
-  assert.equal(weekProgress(habit, entries, '2026-11-03').affected, true)
+  assert.equal(weekProgress(habit, entries, '2026-11-03').affected, false)
+  assert.equal(weekProgress(habit, entries, '2026-11-05').affected, true)
   assert.equal(weekProgress({ ...habit, pauses: [] }, [...entries, { habitId: habit.id, date: '2026-11-03', outcome: 'skipped' as const, note: '' }], '2026-11-03').affected, true)
 })
 test('flexible progress is through the selected date and excludes ineligible or fixed records', () => {
   const flex = { ...habit, pauses: [] }
   const entries = [{ habitId: habit.id, date: '2026-11-02', outcome: 'partial' as const, note: '' }, { habitId: habit.id, date: '2026-11-05', outcome: 'done' as const, note: '' }]
   assert.equal(weekProgress(flex, entries, '2026-11-02').points, 0.5)
+  assert.equal(weekProgress(flex, [...entries, { habitId: flex.id, date: '2026-11-05', outcome: 'skipped' as const, note: '' }], '2026-11-02').affected, false)
   assert.equal(weekProgress(flex, entries, '2026-11-05').points, 1.5)
-  assert.equal(weekProgress({ ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }, entries, '2026-11-05').points, 0.5)
+  const pausedLater = { ...flex, pauses: [{ start: '2026-11-05', end: '2026-11-05' }] }
+  assert.equal(weekProgress(pausedLater, entries, '2026-11-02').affected, false)
+  assert.equal(weekProgress(pausedLater, entries, '2026-11-05').affected, true)
+  assert.equal(weekProgress(pausedLater, entries, '2026-11-05').points, 0.5)
 })
 test('catch up excludes archived and flexible habits and respects recorded outcomes', () => {
   const fixed = { ...habit, pauses: [], schedules: [{ effective: habit.start, kind: 'fixed' as const, weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }] }

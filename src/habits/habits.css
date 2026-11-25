@@ -144,3 +144,17 @@
 .habit-inline-outcomes .habit-choice-skipped[aria-pressed=true]{background:#354653;border-color:#87a2b7;color:#e0edf6}
 .habit-inline-outcomes button[aria-pressed=true] small{color:inherit}
 .habit-note-button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 4px;background:transparent;color:#c9bed6;font-size:12px;font-weight:600}
+
+/* Phone-first date and overview controls. */
+.habit-date-tools{display:flex;align-items:end;gap:6px;margin:8px 0}.habit-date-tools label{display:grid;gap:3px;flex:1;min-width:0;font-size:11px;color:#bcbcbc}.habit-date-tools input{width:100%;min-width:0;color-scheme:dark}.habit-date-tools button,.habit-catchup-chips button{min-height:44px;padding:7px 10px;border:1px solid #5b5270;border-radius:8px;background:#302a39;color:#eee}.habit-date-strip button{min-height:58px}.habit-date-strip small{font-size:10px;color:#c2b5d1}.habit-catchup{padding:10px 12px;font-size:12px}.habit-catchup-chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px}.habit-catchup-chips button{white-space:nowrap}.habit-weekly-summary{padding:12px;border:1px solid #4e415e;border-radius:10px;background:#27212e;font-size:13px}.habit-weekly-summary>div{display:flex;justify-content:space-between;gap:10px;margin-top:8px}.habit-weekly-summary small{display:block;color:#beb3c8;margin-top:8px}.habit-modal::backdrop{background:#000b}.habit-modal>div{max-height:65vh;overflow:auto}.habit-calendar{margin-top:14px}.habit-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.habit-calendar-grid>strong{text-align:center;font-size:10px;color:#bbb}.habit-calendar-grid button{min-width:0;min-height:46px;background:#29252e;color:#eee;border:1px solid #51465f;border-radius:6px;display:grid;place-items:center;padding:3px}.habit-calendar-grid button small,.habit-calendar>small{font-size:10px;color:#c3b5d0}.habit-calendar>small{display:block;margin-top:8px}
+
+@media(max-width:400px){.habit-inline-outcomes{grid-template-columns:repeat(2,minmax(0,1fr))}.habit-inline-outcomes button{min-height:44px}.habit-inline-outcomes .habit-choice-skipped span{font-size:14px!important}}
+.habit-week-grid-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;color:#c3b9ce;font-size:11px;margin-top:12px}.habit-week-card{padding:8px 0;margin:0;border-bottom:1px solid #383b3a}.habit-week-card .habit-week{margin-top:5px}.habit-week-card .habit-week button{min-height:44px}.habit-week-card .habit-week-title strong{font-size:13px}
+
+.habit-modal>div{padding:14px 18px 18px}.habit-modal .habit-form{margin:0;padding:0;border:0;background:transparent}.habit-modal .habit-form h2{display:none}
+
+.habit-card-heading .habit-row-main{text-align:left}.habit-weekly-summary>div span:first-child{flex:1;min-width:0}.habit-weekly-summary>div span:last-child{text-align:right}
+
+.habit-week-grid-head .is-selected{color:#fff;background:#493b59;border-radius:6px;font-weight:700}
+
+.habit-calendar-grid button:disabled{opacity:.4;cursor:default;background:transparent;border-style:dashed}

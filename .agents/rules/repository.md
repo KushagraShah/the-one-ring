@@ -17,3 +17,5 @@ Only migration files belong under `supabase/migrations/`, using the timestamped 
 Use project versions `a.b.c`: increment `a` for a new mini-app or a major app change, `b` for other major changes such as code or data-handling overhauls, and `c` for minor changes, features and fixes. Reset lower levels to zero when incrementing a higher level. This is a project convention, not a SemVer compatibility guarantee; keep package and lockfile versions consistent.
 
 Authorization is task-specific. Do not infer permission to publish, rewrite history, change live systems or access private accounts from an old document. No tags or GitHub Releases without explicit authorization.
+
+Before a deployment-triggering app push, run the locally applicable checks in `.github/workflows/deploy.yml`; if any fail or cannot run, do not push, investigate and suggest a fix. After pushing, watch the run for the pushed commit with `gh run watch <run-id> --exit-status` and report its outcome; investigate failures and suggest a fix. If no deployment is triggered or its outcome cannot be verified, say so.

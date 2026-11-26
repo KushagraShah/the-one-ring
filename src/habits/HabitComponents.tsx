@@ -137,30 +137,31 @@ export function HabitForm({ initial, onSave, onCancel, focusField }: { initial: 
     if (submitted) setErrors(validate())
   }, [submitted, title, days, kind, target, start, end, effective, icon])
 
-  const previousEffective = useRef(effective)
-  useEffect(() => {
-    if (!initial || !validDate(effective) || effective === previousEffective.current) return
-    const schedule = versionAt(initial.schedules, effective)
-    const criteria = versionAt(initial.criteria, effective)
-    if (schedule) { setKind(schedule.kind); setDays(schedule.weekdays); setTarget(String(schedule.target)) }
-    if (criteria) { setDone(criteria.done); setPartial(criteria.partial); setMissed(criteria.missed) }
-    previousEffective.current = effective
-  }, [effective])
+  // The input may be empty while typing. Only a deliberate version load replaces this baseline.
+  const loaded = useRef({ date: initialEffective, kind, days, target, done, partial, missed })
   const begin = () => { if (busy.current) return false; busy.current = true; setPending(true); return true }
   const finish = () => { busy.current = false; if (mounted.current) setPending(false) }
   const changeEffective = async (next: string) => {
     if (next === effective || !begin()) return
     try {
-      const previousSchedule = initial && versionAt(initial.schedules, effective)
-      const previousCriteria = initial && versionAt(initial.criteria, effective)
-      const changed = previousSchedule && (previousSchedule.kind !== kind || JSON.stringify([...previousSchedule.weekdays].sort()) !== JSON.stringify([...days].sort()) || (kind === 'flexible' && (!target.trim() || previousSchedule.target !== Number(target)))) || previousCriteria && (previousCriteria.done !== done || previousCriteria.partial !== partial || previousCriteria.missed !== missed)
+      if (!validDate(next) || next === loaded.current.date) { setEffective(next); return }
+      const baseline = loaded.current
+      const changed = baseline.kind !== kind || JSON.stringify([...baseline.days].sort()) !== JSON.stringify([...days].sort()) || (kind === 'flexible' && (!target.trim() || Number(baseline.target) !== Number(target))) || baseline.done !== done || baseline.partial !== partial || baseline.missed !== missed
       if (changed && !await confirmAction('Changing the effective date reloads its saved schedule and criteria. Discard your unsaved schedule and criteria edits?')) return
-      if (mounted.current) { setMutationError(''); setEffective(next) }
+      if (mounted.current) {
+        const schedule = initial ? versionAt(initial.schedules, next) : undefined
+        const criteria = initial ? versionAt(initial.criteria, next) : undefined
+        const version = { date: next, kind: schedule?.kind || 'fixed' as const, days: schedule?.weekdays || [0, 1, 2, 3, 4, 5, 6], target: String(schedule?.target || 1), done: criteria?.done || '', partial: criteria?.partial || '', missed: criteria?.missed || '' }
+        loaded.current = version
+        setKind(version.kind); setDays(version.days); setTarget(version.target)
+        setDone(version.done); setPartial(version.partial); setMissed(version.missed)
+        setMutationError(''); setEffective(next)
+      }
     } finally { finish() }
   }
   const cancel = async () => {
     if (!begin()) return
-    try { if (await confirmAction('Discard unsaved habit changes?') && mounted.current) onCancel() }
+    try { if (await confirmAction('Discard unsaved habit changes?', 'Discard changes') && mounted.current) onCancel() }
     finally { finish() }
   }
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -199,6 +200,7 @@ export function HabitForm({ initial, onSave, onCancel, focusField }: { initial: 
   })
   const feedback = (field: Field) => errors[field] && <p id={`${id}-${field}-error`} className="habit-field-error">{errors[field]}</p>
   return <form ref={form} noValidate className="habit-form settings-card" onSubmit={submit} onChange={() => setMutationError('')}>
+    <p className="habit-form-help">Scroll for all fields and save actions.</p>
     <label htmlFor={`${id}-title`}>Title<input {...fieldProps('title')} value={title} required onChange={event => setTitle(event.target.value)}/></label>
     {feedback('title')}
 
@@ -227,6 +229,7 @@ export function HabitForm({ initial, onSave, onCancel, focusField }: { initial: 
       <h3 id={`${id}-details-heading`}>Optional details</h3>
       <label htmlFor={`${id}-icon`}>Icon (optional emoji)<input {...fieldProps('icon')} value={icon} maxLength={32} placeholder="✨" onChange={event => setIcon(event.target.value)}/></label>
       {feedback('icon')}
+      <div className="habit-emoji-palette" role="group" aria-label="Choose an icon">{['✨', '🌱', '💧', '📚', '🏃', '🧘', '💪', '🎨', '🎵', '🌙', '☀️', '❤️'].map(emoji => <button key={emoji} type="button" aria-label={`Use ${emoji} as icon`} aria-pressed={icon === emoji} onClick={() => setIcon(emoji)}>{emoji}</button>)}<button type="button" onClick={() => setIcon('')}>Clear</button></div>
       <label>Description<textarea value={description} onChange={event => setDescription(event.target.value)}/></label>
       <DetailView title="Outcome criteria (optional)"><label>Done<textarea aria-label="Done" value={done} onChange={event => setDone(event.target.value)}/></label><label>Partial<textarea aria-label="Partial" value={partial} onChange={event => setPartial(event.target.value)}/></label><label>Missed<textarea aria-label="Missed" value={missed} onChange={event => setMissed(event.target.value)}/></label></DetailView>
     </section>

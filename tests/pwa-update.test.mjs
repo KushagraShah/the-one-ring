@@ -272,7 +272,7 @@ test('signed-in update waits for fresh guards, supports retry and respects other
     await page.waitForFunction(() => document.querySelector('.app-update')?.textContent.includes('Finish or cancel edits'))
     assert.equal(await page.getByLabel('Title').inputValue(), 'Protected habit draft')
     await page.getByRole('dialog', { name: 'Create habit' }).getByRole('button', { name: 'Close' }).click()
-    await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Continue' }).click()
+    await page.getByRole('dialog', { name: 'Please confirm' }).getByRole('button', { name: 'Discard changes' }).click()
     await finishGuardedUpdate()
 
     // An unadded shopping item is an inline recipe draft, including on retry.

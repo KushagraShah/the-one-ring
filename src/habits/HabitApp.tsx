@@ -5,7 +5,7 @@ import { supabase } from '../auth'
 import { catchUpDays, eligible, evaluateFlexibleWeek, flexibleWeekText, indexEntries, localDate, MIN_HABIT_DATE, outcomeLabel, parseHabits, paused, shiftDate, validHabitDate, versionAt, weekStart, type Habit, type HabitData, type Outcome } from './model'
 import { demoHabitData } from './demo'
 import { OnlineHabitStore, type SaveStatus } from './online'
-import { Insights } from './Insights'
+import { Insights, type InsightsOrigin, type InsightsReturn } from './Insights'
 import { CriteriaList, EntryEditor, HabitForm, PauseControls, type HabitDraft } from './HabitComponents'
 import { RecentHabitDays } from './RecentHabitDays'
 import { HabitWeek } from './HabitWeek'
@@ -31,7 +31,16 @@ export function reorderNeighbor(habits: readonly Habit[], habitId: string, direc
   return null
 }
 const combineNotes = (recorded: string, retained: string) => recorded && retained && recorded !== retained ? `${recorded}\n\n${retained}` : recorded || retained
-const scheduleSummary = (habit: Habit) => { const today = localDate(); const day = habit.end && habit.end < today ? habit.end : today < habit.start ? habit.start : today; const schedule = versionAt(habit.schedules, day); if (!schedule) return 'No schedule'; const weekdays = schedule.weekdays.length === 7 ? 'Every day' : schedule.weekdays.map(index => labels[index]).join(', '); return schedule.kind === 'flexible' ? `${schedule.target} / week · ${weekdays}` : weekdays }
+const habitStatus = (habit: Habit, today: string) => habit.archived ? 'Archived' : paused(habit, today) ? 'Paused' : habit.end && habit.end < today ? 'Ended' : habit.start > today ? `Starts ${habit.start}` : 'Active'
+const summaryDate = (habit: Habit, today: string) => habit.end && habit.end < today ? habit.end : today < habit.start ? habit.start : today
+const scheduleSummary = (habit: Habit, today: string) => {
+  const day = summaryDate(habit, today)
+  const schedule = versionAt(habit.schedules, day)
+  const period = day > today ? `Schedule from ${day}` : day < today ? `Schedule on ${day}` : 'Schedule'
+  if (!schedule) return `${period}: No schedule in effect`
+  const weekdays = schedule.weekdays.length === 7 ? 'Every day' : schedule.weekdays.map(index => labels[index]).join(', ')
+  return `${period}: ${schedule.kind === 'flexible' ? `Flexible · ${schedule.target} / week` : 'Fixed'} · ${weekdays}`
+}
 function download(data: unknown, scope: string) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
   const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
@@ -55,12 +64,12 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const [, setClockRevision] = useState(0)
   const [tab, setTab] = useState<'today' | 'manage' | 'week' | 'insights'>('today')
   const [returnToInsights, setReturnToInsights] = useState(false)
-  const insightsScroll = useRef(0)
+  const insightsOrigin = useRef<InsightsOrigin | null>(null)
+  const [insightsReturn, setInsightsReturn] = useState<InsightsReturn | null>(null)
   const dailyCards = useRef(new Map<string, HTMLElement>())
   const dateStrip = useRef<HTMLDivElement>(null)
   const navigationToken = useRef(0)
   const [historyTarget, setHistoryTarget] = useState<{ habitId: string; date: string; token: number } | null>(null)
-  const insightsReturnToken = useRef<number | null>(null)
   const [editing, setEditing] = useState<Habit | 'new' | null>(null)
   const [editingFocus, setEditingFocus] = useState<'end' | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -70,11 +79,13 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const draftDirty = Boolean(draft && (draft.outcome !== draft.originalOutcome || draft.note !== draft.originalNote))
   useDraftCapture('habit-entry', draft, draftDirty)
   const [managed, setManaged] = useState<string | null>(null)
+  const [showAllGoals, setShowAllGoals] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [reordering, setReordering] = useState(false)
   const [orderMessage, setOrderMessage] = useState('')
   const [message, setMessage] = useState('')
   const [actionError, setActionError] = useState('')
+  const [dailyError, setDailyError] = useState<{ habitId: string; date: string; message: string } | null>(null)
   const [hasMutation, setHasMutation] = useState(false)
   const deletePending = useRef(false)
   const entryIndex = useMemo(() => indexEntries(data?.entries || []), [data?.entries])
@@ -86,7 +97,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     }
     return index
   }, [data?.unloggedNotes])
-  const cancelHistoryNavigation = () => { navigationToken.current += 1; setHistoryTarget(null); insightsReturnToken.current = null }
+  const cancelHistoryNavigation = () => { navigationToken.current += 1; setHistoryTarget(null); setInsightsReturn(null) }
   const closeHabitForm = () => { setEditing(null); setEditingFocus(null) }
   const editHabit = (habit: Habit | 'new', focus: 'end' | null = null) => { setEditingFocus(focus); setEditing(habit); setActionError('') }
   const discardDraft = () => { const current = draftRef.current; if (current && current.note !== current.originalNote && !saveNote(current.note)) return false; setEntryDraft(null); setExpanded(null); return true }
@@ -110,7 +121,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     if ((current || noteSavePending.current) && store && store.getStatus() !== 'saved') return
     if (discardDraft()) { cancelHistoryNavigation(); rolloverPending.current = false; setDate(next) }
   }
-  const switchTab = async (next: typeof tab) => { if (next === tab) return; if (editing && !await confirmAction('Discard unsaved habit changes?')) return; if (!discardDraft()) return; cancelHistoryNavigation(); if (next === 'week' && automatic.current) { rolloverPending.current = false; setDate(localDate()) } setReturnToInsights(false); setTab(next); closeHabitForm() }
+  const switchTab = async (next: typeof tab) => { if (next === tab) return; if (editing && !await confirmAction('Discard unsaved habit changes?', 'Discard changes')) return; if (!discardDraft()) return; cancelHistoryNavigation(); if (next === 'week' && automatic.current) { rolloverPending.current = false; setDate(localDate()) } setReturnToInsights(false); setTab(next); closeHabitForm() }
 
   useLayoutEffect(() => {
     const target = historyTarget
@@ -119,25 +130,23 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     const frame = requestAnimationFrame(() => {
       if (navigationToken.current !== target.token) return
       const card = dailyCards.current.get(target.habitId)
-      if (card) card.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+      if (card) { card.focus({ preventScroll: true }); card.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }) }
       else setMessage('This habit is no longer available. Return to insights to choose another record.')
       setHistoryTarget(null)
     })
     return () => cancelAnimationFrame(frame)
   }, [historyTarget, tab, view, date, expanded])
   useLayoutEffect(() => {
-    const token = insightsReturnToken.current
-    if (tab !== 'insights' || token === null) return
-    const frame = requestAnimationFrame(() => { if (navigationToken.current === token) { window.scrollTo(0, insightsScroll.current); insightsReturnToken.current = null } })
-    return () => cancelAnimationFrame(frame)
-  }, [tab])
-  useLayoutEffect(() => {
     const strip = dateStrip.current
     const selected = strip?.querySelector<HTMLElement>('[aria-current="date"]')
     if (!strip || !selected) return
-    const left = selected.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft - strip.clientLeft
-    if (left < strip.scrollLeft) strip.scrollLeft = left
-    else if (left + selected.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = left + selected.offsetWidth - strip.clientWidth
+    const stripRect = strip.getBoundingClientRect()
+    const selectedRect = selected.getBoundingClientRect()
+    const visibleLeft = stripRect.left + strip.clientLeft
+    const visibleRight = visibleLeft + strip.clientWidth
+    // Account for fractional layout and integer scroll positions at narrow widths.
+    if (selectedRect.left < visibleLeft + 2) strip.scrollLeft -= Math.ceil(visibleLeft + 2 - selectedRect.left)
+    else if (selectedRect.right > visibleRight - 2) strip.scrollLeft += Math.ceil(selectedRect.right - visibleRight + 2)
   }, [date, tab, today, view, editing, data !== null])
 
   useEffect(() => { if (tab === 'today') resyncRef.current() }, [tab])
@@ -176,7 +185,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const readyRef = useRef<() => boolean>(() => false)
   readyRef.current = () => !!dataRef.current && status === 'saved' && (!store || store.getStatus() === 'saved') && !editing && !draftDirty
   const recoveryBlocked = () => status === 'error' || status === 'conflict' || store?.getStatus() === 'error' || store?.getStatus() === 'conflict'
-  useImperativeHandle(ref, () => ({ canSignOut: () => readyRef.current(), isRecoveryBlocked: recoveryBlocked, leave: async done => { if (recoveryBlocked()) { done(); return } if (editing && !await confirmAction('Discard unsaved habit changes?')) return; if (!discardDraft()) return; closeHabitForm(); cancelHistoryNavigation(); done() }, snapshot: () => dataRef.current, exportData, replace: next => update(next), retry: () => store?.retry() }))
+  useImperativeHandle(ref, () => ({ canSignOut: () => readyRef.current(), isRecoveryBlocked: recoveryBlocked, leave: async done => { if (recoveryBlocked()) { done(); return } if (editing && !await confirmAction('Discard unsaved habit changes?', 'Discard changes')) return; if (!discardDraft()) return; closeHabitForm(); cancelHistoryNavigation(); done() }, snapshot: () => dataRef.current, exportData, replace: next => update(next), retry: () => store?.retry() }))
   const exportData = () => { if (data) download({ scope: 'habits', format: 1, exportedAt: new Date().toISOString(), data }, 'habits') }
   const restore = async (file?: File) => {
     if (!file) return
@@ -215,7 +224,8 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     if (current.originalNote === note) return true
     const unloggedNotes = (workspace.unloggedNotes || []).filter(item => item.habitId !== current.habitId || item.date !== current.date)
     if (!previous && note) unloggedNotes.push({ habitId: current.habitId, date: current.date, note })
-    if (!update({ ...workspace, entries: previous ? workspace.entries.map(item => item === previous ? { ...item, note } : item) : workspace.entries, unloggedNotes })) return false
+    if (!update({ ...workspace, entries: previous ? workspace.entries.map(item => item === previous ? { ...item, note } : item) : workspace.entries, unloggedNotes })) { setDailyError({ habitId: current.habitId, date: current.date, message: 'Note could not be saved. Your text is kept here. Edit it or retry before leaving this date.' }); return false }
+    setDailyError(null)
     if (store && store.getStatus() !== 'saved') noteSavePending.current = true
     setEntryDraft({ ...current, note, originalNote: note })
     return true
@@ -225,14 +235,15 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     if (!workspace || day > localDate()) return false
     const habit = workspace.habits.find(item => item.id === habitId)
     const previous = workspace.entries.find(item => item.habitId === habitId && item.date === day)
-    if (!habit || (outcome && !previous && (habit.archived || !eligible(habit, day)))) return false
+    if (!habit || (outcome && !previous && (habit.archived || !eligible(habit, day)))) { setDailyError({ habitId, date: day, message: 'This outcome is unavailable on this date. Your note is kept here.' }); return false }
     const entries = workspace.entries.filter(item => item.habitId !== habitId || item.date !== day)
     const savedNote = workspace.unloggedNotes?.find(item => item.habitId === habitId && item.date === day)?.note || ''
     const note = current?.habitId === habitId && current.date === day ? current.note : combineNotes(previous?.note || '', savedNote)
     const unloggedNotes = (workspace.unloggedNotes || []).filter(item => item.habitId !== habitId || item.date !== day)
     if (outcome) entries.push({ habitId, date: day, outcome, note })
     else if (note) unloggedNotes.push({ habitId, date: day, note })
-    if (!update({ ...workspace, entries, unloggedNotes })) return false
+    if (!update({ ...workspace, entries, unloggedNotes })) { setDailyError({ habitId, date: day, message: 'Outcome could not be saved. Your note is kept here. Try again after correcting it or resolving the save problem.' }); return false }
+    setDailyError(null)
     if (current && current.habitId === habitId && current.date === day && current.note !== current.originalNote && store && store.getStatus() !== 'saved') noteSavePending.current = true
     if (options.keepEditorOpen && current?.habitId === habitId && current.date === day) setEntryDraft({ ...current, outcome, originalOutcome: outcome, note, originalNote: note })
     else { setEntryDraft(null); setExpanded(null) }
@@ -271,7 +282,7 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
     if (!habit || deletePending.current) return
     deletePending.current = true
     try {
-      if (!await confirmAction(`Permanently delete ${habit.title} and all its records?`)) return
+      if (!await confirmAction(`Permanently delete ${habit.title} and all its records and notes?`, 'Delete habit')) return
       const workspace = dataRef.current
       if (!workspace || recoveryBlocked() || !workspace.habits.some(item => item.id === habitId)) return
       if (!update({ ...workspace, habits: workspace.habits.filter(item => item.id !== habitId), entries: workspace.entries.filter(item => item.habitId !== habitId), unloggedNotes: workspace.unloggedNotes?.filter(item => item.habitId !== habitId) })) return
@@ -285,10 +296,10 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
   const dailyScore = data ? fixedScore(data, date, date, entryIndex) : null
   const dailyHabits = (data?.habits || []).filter(habit => (!habit.archived && eligible(habit, date)) || entry(habit.id, date) || noteIndex.get(habit.id)?.has(date)).sort((a, b) => Number(versionAt(a.schedules, date)?.kind === 'flexible') - Number(versionAt(b.schedules, date)?.kind === 'flexible'))
   const flexibleHabits = (data?.habits || []).filter(habit => !habit.archived && habit.start <= date && (!habit.end || habit.end >= date) && versionAt(habit.schedules, date)?.kind === 'flexible')
-  const weeklyGoals = flexibleHabits.length > 0 && <section className="habit-weekly-summary"><h2>Weekly goals</h2><small>Through {new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · Done = 1 point · Partial = ½. Flexible days are opportunities, not daily obligations.</small>{flexibleHabits.map(habit => {
+  const weeklyGoals = flexibleHabits.length > 0 && <section className="habit-weekly-summary"><h2>Weekly goals</h2><small>Through {new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · Done = 1 point · Partial = ½. Flexible days are opportunities, not daily obligations.</small>{flexibleHabits.slice(0, 3).map(habit => {
     const result = evaluateFlexibleWeek(habit, entryIndex.byHabitDate.get(habit.id) || new Map(), weekStart(date), date)
     return <div key={habit.id}><span>{habit.icon || '◈'} {habit.title}</span><span>{flexibleWeekText(result)}{result.phase === 'in-progress' && result.primaryExclusion ? ' · Week in progress' : ''}</span></div>
-  })}</section>
+  })}{flexibleHabits.length > 3 && <button type="button" className="text-button" onClick={() => setShowAllGoals(true)}>View all {flexibleHabits.length} weekly goals</button>}</section>
   const editorHabit = draft ? data?.habits.find(habit => habit.id === draft.habitId) : null
   const loading = loadError ? <div className="settings-card"><h2>Could not load habits</h2><p>Check your connection and that the habit database migration is installed. No local account data was loaded.</p><button className="outline-button" onClick={() => setAttempt(n => n + 1)}>Retry</button></div> : <p>Loading habits…</p>
   return <>
@@ -299,13 +310,13 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
         <header className="page-heading habit-heading"><h1>Habit Tracker<span className="accent">.</span></h1>{!identity.demo && <p className="habit-save-feedback" role="status">{hasMutation ? status === 'saved' ? 'Habit changes saved.' : status === 'saving' ? 'Saving habits…' : 'Habit changes need save recovery.' : ''}</p>}</header>
         <nav className="workout-subnav habit-nav" aria-label="Habit Tracker"><button className={tab === 'today' ? 'active' : ''} onClick={() => switchTab('today')}>Daily</button><button className={tab === 'week' ? 'active' : ''} onClick={() => switchTab('week')}>Week</button><button className={tab === 'insights' ? 'active' : ''} onClick={() => switchTab('insights')}>Insights</button><button className={tab === 'manage' ? 'active' : ''} onClick={() => switchTab('manage')}>Habits</button></nav>
         {message && <p role="status">{message}</p>}
-        {editing ? <HabitPanel variant="form" title={editing === 'new' ? 'Create habit' : 'Edit habit'} onClose={() => { void (async () => { if (await confirmAction('Discard unsaved habit changes?')) closeHabitForm() })() }}>
+        {editing ? <HabitPanel variant="form" title={editing === 'new' ? 'Create habit' : 'Edit habit'} onClose={() => { void (async () => { if (await confirmAction('Discard unsaved habit changes?', 'Discard changes')) closeHabitForm() })() }}>
           {modalSaveStatus}
           <HabitForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? null : editing} focusField={editingFocus} onSave={saveHabit} onCancel={closeHabitForm}/>
         </HabitPanel> : <>
           {tab === 'week' && <div className="habit-date-tools habit-week-date-tools"><label>Date <input type="date" value={date} min={MIN_HABIT_DATE} max={today} onChange={event => { if (event.target.value) changeDate(event.target.value) }}/></label><button type="button" disabled={today === MIN_HABIT_DATE} onClick={() => changeDate(shiftDate(today, -1))}>Yesterday</button><button type="button" disabled={date === today} onClick={() => changeDate(today)}>Today</button></div>}
           {tab === 'today' && <>
-            {returnToInsights && <button type="button" className="text-button habit-insights-back" onClick={() => { if (discardDraft()) { cancelHistoryNavigation(); insightsReturnToken.current = navigationToken.current; setReturnToInsights(false); setTab('insights') } }}>← Back to insights</button>}
+            {returnToInsights && <button type="button" className="text-button habit-insights-back" onClick={() => { if (discardDraft()) { cancelHistoryNavigation(); if (insightsOrigin.current) setInsightsReturn({ origin: insightsOrigin.current, token: navigationToken.current }); setReturnToInsights(false); setTab('insights') } }}>← Back to insights</button>}
             <header className="habit-daily-header">
               <div className="habit-daily-date-heading"><h2>{new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h2>
                 <div className="habit-date-tools"><label>Date <input type="date" value={date} min={MIN_HABIT_DATE} max={today} onChange={event => { if (event.target.value) changeDate(event.target.value) }}/></label><button type="button" disabled={date === today} onClick={() => changeDate(today)}>Today</button></div>
@@ -318,23 +329,25 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
               })}</div>
               <small className="habit-strip-caption">Fixed habits logged / due · — no fixed habits due</small>
             </header>
-            {(() => { const pending = catchUpDays(data, today); return pending.length > 0 && <section className="habit-catchup"><div className="habit-catchup-heading"><strong>Catch up · previous 7 days</strong><small>Unlogged fixed habits</small></div><div className="habit-catchup-chips">{pending.map(day => <button type="button" key={day.date} onClick={() => changeDate(day.date)} aria-label={`${day.date}: ${day.count} unlogged fixed habits`}>{new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })} · {day.count}</button>)}</div></section> })()}
+            {weeklyGoals}
+            {showAllGoals && <HabitPanel title="Weekly goals" onClose={() => setShowAllGoals(false)}><p>Through {date} · Done = 1 point · Partial = ½</p><div className="habit-goals-list">{flexibleHabits.map(habit => { const result = evaluateFlexibleWeek(habit, entryIndex.byHabitDate.get(habit.id) || new Map(), weekStart(date), date); return <div key={habit.id}><strong>{habit.icon} {habit.title}</strong><span>{flexibleWeekText(result)}{result.phase === 'in-progress' && result.primaryExclusion ? ' · Week in progress' : ''}</span></div> })}</div></HabitPanel>}
+            {(() => { const pending = catchUpDays(data, today); return pending.length > 0 && <section className="habit-catchup"><div className="habit-catchup-heading"><strong>Catch up · previous 7 days</strong><small>Unlogged fixed habits</small></div><div className="habit-catchup-chips">{pending.map(day => <button type="button" key={day.date} onClick={() => { if (changeDate(day.date)) requestAnimationFrame(() => dateStrip.current?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })) }} aria-label={`${day.date}: ${day.count} unlogged fixed habits`}>{new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })} · {day.count}</button>)}</div></section> })()}
             {dailyHabits.map(habit => {
               const record = entry(habit.id, date); const schedule = versionAt(habit.schedules, date)
               const progress = schedule?.kind === 'flexible' ? evaluateFlexibleWeek(habit, entryIndex.byHabitDate.get(habit.id) || new Map(), weekStart(date), date) : null
-              return <article key={habit.id} ref={node => { if (node) dailyCards.current.set(habit.id, node); else dailyCards.current.delete(habit.id) }} className={`habit-card habit-daily-card ${record ? `is-${record.outcome}` : ''}`}>
+              return <article tabIndex={-1} key={habit.id} ref={node => { if (node) dailyCards.current.set(habit.id, node); else dailyCards.current.delete(habit.id) }} className={`habit-card habit-daily-card ${record ? `is-${record.outcome}` : ''}`}>
                 <div className="habit-row habit-card-heading"><span className="habit-row-main"><strong><span aria-hidden="true">{habit.icon || '◈'}</span> {habit.title}</strong><small>{habit.archived ? record ? 'Archived · recorded' : 'Archived · note only' : !eligible(habit, date) ? record ? 'Not scheduled · recorded' : 'Not scheduled · note only' : progress ? `Flexible · ${flexibleWeekText(progress)}` : 'Fixed · scheduled'}</small></span></div>
                 {((!habit.archived && eligible(habit, date)) || record) && <div className="habit-inline-outcomes" aria-label={`Quick outcomes for ${habit.title}`}>{(['done', 'partial', 'missed', 'skipped'] as const).map(outcome => {
                   const personal = outcomeLabel(habit, date, outcome); const canonical = canonicalOutcomes[outcome]
-                  return <button key={outcome} type="button" className={`habit-choice-${outcome}`} aria-label={outcome === 'skipped' ? `Intentional skip ${habit.title}` : `${personal}${personal !== canonical ? ` (${canonical})` : ''} · ${habit.title}`} aria-pressed={record?.outcome === outcome} onClick={() => { if (discardDraft()) { const latest = dataRef.current?.entries.find(item => item.habitId === habit.id && item.date === date); saveOutcome(habit.id, date, latest?.outcome === outcome ? null : outcome) } }}><span>{outcome === 'skipped' ? '⏭' : personal}</span>{outcome === 'skipped' ? <small>Skip</small> : personal !== canonical && <small>{canonical}</small>}</button>
+                  return <button key={outcome} type="button" className={`habit-choice-${outcome}`} aria-label={outcome === 'skipped' ? `Intentional skip ${habit.title}` : `${personal}${personal !== canonical ? ` (${canonical})` : ''} · ${habit.title}`} aria-pressed={record?.outcome === outcome} onClick={() => { const current = draftRef.current; if ((current?.habitId === habit.id && current.date === date) || discardDraft()) { const latest = dataRef.current?.entries.find(item => item.habitId === habit.id && item.date === date); saveOutcome(habit.id, date, latest?.outcome === outcome ? null : outcome) } }}><span>{outcome === 'skipped' ? '⏭' : personal}</span>{outcome === 'skipped' ? <small>Skip</small> : personal !== canonical && <small>{canonical}</small>}</button>
                 })}</div>}
-                {expanded === habit.id && draft?.habitId === habit.id && <div className="habit-inline-note"><label>Note<textarea value={draft.note} onChange={event => setEntryDraft({ ...draft, note: event.target.value })} onBlur={event => saveNote(event.target.value)}/></label></div>}
+                {expanded === habit.id && draft?.habitId === habit.id && <div className="habit-inline-note"><label>Note<textarea value={draft.note} aria-describedby={dailyError?.habitId === habit.id && dailyError.date === date ? `habit-error-${habit.id}` : undefined} onChange={event => { setDailyError(null); setActionError(''); setEntryDraft({ ...draft, note: event.target.value }) }} onBlur={event => saveNote(event.target.value)}/></label></div>}
+                {dailyError?.habitId === habit.id && dailyError.date === date && <div className="habit-daily-error"><p id={`habit-error-${habit.id}`} role="alert">{dailyError.message}</p>{expanded === habit.id && draft?.habitId === habit.id && draft.note !== draft.originalNote && <button type="button" onClick={() => saveNote(draftRef.current?.note || '')}>Retry note save</button>}</div>}
                 <div className="habit-card-footer"><button className="habit-note-button" type="button" onClick={() => expanded === habit.id ? discardDraft() : openEntry(habit.id, date, false)}>{expanded === habit.id ? <X size={15} aria-hidden="true"/> : <NotebookPen size={15} aria-hidden="true"/>}{expanded === habit.id ? 'Close note' : record?.note || noteIndex.get(habit.id)?.has(date) ? 'Edit note' : 'Add note'}</button>
                 <RecentHabitDays habit={habit} date={date} entries={entryIndex.byHabitDate.get(habit.id)} notes={noteIndex.get(habit.id)}/></div>
               </article>
             })}
             {dailyHabits.length === 0 && <div className="habit-empty"><p>No habits scheduled for this date.</p>{data.habits.length === 0 && <button type="button" className="primary" onClick={() => { setTab('manage'); editHabit('new') }}>Create your first habit</button>}</div>}
-            {weeklyGoals}
           </>}
           {tab === 'week' && <HabitWeek date={date} habits={data.habits} entries={entryIndex.byHabitDate} notes={data.unloggedNotes || []} selected={draft} onDate={changeDate} onSelect={(habitId, day) => { openEntry(habitId, day) }}/>}
           {tab === 'week' && draft && editorHabit && !recoveryBlocked() && <HabitPanel title={`${editorHabit.icon || '◈'} ${editorHabit.title} · ${new Date(`${draft.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`} onClose={() => { discardDraft() }}>
@@ -343,9 +356,9 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
             <EntryEditor habit={editorHabit} draft={draft} allowOutcome={Boolean(entry(editorHabit.id, draft.date)) || (!editorHabit.archived && eligible(editorHabit, draft.date))} onChange={setEntryDraft} onNoteBlur={saveNote} onOutcome={outcome => saveOutcome(editorHabit.id, draft.date, outcome, { keepEditorOpen: true })}/>
           </HabitPanel>}
 
-          <div hidden={tab !== 'insights'}><Insights data={data} active={tab === 'insights' && view === 'habits' && !recoveryBlocked()} onDate={(day, habitId) => {
+          <div hidden={tab !== 'insights'}><Insights data={data} active={tab === 'insights' && view === 'habits' && !recoveryBlocked()} returnRequest={insightsReturn} onDate={(day, habitId, origin) => {
             if (habitId ? openEntry(habitId, day) : changeDate(day)) {
-              insightsScroll.current = window.scrollY
+              insightsOrigin.current = origin
               if (habitId) setHistoryTarget({ habitId, date: day, token: navigationToken.current })
               setReturnToInsights(true); setTab('today')
             }
@@ -356,19 +369,20 @@ export const HabitApp = forwardRef<HabitHandle, Props>(function HabitApp({ ident
             <p className="habit-insight-note">{showArchived ? 'Archived habits leave aggregate summaries and current streaks; recorded history remains correctable.' : 'Your active habits, including paused and ended habits.'}</p>
             <p role="status" className="habit-insight-note">{actionError || orderMessage}</p>
             {!data.habits.some(habit => habit.archived === showArchived) && <p className="habit-empty">{showArchived ? 'No archived habits.' : 'No active habits. Create a habit to get started.'}</p>}
-            {data.habits.map(habit => habit.archived === showArchived && <div className="habit-manage-item" key={habit.id}><button type="button" className="habit-manage-row" onClick={() => { setActionError(''); setMessage(''); setManaged(habit.id) }}><span className="habit-icon" aria-hidden="true">{habit.icon || '◈'}</span><span><strong>{habit.title}</strong><small>{habit.archived ? 'Archived' : paused(habit, today) ? 'Paused' : habit.end && habit.end < today ? 'Ended' : 'Active'} · {scheduleSummary(habit)}</small></span><span aria-hidden="true">›</span></button>{reordering && <div className="habit-order-controls"><button type="button" onClick={() => move(habit.id, -1)} disabled={reorderNeighbor(data.habits, habit.id, -1) === null} aria-label={`Move ${habit.title} up`}>↑</button><button type="button" onClick={() => move(habit.id, 1)} disabled={reorderNeighbor(data.habits, habit.id, 1) === null} aria-label={`Move ${habit.title} down`}>↓</button></div>}</div>)}
+            {data.habits.map(habit => habit.archived === showArchived && <div className="habit-manage-item" key={habit.id}><button type="button" className="habit-manage-row" onClick={() => { setActionError(''); setMessage(''); setManaged(habit.id) }}><span className="habit-icon" aria-hidden="true">{habit.icon || '◈'}</span><span><strong>{habit.title}</strong><small>{habitStatus(habit, today)} · {scheduleSummary(habit, today)}</small></span><span aria-hidden="true">›</span></button>{reordering && <div className="habit-order-controls"><button type="button" onClick={() => move(habit.id, -1)} disabled={reorderNeighbor(data.habits, habit.id, -1) === null} aria-label={`Move ${habit.title} up`}>↑</button><button type="button" onClick={() => move(habit.id, 1)} disabled={reorderNeighbor(data.habits, habit.id, 1) === null} aria-label={`Move ${habit.title} down`}>↓</button></div>}</div>)}
             {managed && !recoveryBlocked() && (() => {
               const habit = data.habits.find(item => item.id === managed)
               if (!habit) return null
               return <HabitPanel title={`${habit.icon || '◈'} ${habit.title}`} onClose={() => setManaged(null)}>
-                {modalSaveStatus}<p>{habit.archived && 'Archived · '}{scheduleSummary(habit)}</p>
-                <CriteriaList criteria={versionAt(habit.criteria, today)}/>
+                {modalSaveStatus}<p><strong>{habitStatus(habit, today)}</strong></p><p>{scheduleSummary(habit, today)}</p>
+                <h3>Outcome criteria</h3>
+                <p className="habit-form-help">Schedule and criteria reference: {summaryDate(habit, today)}{summaryDate(habit, today) === today ? ' · today' : summaryDate(habit, today) === habit.start ? ' · start date' : ' · end date'}</p>
+                {(() => { const criteria = versionAt(habit.criteria, summaryDate(habit, today)); return criteria && (criteria.done || criteria.partial || criteria.missed) ? <CriteriaList criteria={criteria}/> : <p className="habit-form-help">No personal criteria set for this date. Done, Partial and Missed keep their standard meanings.</p> })()}
                 <div className="habit-actions"><button type="button" onClick={() => { setManaged(null); editHabit(habit) }}>Edit habit</button>
                   {habit.end && habit.end < today && <button type="button" onClick={() => { setManaged(null); editHabit(habit, 'end') }}>Extend habit</button>}
                 </div>
                 <PauseControls habit={habit} onChange={changeHabit}/>
-                <p className="habit-form-help">Archived habits leave aggregate summaries, current streaks and new opportunities. Recorded history remains correctable. Unarchiving keeps active dates and pauses.</p>
-                <div className="habit-actions"><button type="button" onClick={() => { const latest = dataRef.current?.habits.find(item => item.id === habit.id); if (latest && changeHabit({ ...latest, archived: !latest.archived })) setMessage(`${latest.title} ${latest.archived ? 'unarchived' : 'archived'}. Recorded history remains available.`) }}>{habit.archived ? 'Unarchive' : 'Archive'}</button><button type="button" onClick={() => { void deleteHabit(habit.id) }}>Delete</button></div>
+                <div className="habit-actions"><button type="button" onClick={() => { void (async () => { if (!await confirmAction(habit.archived ? 'Unarchive this habit? Its active dates and pauses are kept.' : 'Archive this habit? It leaves summaries and new opportunities. Recorded history remains available for correction.', habit.archived ? 'Unarchive' : 'Archive')) return; const latest = dataRef.current?.habits.find(item => item.id === habit.id); if (latest && !recoveryBlocked() && changeHabit({ ...latest, archived: !habit.archived })) setMessage(`${latest.title} ${habit.archived ? 'unarchived' : 'archived'}. Recorded history remains available.`) })() }}>{habit.archived ? 'Unarchive' : 'Archive'}</button></div><div className="habit-danger-actions"><button type="button" onClick={() => { void deleteHabit(habit.id) }}>Delete habit</button></div>
               </HabitPanel>
             })()}
           </>}

@@ -283,6 +283,8 @@
 .habit-period-kind { color: #d1b6ec; text-transform: capitalize; font-size: 12px; }
 .habit-period-metrics { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #ccc; font-size: 12px; font-variant-numeric: tabular-nums; }
 .habit-period-metrics strong { color: #f1e8fa; }
+.habit-period-performance, .habit-period-coverage { padding: 3px 6px; border: 1px solid #8a6aa8; border-radius: 5px; background: #33263e; }
+.habit-period-coverage { border-color: #929a9c; border-style: dashed; background: #2d3435; }
 .habit-period-table small { color: #cbbad8; }
 .habit-review-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .habit-review-chips button { min-height: 44px; padding: 7px 10px; border: 1px solid #5b5270; border-radius: 8px; background: #302a39; color: #eee; }
@@ -382,3 +384,40 @@
 @media (prefers-reduced-motion: reduce) {
   .habit-app *, .habit-app *::before, .habit-app *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+/* Compact, readable habit review surfaces. */
+.habit-recent-caption { font-size: 12px; }
+.habit-marker { width: 23px; height: 26px; font-size: 13px; }
+.habit-goals-list > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; padding: 10px 0; border-bottom: 1px solid #51465f; overflow-wrap: anywhere; }
+.habit-weekly-summary .text-button { min-height: 44px; color: #dfcbf5; }
+.habit-emoji-palette { display: flex; flex-wrap: wrap; gap: 5px; }
+.habit-emoji-palette button { min-width: 44px; min-height: 44px; padding: 6px; border: 1px solid #535353; border-radius: 8px; background: #292929; color: #eee; font-size: 18px; }
+.habit-emoji-palette button[aria-pressed=true] { border: 2px solid var(--accent); background: #44354f; }
+.habit-emoji-palette button:last-child { font-size: 13px; }
+.habit-form-footer { position: static; }
+.habit-modal-form > .habit-modal-body { scroll-padding-bottom: 16px; }
+.habit-danger-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid #5e444b; }
+.habit-danger-actions button { min-height: 44px; padding: 9px 12px; border: 1px solid #a6656b; border-radius: 8px; background: #512d30; color: #f7d2d4; }
+.habit-calendar-grid button small, .habit-calendar > small { font-size: 11px; }
+.habit-calendar-grid button[aria-current=date] { outline: 2px solid var(--accent); outline-offset: -3px; }
+.habit-chart-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: #ddd; }
+.habit-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.habit-chart-legend i { width: 15px; height: 15px; border-radius: 2px; }
+.habit-legend-performance { background: var(--accent); }
+.habit-legend-coverage { background: repeating-linear-gradient(135deg, #d0d2d3 0 3px, #6c7173 3px 5px); }
+.habit-bar-fill.habit-bar-coverage { background: repeating-linear-gradient(135deg, #d0d2d3 0 3px, #6c7173 3px 5px); }
+.habit-week-chart { height: 180px; }
+.habit-week-chart-column small { font-size: 11px; }
+.habit-row-chevron { font-size: 24px; color: #d8c4eb; }
+.habit-target-week { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 3px; }
+.habit-target-week .text-button { display: block; min-height: 44px; color: #dfcbf5; }
+.habit-review-evidence { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid #51465f; }
+.habit-review-evidence h3:focus, .habit-panel h4:focus, .habit-insights h4:focus { outline: 2px solid var(--accent); outline-offset: 4px; }
+.habit-daily-error { margin-block: 10px; padding: 10px 12px; border-left: 3px solid #edb2b7; background: #382a32; color: #f3c7cb; font-size: 13px; }
+.habit-daily-error p { margin: 0; line-height: 1.5; }
+.habit-daily-error button { min-height: 44px; margin-top: 6px; color: inherit; }
+.habit-week-chart-column .habit-bars { flex: 1; min-height: 0; height: auto; }
+.habit-week-chart-column > small { flex: 0 0 62px; text-align: center; overflow-wrap: anywhere; }
+.habit-chart-cutoff { display: block; margin-top: 4px; font-size: 10px; line-height: 1.2; }
+.habit-trend .detail-trigger > span > small { display: block; color: #d8c4eb; }
+@media (min-width: 700px) { .habit-period-table button { grid-template-columns: minmax(120px, 1fr) minmax(100px, .8fr) minmax(220px, 2fr) auto; } }

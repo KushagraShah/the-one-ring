@@ -448,7 +448,7 @@ test('demo contains fictional workout and habit history and resets edits', async
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'History & insights' })).toBeVisible()
   await page.getByRole('button', { name: 'By habit', exact: true }).click()
-  await expect(page.getByRole('button', { name: /Read a little.*scored/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Read a little.*scored/i })).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'Explore the demo' }).click()
   await openApp(page, 'Habits')

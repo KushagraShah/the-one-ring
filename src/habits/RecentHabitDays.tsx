@@ -2,7 +2,7 @@ import { eligible, outcomeLabel, shiftDate, versionAt, type Entry, type Habit } 
 
 const icons = { done: '✓', partial: '½', missed: '×', skipped: '–' } as const
 export function RecentHabitDays({ habit, date, entries, notes }: { habit: Habit; date: string; entries: ReadonlyMap<string, Entry> | undefined; notes?: ReadonlyMap<string, string> }) {
-  const days = Array.from({ length: 7 }, (_, index) => shiftDate(date, index - 6))
+  const days = [...new Set(Array.from({ length: 7 }, (_, index) => shiftDate(date, index - 6)))]
   const canonical = { done: 'Done', partial: 'Partial', missed: 'Missed', skipped: 'Skipped' }
   const description = days.map(day => {
     const entry = entries?.get(day)

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { eligible, evaluateFlexibleWeek, flexibleWeekText, hasFlexibleWeek, localDate, outcomeLabel, shiftDate, versionAt, weekStart, type Entry, type Habit } from './model'
+import { eligible, evaluateFlexibleWeek, flexibleWeekText, hasFlexibleWeek, localDate, MIN_HABIT_DATE, outcomeLabel, shiftDate, versionAt, weekStart, type Entry, type Habit } from './model'
 
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const symbols = { done: '✓', partial: '½', missed: '×', skipped: '–' } as const
@@ -37,7 +37,7 @@ export function HabitWeek({ date, habits, entries, notes, selected, onDate, onSe
   }, [])
 
   return <section className="habit-week-section">
-    <div className="habit-week-heading"><div><h2>Week of {monday}</h2><small>Tap a day to record or correct</small></div><div className="habit-week-nav"><button type="button" className="outline-button" aria-label="Previous week" onClick={() => onDate(shiftDate(date, -7))}>←</button><button type="button" className="outline-button" aria-label="Next week" disabled={monday >= weekStart(today)} onClick={() => onDate([shiftDate(date, 7), today].sort()[0])}>→</button></div></div>
+    <div className="habit-week-heading"><div><h2>Week of {monday}</h2><small>Tap a day to record or correct</small></div><div className="habit-week-nav"><button type="button" className="outline-button" aria-label="Previous week" disabled={monday === MIN_HABIT_DATE} onClick={() => onDate(shiftDate(date, -7))}>←</button><button type="button" className="outline-button" aria-label="Next week" disabled={monday >= weekStart(today)} onClick={() => onDate([shiftDate(date, 7), today].sort()[0])}>→</button></div></div>
     <div className="habit-week-legend" aria-label="Week legend"><span>✓ Done</span><span>½ Partial</span><span>× Missed</span><span>– Skipped</span><span>· Unlogged</span><span>○ Available</span><span>✎ Note only</span><span>— Future / not scheduled</span></div>
     <p>Done adds 1 point; Partial adds ½. Skip applies to one day. Weekly results use this rule for past weeks too.</p>
     {overflows && <p className="habit-week-scroll-cue">Swipe for more days →</p>}

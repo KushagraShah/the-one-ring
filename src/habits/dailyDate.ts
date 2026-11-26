@@ -4,7 +4,7 @@ import { localDate, shiftDate } from './model'
 export function dailyStripDays(selected: string, today: string): string[] {
   const capped = selected > today ? today : selected
   const end = capped >= shiftDate(today, -6) ? today : capped
-  return Array.from({ length: 7 }, (_, index) => shiftDate(end, index - 6))
+  return [...new Set(Array.from({ length: 7 }, (_, index) => shiftDate(end, index - 6)))]
 }
 
 /** Daily check-in follows the local calendar day. */

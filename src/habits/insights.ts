@@ -1,4 +1,4 @@
-import { eligible, evaluateFlexibleWeek, hasFlexibleWeek, indexEntries, shiftDate, versionAt, weeklyExclusionText, weekStart, type Entry, type FlexibleWeekEvaluation, type Habit, type HabitData, type Schedule } from './model'
+import { eligible, evaluateFlexibleWeek, hasFlexibleWeek, indexEntries, MIN_HABIT_DATE, shiftDate, versionAt, weeklyExclusionText, weekStart, type Entry, type FlexibleWeekEvaluation, type Habit, type HabitData, type Schedule } from './model'
 
 export type Score = { done: number; partial: number; missed: number; skipped: number; due: number; performance: number | null; coverage: number | null }
 
@@ -32,7 +32,8 @@ export function habitStreak(habit: Habit, entries: Entry[], today: string): { su
   const records = new Map(habitEntries.map(entry => [entry.date, entry]))
   let success = 0; let engagement = 0; let successOpen = true; let engagementOpen = true
   if (schedule?.kind === 'flexible') {
-    for (let monday = shiftDate(weekStart(today), -7), limit = 0; shiftDate(monday, 6) >= habit.start && limit < 5200; monday = shiftDate(monday, -7), limit++) {
+    if (weekStart(today) === MIN_HABIT_DATE) return { success, engagement, unit: 'weeks' }
+    for (let monday = shiftDate(weekStart(today), -7), limit = 0; monday && shiftDate(monday, 6) >= habit.start && limit < 5200; monday = monday === MIN_HABIT_DATE ? '' : shiftDate(monday, -7), limit++) {
       const result = evaluateFlexibleWeek(habit, records, monday, today)
       if (result.streakDisposition === 'pass-over') continue
       if (result.streakDisposition === 'stop') break
@@ -42,7 +43,7 @@ export function habitStreak(habit: Habit, entries: Entry[], today: string): { su
     }
     return { success, engagement, unit: 'weeks' }
   }
-  for (let day = today, limit = 0; day >= habit.start && limit < 36600; day = shiftDate(day, -1), limit++) {
+  for (let day = today, limit = 0; day >= habit.start && limit < 36600; day = day === MIN_HABIT_DATE ? '' : shiftDate(day, -1), limit++) {
     if (habit.end && day > habit.end) continue
     if (versionAt(habit.schedules, day)?.kind !== 'fixed') break
     if (!eligible(habit, day)) continue
@@ -144,7 +145,7 @@ export function habitPeriodSummary(habit: Habit, index: EntryIndex, bounds: { fr
 export function monthBounds(month: string, today: string): { from: string; to: string } {
   const from = `${month}-01`
   const [year, m] = month.split('-').map(Number)
-  const next = `${m === 12 ? year + 1 : year}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01`
+  const next = `${String(m === 12 ? year + 1 : year).padStart(4, '0')}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01`
   return { from, to: [shiftDate(next, -1), today].sort()[0] }
 }
 

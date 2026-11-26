@@ -40,6 +40,8 @@
 .habit-date-tools label { display: grid; gap: 3px; flex: 1; min-width: 0; font-size: 11px; color: #bcbcbc; }
 .habit-date-tools input { width: 100%; min-height: 44px; }
 .habit-date-tools button, .habit-catchup-chips button { flex: none; min-height: 44px; padding: 7px 10px; border: 1px solid #5b5270; border-radius: 8px; background: #302a39; color: #eee; }
+.habit-week-date-tools { flex-wrap: wrap; }
+.habit-week-date-tools label { flex: 1 1 210px; }
 .habit-date { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px 64px; gap: 6px; margin: 8px 0 0; padding: 7px; border: 1px solid #383b3a; border-radius: 12px; background: #1d1f1e; }
 .habit-date label { display: grid; gap: 2px; min-width: 0; color: #b4b4b4; font-size: 11px; }
 .habit-date input { width: 100%; min-height: 44px; padding: 2px; border: 0; background: transparent; font-size: 14px; font-weight: 600; }
@@ -268,6 +270,26 @@
 .habit-section-heading label { display: grid; gap: 5px; min-width: 0; max-width: 100%; font-size: 12px; }
 .habit-section-heading input { min-height: 44px; }
 .habit-insights-period { margin: 10px 0; }
+.habit-insights-period[hidden] { display: none; }
+.habit-month-navigation { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; max-width: 440px; }
+.habit-month-navigation strong { text-align: center; overflow-wrap: anywhere; line-height: 1.3; }
+.habit-month-navigation button, .habit-order-controls button, .habit-manage-toolbar button:not(.primary) { min-width: 44px; min-height: 44px; padding: 8px; border: 1px solid #5b5270; border-radius: 8px; background: #302a39; color: #eee; }
+.habit-insights-period label { display: grid; gap: 4px; max-width: 240px; margin-top: 8px; color: #cbc2d5; font-size: 12px; }
+.habit-insights-period input { width: 100%; min-height: 44px; }
+.habit-manage-item { display: flex; align-items: center; gap: 6px; }
+.habit-manage-item .habit-manage-row { flex: 1; min-width: 0; }
+.habit-order-controls { display: flex; gap: 4px; }
+.habit-period-table button { display: grid; gap: 6px; width: 100%; min-height: 44px; padding: 13px 4px; border-bottom: 1px solid #51465f; background: transparent; color: #eee; text-align: left; overflow-wrap: anywhere; }
+.habit-period-kind { color: #d1b6ec; text-transform: capitalize; font-size: 12px; }
+.habit-period-metrics { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #ccc; font-size: 12px; font-variant-numeric: tabular-nums; }
+.habit-period-metrics strong { color: #f1e8fa; }
+.habit-period-table small { color: #cbbad8; }
+.habit-review-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.habit-review-chips button { min-height: 44px; padding: 7px 10px; border: 1px solid #5b5270; border-radius: 8px; background: #302a39; color: #eee; }
+@media (min-width: 700px) {
+  .habit-period-table button { grid-template-columns: minmax(120px, 1fr) minmax(90px, .6fr) minmax(220px, 2fr); align-items: baseline; column-gap: 12px; }
+  .habit-period-table small { grid-column: 3; }
+}
 .habit-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .habit-summary-grid > div { min-width: 0; padding: 14px; border-radius: 8px; background: #292929; }
 .habit-summary-grid strong, .habit-summary-grid span, .habit-summary-grid small { display: block; overflow-wrap: anywhere; }
@@ -344,6 +366,7 @@
   .habit-inline-outcomes .habit-choice-skipped > span { font-size: 14px; }
   .habit-date-tools { flex-wrap: wrap; }
   .habit-date-tools label { flex-basis: 120px; }
+  .habit-week-date-tools label { flex-basis: 100%; }
   .habit-date-tools button { padding-inline: 8px; }
   .habit-rank button, .habit-history-list button { flex-wrap: wrap; }
   .habit-history-result { flex: 1 1 100%; }

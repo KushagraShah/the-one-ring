@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catchUpDays, eligible, evaluateFlexibleWeek, flexibleWeekText, hasFlexibleWeek, indexEntries, outcomeLabel, parseHabits, shiftDate, versionAt, weekProgress, type Entry, type Habit, type HabitData, type WeeklyExclusion } from '../src/habits/model'
+import { catchUpDays, eligible, evaluateFlexibleWeek, flexibleWeekText, hasFlexibleWeek, indexEntries, outcomeLabel, parseHabits, shiftDate, versionAt, weekday, weekProgress, type Entry, type Habit, type HabitData, type WeeklyExclusion } from '../src/habits/model'
 
 const habit: Habit = { id: '00000000-0000-4000-8000-000000000001', title: 'Read', description: '', start: '2026-11-02', end: null, archived: false, schedules: [{ effective: '2026-11-02', kind: 'flexible', weekdays: [0, 1, 2, 3, 4], target: 4 }, { effective: '2026-11-09', kind: 'fixed', weekdays: [1, 3], target: 1 }], criteria: [{ effective: '2026-11-02', done: 'Long', partial: 'Short', missed: '' }, { effective: '2026-11-09', done: 'New', partial: '', missed: '' }], pauses: [{ start: '2026-11-05', end: '2026-11-06' }] }
 test('unlogged notes survive backup validation and duplicate notes are rejected', () => {
@@ -18,6 +18,33 @@ test('dates and historical schedules use local calendar days and effective versi
   assert.equal(eligible(habit, '2026-11-10'), true)
   assert.equal(versionAt(habit.criteria, '2026-11-08')?.done, 'Long')
   assert.equal(versionAt(habit.criteria, '2026-11-09')?.done, 'New')
+})
+test('early historical dates retain padded years, weekdays and valid records', () => {
+  assert.equal(shiftDate('0001-01-01', 30), '0001-01-31')
+  assert.equal(shiftDate('0099-12-31', 1), '0100-01-01')
+  assert.equal(shiftDate('0999-12-31', 1), '1000-01-01')
+  assert.equal(shiftDate('0400-02-28', 1), '0400-02-29')
+  assert.equal(weekday('0001-01-01'), 0)
+  const ancient: Habit = { ...habit, start: '0001-01-01', schedules: [{ effective: '0001-01-01', kind: 'fixed', weekdays: [0], target: 1 }], criteria: [{ effective: '0001-01-01', done: '', partial: '', missed: '' }], pauses: [] }
+  const data: HabitData = { version: 1, habits: [ancient], entries: [{ habitId: ancient.id, date: '0001-01-01', outcome: 'done', note: '' }] }
+  assert.deepEqual(parseHabits(JSON.stringify(data)), data)
+  assert.equal(eligible(ancient, '0001-01-01'), true)
+})
+test('year zero is rejected in every stored date field and backward navigation stops at year one', () => {
+  assert.equal(shiftDate('0001-01-01', -7), '0001-01-01')
+  const earliest: Habit = { ...habit, start: '0001-01-01', schedules: [{ effective: '0001-01-01', kind: 'fixed', weekdays: [0], target: 1 }], criteria: [{ effective: '0001-01-01', done: '', partial: '', missed: '' }], pauses: [] }
+  const base: HabitData = { version: 1, habits: [earliest], entries: [] }
+  for (const changed of [
+    { ...base, habits: [{ ...earliest, start: '0000-12-31' }] },
+    { ...base, habits: [{ ...earliest, end: '0000-12-31' }] },
+    { ...base, habits: [{ ...earliest, schedules: [{ ...earliest.schedules[0], effective: '0000-12-31' }] }] },
+    { ...base, habits: [{ ...earliest, criteria: [{ ...earliest.criteria[0], effective: '0000-12-31' }] }] },
+    { ...base, habits: [{ ...earliest, pauses: [{ start: '0000-12-31', end: null }] }] },
+    { ...base, entries: [{ habitId: earliest.id, date: '0000-12-31', outcome: 'done', note: '' }] },
+    { ...base, unloggedNotes: [{ habitId: earliest.id, date: '0000-12-31', note: 'invalid' }] },
+  ]) assert.throws(() => parseHabits(JSON.stringify(changed)))
+  assert.deepEqual(catchUpDays(base, '0001-01-01'), [])
+  assert.deepEqual(catchUpDays(base, '0001-01-02'), [{ date: '0001-01-01', count: 1 }])
 })
 test('effective versions may be unsorted and retain their original object identity', () => {
   const versions = [...habit.criteria].reverse()

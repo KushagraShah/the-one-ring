@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
-import { mkdirSync, readFileSync, statSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { demoWorkoutBackup } from '../../src/workout/demo'
 import { sampleDays } from '../../src/workout/sampleDays'
 import { workspaceDocuments } from '../../src/workout/workspace'
@@ -658,7 +658,7 @@ test('automatic daily selection resyncs after a suspended midnight', async ({ pa
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(date).toHaveValue('2025-01-01')
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
-  await page.getByLabel('Month').fill('2025-01')
+  await page.getByLabel('Month', { exact: true }).fill('2025-01')
   await page.getByRole('button', { name: /^2025-01-01,/ }).click()
   await expect(date).toHaveValue('2025-01-01')
   await page.clock.setSystemTime(new Date('2025-01-02T02:00:00'))
@@ -1788,7 +1788,7 @@ test('skipped fixed days are paused in insights and remain correctable', async (
   const today = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: /^Today · 2026-11-08 · fixed habits/ }) })
   await expect(today.getByText('0 of 0 due logged')).toBeVisible()
   await page.getByRole('button', { name: 'By habit', exact: true }).click()
-  await page.getByRole('button', { name: /Reading.*No fixed outcomes recorded/ }).click()
+  await page.getByRole('button', { name: /Reading.*Scored 0/ }).click()
   await page.getByRole('button', { name: /2026-11-08.*Skipped/ }).click()
   await expect(page.getByRole('button', { name: 'Intentional skip Reading' })).toHaveAttribute('aria-pressed', 'true')
 })
@@ -1813,7 +1813,7 @@ test('habit insights retain history and notes after inline correction', async ({
   await expect(page.getByRole('img', { name: /2026-10-26–2026-11-01: fixed performance no data, fixed coverage 0%/ })).toBeVisible()
   await expect(page.getByRole('img', { name: /2026-11-02–2026-11-08: fixed performance 0%, fixed coverage 14%/ })).toBeVisible()
   await page.getByRole('button', { name: 'By habit' }).click()
-  await page.getByRole('button', { name: /Reading.*1 fixed outcome recorded/ }).click()
+  await page.getByRole('button', { name: /Reading.*Scored 1/ }).click()
   const history = page.locator('.habit-panel')
   await expect(history.getByText('A recorded note')).toBeVisible()
   await history.getByRole('button', { name: /2026-11-08.*Missed/ }).click()
@@ -2438,7 +2438,7 @@ test('habit calendar shows the full month and disables future dates', async ({ p
   await expect(calendar.locator('button')).toHaveCount(29)
   await expect(calendar.getByRole('button', { name: '2024-02-29, future date' })).toBeDisabled()
   await expect(calendar.getByRole('button', { name: /^2024-02-15,/ })).toBeEnabled()
-  await page.getByLabel('Month').fill('2024-01')
+  await page.getByLabel('Month', { exact: true }).fill('2024-01')
   await expect(page.getByRole('region', { name: 'January 2024 calendar', exact: true }).locator('button')).toHaveCount(31)
   await expect(page.getByRole('region', { name: 'January 2024 calendar', exact: true }).getByRole('button', { name: /^2024-01-31,/ })).toBeEnabled()
 })
@@ -2543,7 +2543,7 @@ test('weekly Skip stays on its own day, two Partial meet a goal, and empty weeks
   expect((backend.habits() as HabitData).entries.filter(entry => entry.habitId === empty.id)).toEqual([])
   await week.getByRole('button', { name: 'Close', exact: true }).click()
   await page.getByRole('button', { name: 'By habit', exact: true }).click()
-  const rows = page.locator('.habit-period-rank button')
+  const rows = page.locator('.habit-period-table button')
   await expect(rows).toHaveCount(6)
   for (const row of await rows.all()) await expect(row).toContainText('Weekly goal')
   await expect(page.getByText('Not enough fixed data', { exact: true })).toHaveCount(0)
@@ -2725,33 +2725,248 @@ test('interleaved archive groups reorder within their own boundaries and survive
   const activeB = uxHabit(3, 'Active second')
   const backend = await openHabitFixture(page, { version: 1, habits: [activeA, archived, activeB], entries: [] })
   await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
-  await page.getByRole('button', { name: /^Active first Active/ }).click()
-  const first = page.getByRole('dialog', { name: /Active first/ })
-  await expect(first.getByRole('button', { name: 'Move Active first up' })).toBeDisabled()
-  await expect(first.getByRole('button', { name: 'Move Active first down' })).toBeEnabled()
-  await first.getByRole('button', { name: 'Move Active first down' }).click()
-  await expect(first).toBeVisible()
-  await expect(first.getByRole('button', { name: 'Move Active first down' })).toBeDisabled()
-  await expect(first.getByRole('button', { name: 'Move Active first up' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Reorder', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Move Active first up' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Move Active first down' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Move Active first down' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Active first moved down' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Move Active first down' })).toBeDisabled()
   await expect.poll(() => (backend.habits() as HabitData).habits.map(item => item.id)).toEqual([activeB.id, archived.id, activeA.id])
-  await first.getByRole('button', { name: 'Close', exact: true }).click()
   await page.getByRole('button', { name: 'Archived habits', exact: true }).click()
-  await page.getByRole('button', { name: /^Archived singleton Archived/ }).click()
-  const singleton = page.getByRole('dialog', { name: /Archived singleton/ })
-  await expect(singleton.getByRole('button', { name: 'Move Archived singleton up' })).toBeDisabled()
-  await expect(singleton.getByRole('button', { name: 'Move Archived singleton down' })).toBeDisabled()
-  await singleton.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Move Archived singleton up' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Move Archived singleton down' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.reload()
   await openApp(page, 'Habits')
   await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
   await expect(page.locator('.habit-manage-row strong')).toHaveText(['Active second', 'Active first'])
 })
 
+test('repeated reorder moves announce distinct group positions including boundaries', async ({ page }) => {
+  const first = uxHabit(1, 'Moving habit')
+  const archived = uxHabit(2, 'Other group', { archived: true })
+  const second = uxHabit(3, 'Second habit')
+  const third = uxHabit(4, 'Third habit')
+  const backend = await openHabitFixture(page, { version: 1, habits: [first, archived, second, third], entries: [] })
+  await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+  await page.getByRole('button', { name: 'Reorder', exact: true }).click()
+  const down = page.getByRole('button', { name: 'Move Moving habit down' })
+  await down.click()
+  await expect(page.getByRole('status').filter({ hasText: 'Moving habit moved down' })).toHaveText('Moving habit moved down. Position 2 of 3 in active habits.')
+  await down.click()
+  await expect(page.getByRole('status').filter({ hasText: 'Moving habit moved down' })).toHaveText('Moving habit moved down. Position 3 of 3 in active habits.')
+  await expect(down).toBeDisabled()
+  await expect.poll(() => (backend.habits() as HabitData).habits.map(item => item.id)).toEqual([second.id, archived.id, third.id, first.id])
+  const up = page.getByRole('button', { name: 'Move Moving habit up' })
+  await up.click(); await up.click()
+  await expect(page.getByRole('status').filter({ hasText: 'Moving habit moved up' })).toHaveText('Moving habit moved up. Position 1 of 3 in active habits.')
+  await expect(up).toBeDisabled()
+})
+
+for (const outcome of ['saved', 'failed'] as const) {
+  test(`archive feedback does not hide ${outcome} persistence status after closing`, async ({ page }) => {
+    const habit = uxHabit(1, 'Archive feedback')
+    await openHabitFixture(page, { version: 1, habits: [habit], entries: [] })
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let pending = false
+    await page.route(/\/rest\/v1\/rpc\/tor_online_habit_write$/, async route => {
+      pending = true
+      await gate
+      if (outcome === 'saved') await route.fallback()
+      else await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: 'unavailable' })
+    })
+    await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
+    await page.getByRole('button', { name: /^Archive feedback Active/ }).click()
+    const panel = page.getByRole('dialog', { name: /Archive feedback/ })
+    await panel.getByRole('button', { name: 'Archive', exact: true }).click()
+    await expect.poll(() => pending).toBe(true)
+    await panel.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.locator('.habit-save-feedback')).toHaveText('Saving habits…')
+    await expect(page.getByRole('status').filter({ hasText: 'Archive feedback archived.' })).toBeVisible()
+    release()
+    await expect(page.locator('.habit-save-feedback')).toHaveText(outcome === 'saved' ? 'Habit changes saved.' : 'Habit changes need save recovery.')
+  })
+}
+
+test('month picker handles the earliest supported years and their boundaries', async ({ page }) => {
+  await openHabitFixture(page, { version: 1, habits: [], entries: [] })
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  const picker = page.getByLabel('Month', { exact: true })
+  await picker.fill('0999-12')
+  await expect(page.getByRole('region', { name: 'December 999 calendar' }).getByRole('button')).toHaveCount(31)
+  await picker.fill('0100-01')
+  await page.getByRole('button', { name: 'Previous month' }).click()
+  await expect(picker).toHaveValue('0099-12')
+  await expect(page.getByRole('region', { name: 'December 99 calendar' }).getByRole('button')).toHaveCount(31)
+  await picker.fill('0001-01')
+  const calendar = page.getByRole('region', { name: 'January 1 calendar' })
+  await expect(calendar.getByRole('button')).toHaveCount(31)
+  await expect(calendar.getByRole('button', { name: /^0001-01-31,/ })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Previous month' })).toBeDisabled()
+})
+
+test('earliest day stays within valid Daily and Week navigation', async ({ page }) => {
+  const habit = uxHabit(1, 'Earliest habit', {
+    start: '0001-01-01',
+    schedules: [{ effective: '0001-01-01', kind: 'fixed', weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }],
+    criteria: [{ effective: '0001-01-01', done: '', partial: '', missed: '' }],
+  })
+  await openHabitFixture(page, { version: 1, habits: [habit], entries: [{ habitId: habit.id, date: '0001-01-01', outcome: 'done', note: '' }] })
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  await page.getByLabel('Month', { exact: true }).fill('0001-01')
+  await page.getByRole('region', { name: 'January 1 calendar' }).getByRole('button', { name: /^0001-01-01,/ }).click()
+  const date = page.getByLabel('Date', { exact: true })
+  await expect(date).toHaveValue('0001-01-01')
+  await expect(date).toHaveAttribute('min', '0001-01-01')
+  const strip = page.locator('.habit-date-strip button')
+  await expect(strip).toHaveCount(1)
+  await expect(strip.first()).toHaveAttribute('aria-label', /^0001-01-01:/)
+  await expect(page.locator('.habit-recent')).not.toContainText('0000')
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Week of 0001-01-01' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Previous week' })).toBeDisabled()
+  await expect(page.getByRole('region', { name: 'Week dates and habit outcomes' }).getByRole('button', { name: /Earliest habit, 0000/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Next week' }).click()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('0001-01-08')
+  await page.getByRole('button', { name: 'Previous week' }).click()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('0001-01-01')
+  await expect(page.getByRole('button', { name: 'Previous week' })).toBeDisabled()
+  await page.getByLabel('Date', { exact: true }).fill('9999-01-01')
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('0001-01-01')
+})
+
+for (const locale of ['en-US', 'de-DE']) {
+  test.describe(`phone date and daily priority ${locale}`, () => {
+    test.use({ locale })
+    for (const width of [320, 390]) {
+      test(`date fits and multiple weekly goals follow all logging cards at ${width}px`, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: 844 })
+        const fixed = uxHabit(1, 'Read', { start: '2026-11-08' })
+        const offDay = weeklyHabit(2, 'Off-day goal', [0, 1])
+        const paused = weeklyHabit(3, 'Paused goal')
+        paused.pauses = [{ start: '2026-11-07', end: '2026-11-07' }]
+        const third = weeklyHabit(4, 'Another goal', [0])
+        await openHabitFixture(page, { version: 1, habits: [fixed, offDay, paused, third], entries: [
+          { habitId: offDay.id, date: '2026-11-02', outcome: 'partial', note: '' },
+          { habitId: offDay.id, date: '2026-11-03', outcome: 'partial', note: '' },
+        ] })
+        const firstCard = page.locator('.habit-daily-card').first()
+        await expect(firstCard).toContainText('Read')
+        const summary = page.locator('.habit-weekly-summary')
+        await expect(summary).toHaveCount(1)
+        expect(await page.locator('.habit-daily-card').last().evaluate(element => element.nextElementSibling?.classList.contains('habit-weekly-summary'))).toBe(true)
+        await expect(summary).toContainText(/Off-day goal.*1\s*\/\s*1.*Target reached so far/)
+        await expect(summary).toContainText(/Paused goal.*Not judged.*Paused.*Week in progress/)
+        await expect(summary).toContainText('Another goal')
+        for (const button of await firstCard.locator('.habit-inline-outcomes button').all()) {
+          await button.evaluate(element => element.scrollIntoView({ block: 'center' }))
+          const box = (await button.boundingBox())!
+          const nav = (await page.locator('.mobile-nav').boundingBox())!
+          expect(box.width).toBeGreaterThanOrEqual(44)
+          expect(box.height).toBeGreaterThanOrEqual(44)
+          expect(box.y + box.height).toBeLessThanOrEqual(nav.y)
+        }
+        await page.screenshot({ path: info.outputPath(`daily-${locale}-${width}.png`), animations: 'disabled' })
+        await page.getByLabel('Date', { exact: true }).fill('2026-11-02')
+        await expect(summary).toContainText(/Off-day goal.*0\.5\s*\/\s*1.*In progress/)
+        await expect(summary).toContainText(/Paused goal.*In progress/)
+        await page.getByRole('button', { name: 'Week', exact: true }).click()
+        const input = page.getByLabel('Date', { exact: true })
+        await expect(input).toHaveValue('2026-11-02')
+        const inputBox = (await input.boundingBox())!
+        expect(inputBox.width).toBeGreaterThanOrEqual(width - 48)
+        expect(inputBox.height).toBeGreaterThanOrEqual(44)
+        for (const name of ['Yesterday', 'Today']) {
+          const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!
+          expect(box.width).toBeGreaterThanOrEqual(44)
+          expect(box.height).toBeGreaterThanOrEqual(44)
+          expect(box.y).toBeGreaterThanOrEqual(inputBox.y + inputBox.height)
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        await page.screenshot({ path: info.outputPath(`week-${locale}-${width}.png`), animations: 'disabled' })
+        await page.getByRole('button', { name: 'Today', exact: true }).click()
+        await expect(input).toHaveValue('2026-11-08')
+        await expect(page.getByRole('button', { name: 'Today', exact: true })).toBeDisabled()
+      })
+    }
+  })
+}
+
+for (const width of [320, 390]) {
+  for (const actionable of [true, false]) {
+    test(`weekly goals follow note-only cards and ${actionable ? 'an actionable card' : 'no actionable cards'} at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 })
+      const archived = uxHabit(1, 'Archived note', { archived: true })
+      const unscheduled = uxHabit(2, 'Unscheduled note', {
+        schedules: [{ effective: '2026-10-01', kind: 'fixed', weekdays: [0], target: 1 }],
+      })
+      const fixed = uxHabit(3, 'Log this')
+      const goal = weeklyHabit(4, 'Off-day goal', [0, 1])
+      const otherGoal = weeklyHabit(5, 'Second off-day goal', [0])
+      await openHabitFixture(page, {
+        version: 1,
+        habits: [archived, unscheduled, ...(actionable ? [fixed] : []), goal, otherGoal],
+        entries: [{ habitId: goal.id, date: '2026-11-02', outcome: 'done', note: '' }],
+        unloggedNotes: [archived, unscheduled].map(habit => ({ habitId: habit.id, date: '2026-11-08', note: 'Retained note' })),
+      })
+      const cards = page.locator('.habit-daily-card')
+      await expect(cards).toHaveCount(actionable ? 3 : 2)
+      await expect(cards.nth(0)).toContainText('Archived note')
+      await expect(cards.nth(1)).toContainText('Unscheduled note')
+      await expect(cards.nth(0).locator('.habit-inline-outcomes')).toHaveCount(0)
+      await expect(cards.nth(1).locator('.habit-inline-outcomes')).toHaveCount(0)
+      if (actionable) {
+        await expect(cards.nth(2)).toContainText('Log this')
+        const button = cards.nth(2).locator('.habit-inline-outcomes button').first()
+        await button.evaluate(element => element.scrollIntoView({ block: 'center' }))
+        const box = (await button.boundingBox())!
+        const nav = (await page.locator('.mobile-nav').boundingBox())!
+        expect(box.y).toBeGreaterThanOrEqual(0)
+        expect(box.y + box.height).toBeLessThanOrEqual(nav.y)
+      }
+      const summary = page.locator('.habit-weekly-summary')
+      await expect(summary).toHaveCount(1)
+      expect(await cards.last().evaluate(element => element.nextElementSibling?.classList.contains('habit-weekly-summary'))).toBe(true)
+      await expect(summary).toContainText(/Off-day goal.*1\s*\/\s*1.*Target reached so far/)
+      await expect(summary).toContainText('Second off-day goal')
+    })
+  }
+}
+
+test('weekly goals remain visible when no habit is scheduled on the selected day', async ({ page }) => {
+  const habit = weeklyHabit(1, 'Monday goal', [0])
+  await openHabitFixture(page, { version: 1, habits: [habit], entries: [{ habitId: habit.id, date: '2026-11-02', outcome: 'done', note: '' }] })
+  await expect(page.locator('.habit-daily-card')).toHaveCount(0)
+  await expect(page.getByText('No habits scheduled for this date.')).toBeVisible()
+  expect(await page.locator('.habit-empty').evaluate(element => element.nextElementSibling?.classList.contains('habit-weekly-summary'))).toBe(true)
+  await expect(page.locator('.habit-weekly-summary')).toContainText(/Monday goal.*1\s*\/\s*1.*Target reached so far/)
+})
+
+test('demo keeps first Daily outcomes accessible and Week date legible at 320px', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 844 })
+  await page.clock.setFixedTime(new Date('2026-11-26T12:00:00'))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the demo' }).click()
+  await openApp(page, 'Habits')
+  const first = page.locator('.habit-daily-card').first()
+  await expect(first).toBeVisible()
+  for (const button of await first.locator('.habit-inline-outcomes button').all()) {
+    await button.evaluate(element => element.scrollIntoView({ block: 'center' }))
+    const box = (await button.boundingBox())!
+    const nav = (await page.locator('.mobile-nav').boundingBox())!
+    expect(box.y + box.height).toBeLessThanOrEqual(nav.y)
+  }
+  await page.screenshot({ path: info.outputPath('demo-daily-320.png'), animations: 'disabled' })
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  const date = page.getByLabel('Date', { exact: true })
+  await expect(date).toHaveValue('2026-11-26')
+  expect((await date.boundingBox())!.width).toBeGreaterThanOrEqual(272)
+  await page.screenshot({ path: info.outputPath('demo-week-320.png'), animations: 'disabled' })
+})
+
 async function captureHabitEvidence(page: Page, info: TestInfo, name: string) {
-  const directory = '.tmp/habits-uiux-fix/browser-evidence'
-  mkdirSync(directory, { recursive: true })
-  const project = (info.project.name || 'chromium').replace(/[^a-z0-9_-]/gi, '-')
-  const body = await page.screenshot({ path: `${directory}/${project}-${name}.png`, fullPage: false, animations: 'disabled' })
+  const body = await page.screenshot({ path: info.outputPath(`${name}.png`), fullPage: false, animations: 'disabled' })
   await info.attach(name, { body, contentType: 'image/png' })
 }
 
@@ -2776,7 +2991,7 @@ test('Insights exposes mixed calendar activity and classifies the selected histo
   const backend = await openHabitFixture(page, data)
   await page.getByRole('button', { name: 'Insights', exact: true }).click()
   await page.getByLabel('Month', { exact: true }).fill('2026-10')
-  for (const title of ['Calendar', 'Fixed overview', 'Flexible activity', 'Patterns to review']) {
+  for (const title of ['Calendar', 'Fixed overview', 'Flexible activity']) {
     await expect(page.getByRole('heading', { name: new RegExp(`^${title} · October 2026`) })).toBeVisible()
   }
   await expect(page.getByRole('heading', { name: /^Today · 2026-11-08 · fixed habits/ })).toBeVisible()
@@ -2791,7 +3006,7 @@ test('Insights exposes mixed calendar activity and classifies the selected histo
   await expect(noteDay).toHaveAccessibleName(/0 outcomes recorded.*1 notes including 1 without an outcome/)
   await expect(noteDay.locator('.habit-calendar-note')).toBeVisible()
   await expect(noteDay.locator('.habit-calendar-activity')).toHaveCount(0)
-  const patterns = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: 'Patterns to review · October 2026', exact: true }) })
+  const patterns = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: 'Needs review', exact: true }) })
   await expect(patterns.getByRole('button', { name: /Archived craft.*Archived/ })).toContainText('1 partial · 1 missed · 2 scored outcomes')
   await mixedDay.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }))
   await captureHabitEvidence(page, info, 'historical-mixed-calendar')
@@ -2810,6 +3025,45 @@ test('Insights exposes mixed calendar activity and classifies the selected histo
   const changedWeek = page.getByRole('dialog', { name: '2026-10-19–2026-10-25', exact: true })
   await expect(changedWeek.getByRole('listitem').filter({ hasText: mixed.title })).toContainText(/Not judged.*Schedule changed/)
   expect(backend.habits()).toEqual(data)
+})
+
+test('month navigation, review categories and responsive period rows retain their context', async ({ page }) => {
+  const fixed = uxHabit(1, 'Fixed review')
+  const flexible = weeklyHabit(2, 'Weekly review')
+  const paused = weeklyHabit(3, 'Paused weekly')
+  paused.pauses = [{ start: '2026-11-03', end: '2026-11-03' }]
+  const archived = uxHabit(4, 'Archived review', { archived: true })
+  await openHabitFixture(page, { version: 1, habits: [fixed, flexible, paused, archived], entries: [
+    { habitId: archived.id, date: '2026-11-02', outcome: 'partial', note: '' },
+    { habitId: archived.id, date: '2026-11-03', outcome: 'missed', note: '' },
+  ] }, '2026-11-09T12:00:00')
+  await page.getByRole('button', { name: 'Insights', exact: true }).click()
+  const next = page.getByRole('button', { name: 'Next month' })
+  await expect(next).toBeDisabled()
+  const previous = page.getByRole('button', { name: 'Previous month' })
+  await previous.focus(); await page.keyboard.press('Enter')
+  await expect(page.getByLabel('Month', { exact: true })).toHaveValue('2026-10')
+  await page.getByRole('button', { name: 'By habit', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'By habit · October 2026' })).toBeVisible()
+  await next.click()
+  await expect(next).toBeDisabled()
+  const row = page.locator('.habit-period-table button').filter({ hasText: 'Fixed review' })
+  await expect(row).toContainText('Performance')
+  await expect(row).toContainText('Coverage')
+  await expect(row).toContainText('Scored')
+  for (const width of [320, 390, 1024]) {
+    await page.setViewportSize({ width, height: 844 })
+    const title = page.locator('.habit-month-navigation strong')
+    expect(await title.evaluate(el => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBeTruthy()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  }
+  await page.getByRole('button', { name: 'Overview', exact: true }).click()
+  const review = page.locator('section.habit-card').filter({ has: page.getByRole('heading', { name: 'Needs review', exact: true }) })
+  await expect(review).toContainText('Recent unlogged fixed habits')
+  await expect(review).toContainText('Archived review')
+  await expect(review).toContainText('Weekly review')
+  await expect(review.getByRole('button', { name: /Paused weekly.*2026-11-02–2026-11-08/ })).toHaveCount(0)
+  await expect(review).toContainText('2026-11-02–2026-11-08')
 })
 
 test('history correction lands on a lower card and restores the month, history pages and scroll', async ({ page }, info) => {
@@ -2914,20 +3168,17 @@ test('effective-date reload confirms only schedule drafts and preserves saved fu
   })
 })
 
-test('archive group arrows update in the open panel and pause dates validate inclusively', async ({ page }) => {
+test('archive feedback and pause dates validate inclusively', async ({ page }) => {
   const habit = uxHabit(1, 'Changing group', { pauses: [{ start: '2026-10-10', end: '2026-10-11' }, { start: '2026-12-01', end: '2026-12-02' }] })
   const archived = uxHabit(2, 'Earlier archive', { archived: true })
   const backend = await openHabitFixture(page, { version: 1, habits: [archived, habit], entries: [] })
   await page.getByRole('navigation', { name: 'Habit Tracker' }).getByRole('button', { name: 'Habits', exact: true }).click()
   await page.getByRole('button', { name: /^Changing group Active/ }).click()
   const panel = page.getByRole('dialog', { name: /Changing group/ })
-  const up = panel.getByRole('button', { name: 'Move Changing group up' })
-  await expect(up).toBeDisabled()
   await panel.getByRole('button', { name: 'Archive', exact: true }).click()
-  await expect(panel).toBeVisible()
-  await expect(up).toBeEnabled()
+  await expect(panel.getByRole('status')).toContainText('Changing group archived')
   await panel.getByRole('button', { name: 'Unarchive', exact: true }).click()
-  await expect(up).toBeDisabled()
+  await expect(panel.getByRole('status')).toContainText('Changing group unarchived')
   const until = panel.getByLabel('Pause through', { exact: true })
   await until.fill('2026-11-07')
   await panel.getByRole('button', { name: 'Pause through date', exact: true }).click()
@@ -3045,12 +3296,14 @@ for (const [width, height] of [[320, 740], [360, 800], [390, 844], [1280, 900]] 
     await expect(selected).toBeInViewport({ ratio: 1 })
     const outcomes = page.locator('.habit-daily-card').first().locator('.habit-inline-outcomes button')
     if (width === 390) {
+      await page.locator('.habit-daily-card').first().locator('.habit-inline-outcomes').evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }))
       const nav = (await page.locator('.mobile-nav').boundingBox())!
       for (const button of await outcomes.all()) {
         await expect(button).toBeInViewport({ ratio: 1 })
         const box = (await button.boundingBox())!
         expect(box.y + box.height).toBeLessThanOrEqual(nav.y)
       }
+      await page.locator('.habit-daily-header').evaluate(element => element.scrollIntoView({ block: 'start', behavior: 'instant' }))
     }
     for (const button of await outcomes.all()) {
       const box = (await button.boundingBox())!

@@ -1,6 +1,6 @@
 import { DetailView } from '../DetailView'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { eligible, evaluateFlexibleWeek, flexibleWeekText, hasFlexibleWeek, indexEntries, localDate, outcomeLabel, shiftDate, versionAt, weekday, weekStart, type Habit, type HabitData } from './model'
+import { catchUpDays, eligible, evaluateFlexibleWeek, flexibleWeekText, hasFlexibleWeek, indexEntries, localDate, outcomeLabel, shiftDate, versionAt, weekday, weekStart, type Habit, type HabitData } from './model'
 import { calendarDayActivity, createCalendarActivityIndex, fixedScore, habitPeriodSummary, habitStreak, monthBounds, percent, type HabitPeriodSummary } from './insights'
 import { InfoTip } from '../InfoTip'
 import { HabitPanel } from './HabitPanel'
@@ -19,7 +19,14 @@ function FixedMetricHelp() {
 
 function monthLabel(month: string): string {
   const [year, number] = month.split('-').map(Number)
-  return new Date(year, number - 1, 1, 12).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  const date = new Date(2000, number - 1, 1, 12)
+  date.setFullYear(year)
+  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+}
+function shiftMonth(month: string, amount: number): string {
+  const [year, number] = month.split('-').map(Number)
+  const index = year * 12 + number - 1 + amount
+  return `${String(Math.floor(index / 12)).padStart(4, '0')}-${String(index % 12 + 1).padStart(2, '0')}`
 }
 
 type PeriodRow = HabitPeriodSummary & { habit: Habit }
@@ -31,7 +38,8 @@ function periodText(summary: PeriodRow, label: string): string {
   if (summary.kind === 'flexible') {
     const met = summary.weeks.filter(week => week.judgment === 'met').length
     const notMet = summary.weeks.filter(week => week.judgment === 'not-met').length
-    return `Weekly goal · ${met} met · ${notMet} not met · ${summary.weeks.length} whole weeks touching this month`
+    const other = summary.weeks.length - met - notMet
+    return `Weekly goal · ${met} met · ${notMet} not met · ${other} open or not comparable`
   }
   return summary.rankable && summary.fixedScore
     ? `${percent(summary.fixedScore.performance)} performance · ${percent(summary.fixedScore.coverage)} coverage · ${summary.fixedOutcomes} scored`
@@ -59,8 +67,7 @@ export function Insights({ data, active, onDate }: { data: HabitData; active: bo
     return entry.date >= bounds.from && entry.date <= bounds.to && habit && !habit.archived && eligible(habit, entry.date) && versionAt(habit.schedules, entry.date)?.kind === 'flexible'
   }), [data.entries, habitsById, bounds.from, bounds.to])
   const todayScore = useMemo(() => fixedScore(data, today, today, index), [data, today, index])
-  const eightWeeks = useMemo(() => Array.from({ length: 8 }, (_, i) => {
-    const start = shiftDate(weekStart(today), -7 * i)
+  const eightWeeks = useMemo(() => [...new Set(Array.from({ length: 8 }, (_, i) => shiftDate(weekStart(today), -7 * i)))].map(start => {
     const sunday = shiftDate(start, 6)
     const end = sunday < today ? sunday : today
     return {
@@ -70,10 +77,10 @@ export function Insights({ data, active, onDate }: { data: HabitData; active: bo
     }
   }), [data, index, today])
   const scheduledToday = data.habits.filter(habit => !habit.archived && eligible(habit, today)).length
-  const priorDays = Array.from({ length: 7 }, (_, i) => shiftDate(today, -i - 1))
+  const priorDays = [...new Set(Array.from({ length: 7 }, (_, i) => shiftDate(today, -i - 1)))].filter(day => day < today)
   const counts = priorDays.map(day => index.byDate.get(day)?.length || 0)
   const activeDays = counts.filter(count => count > 0).length
-  const average = counts.reduce((sum, count) => sum + count, 0) / 7
+  const average = priorDays.length ? counts.reduce((sum, count) => sum + count, 0) / priorDays.length : 0
   const heavy = activeDays >= 3 && scheduledToday >= 4 && scheduledToday >= average * 2
   const summaries = useMemo(() => data.habits.map(habit => ({ habit, ...habitPeriodSummary(habit, index, bounds, today) })), [data.habits, index, bounds.from, bounds.to, today])
   const ordered = useMemo(() => [...summaries.filter(summary => summary.rankable).sort((a, b) => (a.fixedScore?.performance ?? 0) - (b.fixedScore?.performance ?? 0)), ...summaries.filter(summary => !summary.rankable)], [summaries])
@@ -82,6 +89,8 @@ export function Insights({ data, active, onDate }: { data: HabitData; active: bo
     const records = (index.byHabit.get(habit.id) || []).filter(entry => entry.date >= bounds.from && entry.date <= bounds.to)
     return { habit, partial: records.filter(entry => entry.outcome === 'partial').length, missed: records.filter(entry => entry.outcome === 'missed').length, total: records.filter(entry => entry.outcome !== 'skipped').length }
   }).filter(item => item.partial + item.missed >= 2).sort((a, b) => b.partial + b.missed - a.partial - a.missed), [data.habits, index, bounds.from, bounds.to])
+  const catchUp = useMemo(() => catchUpDays(data, today), [data, today])
+  const unmetWeeks = useMemo(() => summaries.flatMap(summary => summary.weeks.filter(week => week.judgment === 'not-met').map(week => ({ habit: summary.habit, week }))), [summaries])
   const calendarIndex = useMemo(() => createCalendarActivityIndex(data, index), [data, index])
   const calendarDays = useMemo(() => Array.from({ length: Number(calendarEnd.slice(8, 10)) }, (_, i) => {
     const day = shiftDate(bounds.from, i)
@@ -110,7 +119,7 @@ export function Insights({ data, active, onDate }: { data: HabitData; active: bo
   return <section className="habit-insights" aria-label="Habit history and insights">
     <header className="habit-insights-header"><div><h2>History & insights</h2><p>Review recorded activity, fixed metrics and weekly goals separately. Empty days stay unlogged; completed weekly goals can still be Not met.</p></div></header>
     <nav className="habit-insight-nav" aria-label="Insights views">{(['overview', 'weeks', 'habits'] as const).map(item => <button type="button" key={item} aria-pressed={view === item} onClick={() => setView(item)}>{item === 'overview' ? 'Overview' : item === 'weeks' ? 'Weeks' : 'By habit'}</button>)}</nav>
-    <div className="habit-section-heading habit-insights-period" hidden={view === 'weeks'}><label>Month <input type="month" max={today.slice(0, 7)} value={month} onChange={event => { if (event.target.value && event.target.value <= today.slice(0, 7)) setMonth(event.target.value) }}/></label></div>
+    <div className="habit-insights-period" hidden={view === 'weeks'}><div className="habit-month-navigation"><button type="button" aria-label="Previous month" disabled={month <= '0001-01'} onClick={() => setMonth(shiftMonth(month, -1))}>←</button><strong aria-live="polite">{label}</strong><button type="button" aria-label="Next month" disabled={month >= today.slice(0, 7)} onClick={() => setMonth(shiftMonth(month, 1))}>→</button></div><label>Month <input type="month" min="0001-01" max={today.slice(0, 7)} value={month} onChange={event => { if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value) && event.target.value >= '0001-01' && event.target.value <= today.slice(0, 7)) setMonth(event.target.value) }}/></label></div>
 
     <section hidden={view !== 'overview'} className="habit-card">
       <h3>Calendar · {label}</h3>
@@ -152,9 +161,16 @@ export function Insights({ data, active, onDate }: { data: HabitData; active: bo
       {heavy && <p className="habit-workload">Higher load today: {scheduledToday} eligible habits versus an average of {average.toFixed(1)} recorded outcomes per day over the previous seven days. The history count includes archived and now-ineligible records; this is a rough comparison.</p>}
     </section>
     <section hidden={view !== 'overview'} className="habit-card">
-      <h3>Patterns to review · {label}</h3>
+      <h3>Needs review</h3>
+      <h4>Recent unlogged fixed habits · previous 7 days</h4>
+      <p className="habit-insight-note">Anchored to today. Unlogged is not Missed; archived habits are excluded.</p>
+      {catchUp.length ? <div className="habit-review-chips">{catchUp.map(day => <button type="button" key={day.date} onClick={() => onDate(day.date)}>{day.date} · {day.count} unlogged</button>)}</div> : <p className="habit-insight-note">No recent unlogged fixed opportunities.</p>}
+      <h4>Recorded Partial and Missed · {label}</h4>
       <p className="habit-insight-note">Raw recorded history, including archived and now-ineligible records. Habits with at least two combined Partial or Missed outcomes in this period are shown. Scored outcomes means Done + Partial + Missed; Skip and empty days are excluded.</p>
       {patterns.length ? <div className="habit-rank">{patterns.map(({ habit, partial, missed, total }) => <button type="button" key={habit.id} onClick={() => { setView('habits'); openHistory(habit.id) }}><span>{habit.icon || '◈'} {habit.title}{habit.archived ? ' · Archived' : ''}</span><span>{partial} partial · {missed} missed · {total} scored outcomes</span></button>)}</div> : <p className="habit-insight-note">No habits have two or more recorded Partial or Missed outcomes in {label}.</p>}
+      <h4>Flexible goals not met · whole weeks touching {label}</h4>
+      <p className="habit-insight-note">Completed comparable weeks only; whole weeks may include dates outside this month. Archived habits are excluded. No daily misses are inferred.</p>
+      {unmetWeeks.length ? <div className="habit-rank">{unmetWeeks.map(({ habit, week }) => <button type="button" key={`${habit.id}-${week.monday}`} onClick={() => { setView('habits'); openHistory(habit.id) }}><span>{habit.title}</span><span>{week.monday}–{week.sunday} · {flexibleWeekText(week)}</span></button>)}</div> : <p className="habit-insight-note">No completed comparable weeks not met.</p>}
     </section>
 
     <section hidden={view !== 'weeks'} className="habit-card">
@@ -175,7 +191,7 @@ export function Insights({ data, active, onDate }: { data: HabitData; active: bo
     <section hidden={view !== 'habits'} className="habit-card">
       <h3>By habit · {label}</h3>
       <p className="habit-insight-note">Unchanged fixed schedules with at least three scored outcomes are listed from lower performance. All other rows follow in your chosen order. Flexible results use whole weeks touching this month. Select a habit for period details and all recorded history.</p>
-      {ordered.length === 0 ? <p>No habits yet.</p> : <div className="habit-rank habit-period-rank">{ordered.map(summary => <button type="button" key={summary.habit.id} onClick={() => openHistory(summary.habit.id)} aria-pressed={selected === summary.habit.id}><span>{summary.habit.icon || '◈'} {summary.habit.title}</span><span>{periodText(summary, label)}</span></button>)}</div>}
+      {ordered.length === 0 ? <p>No habits yet.</p> : <div className="habit-period-table">{ordered.map(summary => <button type="button" key={summary.habit.id} onClick={() => openHistory(summary.habit.id)} aria-pressed={selected === summary.habit.id}><strong>{summary.habit.icon || '◈'} {summary.habit.title}</strong><span className="habit-period-kind">{summary.kind}{summary.rankable ? ' · ranked' : ''}</span>{summary.kind === 'fixed' && summary.fixedScore ? <span className="habit-period-metrics"><span>Performance <strong>{percent(summary.fixedScore.performance)}</strong></span><span>Coverage <strong>{percent(summary.fixedScore.coverage)}</strong></span><span>Scored <strong>{summary.fixedOutcomes}</strong></span></span> : <span>{periodText(summary, label)}</span>}<small>View history and current streaks →</small></button>)}</div>}
     </section>
 
     {active && selectedHabit && <HabitPanel title={`${selectedHabit.icon || '◈'} ${selectedHabit.title}`} scrollPosition={historyScroll} onClose={() => setSelected('')}>

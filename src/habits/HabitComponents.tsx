@@ -2,13 +2,13 @@ import { DetailView } from '../DetailView'
 import { ChoiceSelect } from '../ChoiceSelect'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useScopedConfirm } from '../AppDialog'
-import { localDate, outcomeLabel, paused, shiftDate, versionAt, type Criteria, type Habit, type Outcome, type Schedule } from './model'
+import { localDate, MIN_HABIT_DATE, outcomeLabel, paused, shiftDate, validHabitDate, versionAt, type Criteria, type Habit, type Outcome, type Schedule } from './model'
 import { InfoTip } from '../InfoTip'
 import { useDraftCapture } from '../app/DraftCapture'
 
 const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const cap = (text: string) => text[0].toUpperCase() + text.slice(1)
-const validDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && shiftDate(date, 0) === date
+const validDate = validHabitDate
 const fullDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
 export function CriteriaList({ criteria }: { criteria?: Criteria }) {
@@ -217,10 +217,10 @@ export function HabitForm({ initial, onSave, onCancel, focusField }: { initial: 
     <section className="habit-form-section" aria-labelledby={`${id}-dates-heading`}>
       <h3 id={`${id}-dates-heading`}>Active dates</h3>
       <div className="habit-form-dates">
-        <div><label htmlFor={`${id}-start`}>Start date<input {...fieldProps('start')} type="date" required value={start} onChange={event => setStart(event.target.value)}/></label>{feedback('start')}</div>
-        <div><label htmlFor={`${id}-end`}>End date (optional)<input {...fieldProps('end')} type="date" min={start || undefined} value={end} onChange={event => setEnd(event.target.value)}/></label>{feedback('end')}</div>
+        <div><label htmlFor={`${id}-start`}>Start date<input {...fieldProps('start')} type="date" min={MIN_HABIT_DATE} required value={start} onChange={event => setStart(event.target.value)}/></label>{feedback('start')}</div>
+        <div><label htmlFor={`${id}-end`}>End date (optional)<input {...fieldProps('end')} type="date" min={validHabitDate(start) ? start : MIN_HABIT_DATE} value={end} onChange={event => setEnd(event.target.value)}/></label>{feedback('end')}</div>
       </div>
-      {initial && <><label htmlFor={`${id}-effective`}>Schedule and criteria effective from<input {...fieldProps('effective')} type="date" required min={start || undefined} max={end || undefined} value={effective} aria-describedby={`${id}-effective-help${errors.effective ? ` ${id}-effective-error` : ''}`} onChange={event => { void changeEffective(event.target.value) }}/></label>{feedback('effective')}<p id={`${id}-effective-help`} className="habit-form-help">Schedule and criteria changes apply from this date. Earlier dates keep their previous settings.</p></>}
+      {initial && <><label htmlFor={`${id}-effective`}>Schedule and criteria effective from<input {...fieldProps('effective')} type="date" required min={validHabitDate(start) ? start : MIN_HABIT_DATE} max={end || undefined} value={effective} aria-describedby={`${id}-effective-help${errors.effective ? ` ${id}-effective-error` : ''}`} onChange={event => { void changeEffective(event.target.value) }}/></label>{feedback('effective')}<p id={`${id}-effective-help`} className="habit-form-help">Schedule and criteria changes apply from this date. Earlier dates keep their previous settings.</p></>}
     </section>
 
     <section className="habit-form-section" aria-labelledby={`${id}-details-heading`}>

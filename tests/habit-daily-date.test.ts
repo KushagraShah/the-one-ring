@@ -34,3 +34,9 @@ test('strip crosses the local year boundary and caps future selection', () => {
   assert.deepEqual(dailyStripDays('2025-01-02', '2025-01-02'), expected)
   assert.deepEqual(dailyStripDays('2025-02-01', '2025-01-02'), expected)
 })
+
+test('strip stops at the earliest supported date without duplicates or future dates', () => {
+  assert.deepEqual(dailyStripDays('0001-01-01', '2026-11-26'), ['0001-01-01'])
+  assert.deepEqual(dailyStripDays('0001-01-03', '2026-11-26'), ['0001-01-01', '0001-01-02', '0001-01-03'])
+  assert.deepEqual(dailyStripDays('0001-01-10', '0001-01-03'), ['0001-01-01', '0001-01-02', '0001-01-03'])
+})

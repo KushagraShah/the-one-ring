@@ -8,17 +8,25 @@ export type Habit = { id: string; title: string; icon?: string; description: str
 export type Entry = { habitId: string; date: string; outcome: Outcome; note: string }
 export type HabitData = { version: 1; habits: Habit[]; entries: Entry[]; unloggedNotes?: { habitId: string; date: string; note: string }[] }
 export const emptyHabits = (): HabitData => ({ version: 1, habits: [], entries: [] })
+export const MIN_HABIT_DATE = '0001-01-01'
 
 export function localDate(date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+function calendarDate(year: number, month: number, day: number): Date {
+  const date = new Date(2000, 0, 1, 12)
+  date.setFullYear(year, month - 1, day)
+  return date
 }
 export function shiftDate(date: string, days: number): string {
   const [year, month, day] = date.split('-').map(Number)
-  return localDate(new Date(year, month - 1, day + days, 12))
+  const result = calendarDate(year, month, day + days)
+  return result.getFullYear() < 1 ? MIN_HABIT_DATE : localDate(result)
 }
+export const validHabitDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && value >= MIN_HABIT_DATE && shiftDate(value, 0) === value
 export function weekday(date: string): number {
   const [year, month, day] = date.split('-').map(Number)
-  return (new Date(year, month - 1, day, 12).getDay() + 6) % 7
+  return (calendarDate(year, month, day).getDay() + 6) % 7
 }
 export function weekStart(date: string): string { return shiftDate(date, -weekday(date)) }
 export function versionAt<T extends { effective: string }>(items: T[], date: string): T | undefined {
@@ -146,10 +154,10 @@ export function weekProgress(habit: Habit, entries: Entry[], date: string) {
 /** Recent unlogged fixed opportunities only; flexible eligible days are not obligations. */
 export function catchUpDays(data: HabitData, today: string, days = 7) {
   const index = indexEntries(data.entries)
-  return Array.from({ length: days }, (_, i) => shiftDate(today, -i - 1)).map(date => ({ date, count: data.habits.filter(habit => !habit.archived && eligible(habit, date) && versionAt(habit.schedules, date)?.kind === 'fixed' && !index.byHabitDate.get(habit.id)?.has(date)).length })).filter(day => day.count > 0)
+  return [...new Set(Array.from({ length: days }, (_, i) => shiftDate(today, -i - 1)))].filter(date => date < today).map(date => ({ date, count: data.habits.filter(habit => !habit.archived && eligible(habit, date) && versionAt(habit.schedules, date)?.kind === 'fixed' && !index.byHabitDate.get(habit.id)?.has(date)).length })).filter(day => day.count > 0)
 }
 
-const dateValid = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && shiftDate(value, 0) === value
+const dateValid = validHabitDate
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
 const isText = (value: unknown): value is string => typeof value === 'string'
 const optionalDate = (value: unknown) => value === null || dateValid(value)

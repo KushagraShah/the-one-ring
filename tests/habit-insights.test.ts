@@ -32,6 +32,13 @@ test('fixed streak treats skip as a pause and partial as engagement', () => {
   assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done')], '2026-11-04'), { success: 0, engagement: 0, unit: 'days' })
   assert.deepEqual(habitStreak(fixed, [e('2026-11-02', 'done'), e('2026-11-03', 'missed')], '2026-11-03'), { success: 0, engagement: 0, unit: 'days' })
 })
+test('streak traversal stops at the first supported week and day', () => {
+  const ancient = { ...fixed, start: '0001-01-01', schedules: [{ effective: '0001-01-01', kind: 'fixed' as const, weekdays: [0, 1, 2, 3, 4, 5, 6], target: 1 }], criteria: [{ effective: '0001-01-01', done: '', partial: '', missed: '' }] }
+  assert.deepEqual(habitStreak(ancient, [e('0001-01-01', 'done')], '0001-01-01'), { success: 1, engagement: 1, unit: 'days' })
+  const flexible = { ...ancient, schedules: [{ ...ancient.schedules[0], kind: 'flexible' as const }] }
+  assert.deepEqual(habitStreak(flexible, [], '0001-01-01'), { success: 0, engagement: 0, unit: 'weeks' })
+  assert.deepEqual(habitStreak(flexible, [], '0001-01-08'), { success: 0, engagement: 0, unit: 'weeks' })
+})
 test('flexible compatibility summaries distinguish Skip from pauses and retain reference goals', () => {
   const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', target: 2 }] }
   assert.deepEqual(flexibleWeek(flex, [e('2026-11-02', 'done'), e('2026-11-03', 'partial')], '2026-11-02', '2026-11-09'), { points: 1.5, target: 2, reason: null })
@@ -50,6 +57,11 @@ test('a skip-only week breaks engagement after the latest positive completed wee
 test('month bounds respect leap years and today', () => {
   assert.deepEqual(monthBounds('2024-02', '2024-03-02'), { from: '2024-02-01', to: '2024-02-29' })
   assert.deepEqual(monthBounds('2026-11', '2026-11-08'), { from: '2026-11-01', to: '2026-11-08' })
+  assert.deepEqual(monthBounds('0001-01', '2026-11-08'), { from: '0001-01-01', to: '0001-01-31' })
+  assert.deepEqual(monthBounds('0099-12', '2026-11-08'), { from: '0099-12-01', to: '0099-12-31' })
+  assert.deepEqual(monthBounds('0100-02', '2026-11-08'), { from: '0100-02-01', to: '0100-02-28' })
+  assert.deepEqual(monthBounds('0400-02', '2026-11-08'), { from: '0400-02-01', to: '0400-02-29' })
+  assert.deepEqual(monthBounds('0999-12', '2026-11-08'), { from: '0999-12-01', to: '0999-12-31' })
 })
 
 const flex: Habit = { ...fixed, schedules: [{ ...fixed.schedules[0], kind: 'flexible', target: 2 }] }
